@@ -6,7 +6,9 @@
 #include "guis/GuiMsgBox.h"
 #include "InputManager.h"
 #include "Log.h"
+#include "Settings.h"
 #include "Window.h"
+#include <utility>
 
 #define fake_gettext_north pgettext("joystick", "NORTH")
 #define fake_gettext_south pgettext("joystick", "SOUTH")
@@ -117,10 +119,24 @@ void GuiInputConfig::initInputConfigStructure(InputConfig* target)
 	{
 		GUI_INPUT_CONFIG_LIST[1].skippable = (target->getDeviceNbButtons() <= 1) || (target->getDeviceNbButtons() == 5 && target->getDeviceNbAxes() == 0 && target->getDeviceNbHats() == 0);
 
-		GUI_INPUT_CONFIG_LIST[6].skippable = 
-		GUI_INPUT_CONFIG_LIST[7].skippable = 
-		GUI_INPUT_CONFIG_LIST[8].skippable = 
+		GUI_INPUT_CONFIG_LIST[6].skippable =
+		GUI_INPUT_CONFIG_LIST[7].skippable =
+		GUI_INPUT_CONFIG_LIST[8].skippable =
 		GUI_INPUT_CONFIG_LIST[9].skippable = target->getDeviceNbHats() == 0;
+	}
+
+	// es4all: 依佈局偵測結果(GuiDetectLayout)調整鍵位圖。
+	// 直接互換 a↔b / x↔y 的 icon(與 dispName)，不管本表預設極性，互換即正確；
+	// 未偵測(預設 false)時完全不動 → 零回歸。
+	{
+		bool invAB = Settings::getInstance()->getBool("InvertButtons");
+		bool invXY = Settings::getInstance()->getBool("InvertXYButtons");
+		auto findRow = [this](const std::string& n) -> InputConfigStructure* {
+			for (auto& r : GUI_INPUT_CONFIG_LIST) if (r.name == n) return &r;
+			return nullptr;
+		};
+		if (invAB) { auto a = findRow("a"); auto b = findRow("b"); if (a && b) { std::swap(a->icon, b->icon); std::swap(a->dispName, b->dispName); } }
+		if (invXY) { auto x = findRow("x"); auto y = findRow("y"); if (x && y) { std::swap(x->icon, y->icon); std::swap(x->dispName, y->dispName); } }
 	}
 }
 
