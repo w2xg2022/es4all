@@ -3,7 +3,7 @@ file (GLOB es_PO_FILES ${dir}/locale/lang/*)
 set(es_POT ${dir}/locale/emulationstation2.pot)
 # update the pot
 MESSAGE("Building the pot file")
-add_custom_command (TARGET i18n COMMAND find "${dir}/es-app" "${dir}/es-core" -name "*.cpp" -o -name "*.h" | ${XGETTEXT_EXECUTABLE} --add-comments=TRANSLATION -f - -o ${es_POT} --no-location --keyword=_)
+add_custom_command (TARGET i18n COMMAND find "${dir}/es-app" "${dir}/es-core" -name "*.cpp" -o -name "*.h" | ${XGETTEXT_EXECUTABLE} --from-code=UTF-8 --add-comments=TRANSLATION -f - -o ${es_POT} --no-location --keyword=_)
 add_custom_command (TARGET i18n COMMAND sed -i '/^\"POT-Creation-Date:/d' ${es_POT})
 
 foreach (es_PO_INPUT ${es_PO_FILES})
