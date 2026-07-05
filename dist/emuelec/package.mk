@@ -2,9 +2,8 @@
 # Copyright (C) 2019-present Shanti Gilbert (https://github.com/shantigilbert)
 
 # es4all: 源碼改由統一倉庫 es4all 提供（原 EmuELEC/emuelec-emulationstation）。
-# TODO: es4all 首次 push 後，把 PKG_VERSION 更新為 es4all main 的 HEAD commit。
 PKG_NAME="emuelec-emulationstation"
-PKG_VERSION="HEAD"
+PKG_VERSION="1cd26a15f3c6b09787d8c50eacbbf97f934f9f7d"
 PKG_GIT_CLONE_BRANCH="main"
 PKG_REV="1"
 PKG_ARCH="any"
