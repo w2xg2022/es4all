@@ -3,7 +3,7 @@
 
 # es4all: 源碼改由統一倉庫 es4all 提供（原 EmuELEC/emuelec-emulationstation）。
 PKG_NAME="emuelec-emulationstation"
-PKG_VERSION="1cd26a15f3c6b09787d8c50eacbbf97f934f9f7d"
+PKG_VERSION="85f618b28adba6b3645067cb551158d3c3ad717f"
 PKG_GIT_CLONE_BRANCH="main"
 PKG_REV="1"
 PKG_ARCH="any"
