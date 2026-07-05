@@ -8,7 +8,9 @@
 #include "LocaleES.h"
 #include "Log.h"
 #include "ThemeData.h"
-#include "Renderer.h"
+#include "renderers/Renderer.h"
+#include <cstdio>
+#include <string>
 
 static int getBindButton(SDL_GameController* gc, SDL_GameControllerButton b)
 {
@@ -16,6 +18,13 @@ static int getBindButton(SDL_GameController* gc, SDL_GameControllerButton b)
 		return -1;
 	SDL_GameControllerButtonBind bind = SDL_GameControllerGetBindForButton(gc, b);
 	return (bind.bindType == SDL_CONTROLLER_BINDTYPE_BUTTON) ? bind.value.button : -1;
+}
+
+// es4all 診斷：直接寫檔(立即 flush)，不依賴 ES log 系統
+static void dbgLog(const std::string& s)
+{
+	FILE* f = fopen("/storage/detectlayout.log", "a");
+	if (f) { fputs(s.c_str(), f); fputc('\n', f); fclose(f); }
 }
 
 GuiDetectLayout::GuiDetectLayout(Window* window, InputConfig* target, const std::function<void()>& doneCallback)
@@ -35,6 +44,13 @@ GuiDetectLayout::GuiDetectLayout(Window* window, InputConfig* target, const std:
 	mBtnB = getBindButton(mGC, SDL_CONTROLLER_BUTTON_B);
 	mBtnX = getBindButton(mGC, SDL_CONTROLLER_BUTTON_X);
 	mBtnY = getBindButton(mGC, SDL_CONTROLLER_BUTTON_Y);
+
+	// es4all 診斷(LogError 確保寫入 log)：印出 SDL 反查的 binds
+	LOG(LogError) << "[DetectLayout] gc=" << (mGC != nullptr ? SDL_GameControllerName(mGC) : "NULL")
+		<< " idx=" << idx << " binds A=" << mBtnA << " B=" << mBtnB << " X=" << mBtnX << " Y=" << mBtnY;
+	dbgLog("binds A=" + std::to_string(mBtnA) + " B=" + std::to_string(mBtnB) +
+		" X=" + std::to_string(mBtnX) + " Y=" + std::to_string(mBtnY) +
+		" gc=" + std::string(mGC != nullptr && SDL_GameControllerName(mGC) ? SDL_GameControllerName(mGC) : "NULL"));
 
 	auto theme = ThemeData::getMenuTheme();
 	mBackground.setImagePath(theme->Background.path);
@@ -111,6 +127,8 @@ bool GuiDetectLayout::input(InputConfig* config, Input input)
 
 	if (mPhase == 0)
 	{
+		LOG(LogError) << "[DetectLayout] A-press id=" << id << " (mBtnA=" << mBtnA << " mBtnB=" << mBtnB << ")";
+		dbgLog("A-press id=" + std::to_string(id));
 		if (id == mBtnA)      mABInverted = false; // 印刷A = SDL_A = 南 → Xbox 式
 		else if (id == mBtnB) mABInverted = true;  // 印刷A = SDL_B = 東 → 任天堂式
 		else return true;                          // 非 A/B 臉鍵，忽略
@@ -119,6 +137,8 @@ bool GuiDetectLayout::input(InputConfig* config, Input input)
 	}
 	else if (mPhase == 1)
 	{
+		LOG(LogError) << "[DetectLayout] X-press id=" << id << " (mBtnX=" << mBtnX << " mBtnY=" << mBtnY << ")";
+		dbgLog("X-press id=" + std::to_string(id));
 		if (id == mBtnX)      mXYInverted = false; // 印刷X = SDL_X = 西 → 正常
 		else if (id == mBtnY) mXYInverted = true;  // 印刷X = SDL_Y = 北 → XY 反
 		else return true;
@@ -138,7 +158,8 @@ void GuiDetectLayout::applyAndFinish()
 	Settings::getInstance()->saveFile();
 	InputConfig::AssignActionButtons();
 
-	LOG(LogInfo) << "GuiDetectLayout: detected AB inverted=" << mABInverted << ", XY inverted=" << mXYInverted;
+	LOG(LogError) << "[DetectLayout] RESULT AB inverted=" << mABInverted << ", XY inverted=" << mXYInverted;
+	dbgLog("RESULT AB_inv=" + std::to_string(mABInverted ? 1 : 0) + " XY_inv=" + std::to_string(mXYInverted ? 1 : 0));
 
 	auto cb = mDoneCallback;
 	delete this;
