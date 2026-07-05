@@ -4203,39 +4203,3 @@ msgstr "PRESS ANYTHING"
 
 msgid "ALREADY TAKEN"
 msgstr "ALREADY TAKEN"
-
-#~ msgid "SCRAPER SETTINGS"
-#~ msgstr "SCRAPER SETTINGS"
-
-#~ msgid "ACCOUNT"
-#~ msgstr "ACCOUNT"
-
-#~ msgid "THE USER INTERFACE MODE IS NOW UNLOCKED"
-#~ msgstr "THE USER INTERFACE MODE IS NOW UNLOCKED"
-
-#~ msgid "MATRIX"
-#~ msgstr "MATRIX"
-
-#~ msgid "rgb dmd order"
-#~ msgstr "rgb dmd order"
-
-#~ msgid "Reset values of GameTime, PlayCount and LastPlayed metadatas."
-#~ msgstr "Reset values of GameTime, PlayCount and LastPlayed metadatas."
-
-#~ msgid "SAVING METADATAS. PLEASE WAIT..."
-#~ msgstr "SAVING METADATAS. PLEASE WAIT..."
-
-#~ msgid "FORGET A BLUETOOTH DEVICE"
-#~ msgstr "FORGET A BLUETOOTH DEVICE"
-
-#~ msgid "Achievements won"
-#~ msgstr "Achievements won"
-
-#~ msgid "CREATE NEW CUSTOM COLLECTION FROM THEME"
-#~ msgstr "CREATE NEW CUSTOM COLLECTION FROM THEME"
-
-#~ msgid "SELECT THEME FOLDER"
-#~ msgstr "SELECT THEME FOLDER"
-
-#~ msgid "GROUP UNTHEMED CUSTOM COLLECTIONS"
-#~ msgstr "GROUP UNTHEMED CUSTOM COLLECTIONS"

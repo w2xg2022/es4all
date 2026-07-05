@@ -4203,38 +4203,12 @@ msgstr "割当ボタンを押す"
 msgid "ALREADY TAKEN"
 msgstr "既に割り当て済み"
 
-#~ msgid "SCRAPER SETTINGS"
-#~ msgstr "スクレイプ 設定"
+msgid "SWITCH A/B, X/Y BUTTONS IN GAMES"
+msgstr "ゲーム内でA/B・X/Yボタンを入れ替える"
 
-#~ msgid "ACCOUNT"
-#~ msgstr "アカウント(SCREENSCRAPER)"
-
-#~ msgid "THE USER INTERFACE MODE IS NOW UNLOCKED"
-#~ msgstr "ユーザーインターフェイスモードのロックを解除しました"
-
-#~ msgid "SHOW NETPLAY OPTIONS WHEN LAUNCHING GAME"
-#~ msgstr "ゲーム起動時にネットプレイ オプションを表示"
-
-#~ msgid "Allows choice of online, offline, or joining another game."
-#~ msgstr "オンライン、オフライン、別のゲームへの参加を選択できます"
-
-#~ msgid "Select a game lobby to create or join"
-#~ msgstr "作成または参加するゲーム ロビーを選択"
-
-#~ msgid "PLAY ONLINE AS HOST"
-#~ msgstr "ホストとしてオンラインでプレイ"
-
-#~ msgid "PLAY OFFLINE"
-#~ msgstr "オフラインでプレイ"
-
-#~ msgid "JOIN EXISTING GAME"
-#~ msgstr "既存のゲームに参加"
-
-#~ msgid "MATRIX"
-#~ msgstr "マトリクス"
-
-#~ msgid "rgb dmd order"
-#~ msgstr "RGB DMD順"
-
-#~ msgid "FORGET A BLUETOOTH DEVICE"
-#~ msgstr "BLUETOOTH デバイスの削除"
+msgid ""
+"Swaps A/B and X/Y RetroPad bindings during gameplay (position-aligned for "
+"PlayStation/PSP style symbol layouts)"
+msgstr ""
+"ゲームプレイ中にRetroPadのA/BとX/Yの割り当てを入れ替えます（PlayStation/PSPの"
+"ような記号配置に合わせた位置整列）"

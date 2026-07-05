@@ -2528,8 +2528,12 @@ msgstr "調換南功能鍵與東功能鍵的按鍵功能。"
 msgid "SWITCH A/B, X/Y BUTTONS IN GAMES"
 msgstr "遊戲內互換A/B、X/Y按鍵"
 
-msgid "Swaps A/B and X/Y RetroPad bindings during gameplay (position-aligned for PlayStation/PSP style symbol layouts)"
-msgstr "遊戲進行中互換A/B與X/Y的RetroPad按鍵綁定（位置對齊，符合PlayStation/PSP等幾何符號佈局的手感）。"
+msgid ""
+"Swaps A/B and X/Y RetroPad bindings during gameplay (position-aligned for "
+"PlayStation/PSP style symbol layouts)"
+msgstr ""
+"遊戲進行中互換A/B與X/Y的RetroPad按鍵綁定（位置對齊，符合PlayStation/PSP等幾何"
+"符號佈局的手感）。"
 
 msgid "ACCESS GAME OPTIONS WITH NORTH BUTTON"
 msgstr "透過北功能鍵存取遊戲選項"
@@ -4186,53 +4190,11 @@ msgstr "啟動RetroArch"
 msgid "REALLY START RETROARCH?"
 msgstr "確定要啟動RetroArch嗎？"
 
-#~ msgid "DO NOT SHOW SPLASH"
-#~ msgstr "不顯示畫面"
-
 msgid "DEFAULT YOUTUBE SEARCH WORD"
 msgstr "預設YouTube搜尋字詞"
 
-#~ msgid "ENABLE SPLASH SCREEN"
-#~ msgstr "啟用啟動畫面"
-
 msgid "ENABLE SSH"
 msgstr "啟用SSH"
-
-#~ msgid "SCRAPER SETTINGS"
-#~ msgstr "搜刮器設定"
-
-#~ msgid "ACCOUNT"
-#~ msgstr "帳號"
-
-#~ msgid "THE USER INTERFACE MODE IS NOW UNLOCKED"
-#~ msgstr "使用者介面模式已經解鎖"
-
-#~ msgid "SAVING METADATAS. PLEASE WAIT..."
-#~ msgstr "正在儲存中繼資料。請稍後..."
-
-#~ msgid "FORGET A BLUETOOTH DEVICE"
-#~ msgstr "忘記藍牙裝置"
-
-#~ msgid "Achievements won"
-#~ msgstr "贏得成就"
-
-#~ msgid "CREATE NEW CUSTOM COLLECTION FROM THEME"
-#~ msgstr "從佈景主題建立新的自定義合輯"
-
-#~ msgid "SELECT THEME FOLDER"
-#~ msgstr "選擇佈景主題資料夾"
-
-#~ msgid "GROUP UNTHEMED CUSTOM COLLECTIONS"
-#~ msgstr "對沒有主題的自定義合輯進行分組"
-
-#~ msgid "HAS MEDIAS"
-#~ msgstr "含有媒體"
-
-#~ msgid "Emulationstation"
-#~ msgstr "EmulationStation"
-
-#~ msgid "Retroarch"
-#~ msgstr "RetroArch"
 
 msgid "EMUELEC SETTINGS"
 msgstr "EMUELEC設定"

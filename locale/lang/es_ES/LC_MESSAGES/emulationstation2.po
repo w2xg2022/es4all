@@ -4235,110 +4235,13 @@ msgstr "PULSA CUALQUIER BOTÓN"
 msgid "ALREADY TAKEN"
 msgstr "EN USO"
 
-#~ msgid "START RETROARCH"
-#~ msgstr "INICIAR RETROARCH"
+msgid "SWITCH A/B, X/Y BUTTONS IN GAMES"
+msgstr "Intercambiar botones A/B y X/Y en los juegos"
 
-#~ msgid "REALLY START RETROARCH?"
-#~ msgstr "¿INICIAR RETROARCH?"
-
-#~ msgid "ENABLE SSH"
-#~ msgstr "ACTIVAR SSH"
-
-#~ msgid "REBOOT FROM NAND"
-#~ msgstr "REINICIAR A LA MEMORIA INTERNA"
-
-#~ msgid "REALLY REBOOT FROM NAND?"
-#~ msgstr "¿REINICIAR A LA MEMORIA INTERNA?"
-
-#~ msgid "CREATE NEW CUSTOM COLLECTION FROM THEME"
-#~ msgstr "CREAR COLECCIÓN PERSONALIZADA A PARTIR DE TEMA"
-
-#~ msgid "SELECT THEME FOLDER"
-#~ msgstr "SELECCIONAR CARPETA DEL TEMA"
-
-#~ msgid "GROUP UNTHEMED CUSTOM COLLECTIONS"
-#~ msgstr "AGRUPAR COLECCIONES PERSONALIZADAS SIN TEMATICA"
-
-#~ msgid "FORGET A BLUETOOTH DEVICE"
-#~ msgstr "DESVINCULAR DISPOSITIVO BLUETOOTH"
-
-#~ msgid "Achievements won"
-#~ msgstr "Logros ganados"
-
-#~ msgid "SCRAPER SETTINGS"
-#~ msgstr "AJUSTES DE ESCRAPEO"
-
-#~ msgid "THE USER INTERFACE MODE IS NOW UNLOCKED"
-#~ msgstr "LA INTERFAZ DE USUARIO HA SIDO DESBLOQUEADA"
-
-#~ msgid "SWITCH A & B BUTTONS IN EMULATIONSTATION"
-#~ msgstr "INVERTIR BOTONES A Y B EN EMULATIONSTATION"
-
-#~ msgid ""
-#~ "YOU ARE GOING TO MAP A CONTROLLER. MAP BASED ON THE BUTTON'S POSITION "
-#~ "RELATIVE TO ITS EQUIVALENT ON A SNES CONTROLLER, NOT ITS PHYSICAL LABEL. "
-#~ "IF YOU DO NOT HAVE A SPECIAL KEY FOR HOTKEY, USE THE SELECT BUTTON. SKIP "
-#~ "ALL BUTTONS/STICKS YOU DO NOT HAVE BY HOLDING ANY KEY. PRESS THE SOUTH "
-#~ "BUTTON TO CONFIRM WHEN DONE."
-#~ msgstr ""
-#~ "VAS A CONFIGURAR UN MANDO, TEN EN CUENTA LOS SIGUIENTES PUNTOS \n"
-#~ "- SI NO TIENES UN BOTÓN ESPECIAL PARA USARLO COMO (HOTKEY) PUEDES "
-#~ "UTILIZAR SELECT EN SU LUGAR. \n"
-#~ "- PUEDES IGNORAR LOS BOTONES QUE NO EXISTAN EN TU MANDO MANTENIENDO "
-#~ "PULSADO CUALQUIER BOTÓN. \n"
-#~ "- LOS NOMBRES O ETIQUETAS DE LOS BOTONES EN PANTALLA SE BASAN EN EL MANDO "
-#~ "DE SUPER NINTENDO."
-
-#~ msgid "SAVING METADATAS. PLEASE WAIT..."
-#~ msgstr "GUARDANDO METADATOS. POR FAVOR, ESPERE…"
-
-#~ msgid "HAS MEDIAS"
-#~ msgstr "TIENE MEDIOS"
-
-#~ msgctxt "joystick"
-#~ msgid "UP"
-#~ msgstr "ARRIBA"
-
-#~ msgctxt "joystick"
-#~ msgid "DOWN"
-#~ msgstr "ABAJO"
-
-#~ msgctxt "joystick"
-#~ msgid "LEFT"
-#~ msgstr "IZQUIEDA"
-
-#~ msgctxt "joystick"
-#~ msgid "RIGHT"
-#~ msgstr "DERECHA"
-
-#~ msgid "DANGER ZONE!"
-#~ msgstr "¡ZONA DE PELIGRO!"
-
-#~ msgid "You are about to set EmuELEC resolution to"
-#~ msgstr "Estas a punto de cambiar la resolución de EmuELEC a"
-
-#~ msgid "Emulationstation will restart"
-#~ msgstr "Emulationstation se reiniciara"
-
-#~ msgid ""
-#~ "WARNING THIS WILL RESTART EMULATIONSTATION!\n"
-#~ "\n"
-#~ "AFTER THE SCRIPT IS DONE REMEMBER TO COPY THE FILE /storage/downloads/"
-#~ "ee_backup_config.zip TO SOME PLACE SAFE OR IT WILL BE DELETED ON NEXT "
-#~ "REBOOT!\n"
-#~ "\n"
-#~ "BACKUP CURRENT CONFIG AND RESTART?"
-#~ msgstr ""
-#~ "¡ADVERTENCIA ESTO REINICIARA EMULATIONSTATION!\n"
-#~ "\n"
-#~ "¡CUANDO EL SCRIPT TERMINE RECUERDA COPIAR EL ARCHIVO /storage/downloads/"
-#~ "ee_backup_config.zip A UN LUGAR SEGURO O SERA ELIMINADO EN EL SIGUIENTE "
-#~ "REINICIO!\n"
-#~ "\n"
-#~ "¿CREAR COPIA DE SEGURIDAD DE TU CONFIGURACIÓN ACTUAL Y REINICIAR?"
-
-#~ msgid "BACKUP EMUELEC CONFIGS"
-#~ msgstr "CREAR COPIA DE SEGURIDAD DE AJUSTES"
-
-#~ msgid "You are about to set EmuELEC Language to:"
-#~ msgstr "Estas a punto de cambiar el lenguaje de EmuELEC a:"
+msgid ""
+"Swaps A/B and X/Y RetroPad bindings during gameplay (position-aligned for "
+"PlayStation/PSP style symbol layouts)"
+msgstr ""
+"Intercambia las asignaciones A/B y X/Y del RetroPad durante el juego "
+"(alineado por posición para distribuciones de símbolos estilo PlayStation/"
+"PSP)"

@@ -332,8 +332,8 @@ msgid ""
 "A valid account is required. Please register an account on https://"
 "retroachievements.org"
 msgstr ""
-"Regisztráció szükséges! Kérlek készíts egyet itt: https://"
-"retroachievements.org"
+"Regisztráció szükséges! Kérlek készíts egyet itt: https://retroachievements."
+"org"
 
 msgid "UPDATE AVAILABLE"
 msgstr "FRISSÍTÉS ELÉRHETŐ"
@@ -4233,65 +4233,3 @@ msgstr "NYOMJ LE EGY GOMBOT"
 
 msgid "ALREADY TAKEN"
 msgstr "MÁR BE VAN ÁLLÍTVA"
-
-#~ msgid "SCRAPER SETTINGS"
-#~ msgstr "LEKÉRDEZÉS BEÁLLTÁS"
-
-#~ msgid "ACCOUNT"
-#~ msgstr "FIÓK"
-
-#~ msgid "THE USER INTERFACE MODE IS NOW UNLOCKED"
-#~ msgstr "A FELHASZNÁLÓI FELÜLET MÓD MOST MÁR FEL VAN OLDVA"
-
-#~ msgid "SHOW NETPLAY OPTIONS WHEN LAUNCHING GAME"
-#~ msgstr "NETPLAY BEÁLLÍTÁSOK MEGJELENÍTÉSE JÁTÉK INDÍTÁSAKOR"
-
-#~ msgid "Allows choice of online, offline, or joining another game."
-#~ msgstr ""
-#~ "Lehetővé teszi az online és offline választást, vagy egy másik játékhoz "
-#~ "való csatlakozást."
-
-#~ msgid "Select a game lobby to create or join"
-#~ msgstr ""
-#~ "Válassza ki azt a játéklobbyt, amelyet létre akar hozni, vagy amelyhez "
-#~ "csatlakozni szeretne"
-
-#~ msgid "PLAY ONLINE AS HOST"
-#~ msgstr "ONLINE JÁTÉK HOSTKÉNT"
-
-#~ msgid "PLAY OFFLINE"
-#~ msgstr "OFFLINE JÁTÉK"
-
-#~ msgid "JOIN EXISTING GAME"
-#~ msgstr "MEGLÉVŐ JÁTÉKHOZ CSATLAKOZÁS"
-
-#~ msgid "MATRIX"
-#~ msgstr "MÁTRIX"
-
-#~ msgid "rgb dmd order"
-#~ msgstr "rgb dmd sorrend"
-
-#~ msgid "Reset values of GameTime, PlayCount and LastPlayed metadatas."
-#~ msgstr ""
-#~ "Állítsa vissza a GameTime, PlayCount és LastPlayed metaadatok értékét."
-
-#~ msgid "SAVING METADATAS. PLEASE WAIT..."
-#~ msgstr "METAADAT MENTÉSE. VÁRJ..."
-
-#~ msgid "FORGET A BLUETOOTH DEVICE"
-#~ msgstr "BLUETOOTH-ESZKÖZ ELFELEJTÉSE"
-
-#~ msgid "Achievements won"
-#~ msgstr "Elért achievementek"
-
-#~ msgid "CREATE NEW CUSTOM COLLECTION FROM THEME"
-#~ msgstr "ÚJ EGYEDI GYŰJTEMÉNY KÉSZÍTÉSE A TÉMÁBÓL"
-
-#~ msgid "SELECT THEME FOLDER"
-#~ msgstr "TÉMA KÖNYVTÁR KIVÁLASZTÁSA"
-
-#~ msgid "GROUP UNTHEMED CUSTOM COLLECTIONS"
-#~ msgstr "TÉMA NÉLKÜLI EGYEDI GYŰJTEMÉNYEK CSOPORTOSÍTÁSA"
-
-#~ msgid "HAS MEDIAS"
-#~ msgstr "RENDELKEZIK MÉDIÁVAL"

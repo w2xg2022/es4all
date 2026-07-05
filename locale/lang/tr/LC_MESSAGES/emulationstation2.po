@@ -4237,9 +4237,3 @@ msgstr "BİR TUŞA BASIN"
 
 msgid "ALREADY TAKEN"
 msgstr "ZATEN ALINMIŞ"
-
-#~ msgid "SCRAPER SETTINGS"
-#~ msgstr "OYUN BİLGİ AYARLARI"
-
-#~ msgid "ACCOUNT"
-#~ msgstr "HESAP"

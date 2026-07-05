@@ -2203,8 +2203,8 @@ msgid ""
 "on the boot (EMUELEC) partition.\n"
 "\n"
 msgstr ""
-"Au cas où vous ne pourriez plus booter, créer un fichier vide nommé "
-"\"no_oc.oga\" dans la partition de boot (EMUELEC).\n"
+"Au cas où vous ne pourriez plus booter, créer un fichier vide nommé \"no_oc."
+"oga\" dans la partition de boot (EMUELEC).\n"
 "\n"
 
 msgid ""
@@ -4287,124 +4287,12 @@ msgstr "APPUYEZ SUR UN BOUTON"
 msgid "ALREADY TAKEN"
 msgstr "DÉJA UTILISÉ"
 
-#~ msgid "DEFAULT YOUTUBE SEARCH WORD"
-#~ msgstr "MOT DE RECHERCHE YOUTUBE PAR DÉFAUT"
+msgid "SWITCH A/B, X/Y BUTTONS IN GAMES"
+msgstr "Inverser les boutons A/B et X/Y dans les jeux"
 
-#~ msgid "AN ERROR OCCURED"
-#~ msgstr "UNE ERREUR EST SURVENUE"
-
-#~ msgid "AUTO CONFIG ADVANCEMAME GAMEPAD CACHE"
-#~ msgstr "CACHE CONFIGURATION AUTO DE LA MANETTE ADVANCEMAME"
-
-#~ msgid "AUTO CONFIG FLYCAST GAMEPAD CACHE"
-#~ msgstr "CACHE CONFIGURATION AUTO DE LA MANETTE FLYCAST"
-
-#~ msgid "AUTO CONFIG DOLPHIN GAMEPAD CACHE"
-#~ msgstr "CACHE CONFIGURATION AUTO DE LA MANETTE DOLPHIN"
-
-#~ msgid "AUTO CONFIG MUPEN64PLUS GAMEPAD CACHE"
-#~ msgstr "CACHE CONFIGURATION AUTO DE LA MANETTE MUPEN64PLUS"
-
-#~ msgid "THE UI MODE IS NOW UNLOCKED"
-#~ msgstr "L’INTERFACE EST MAINTENANT DÉVERROUILLÉE"
-
-#~ msgid "ENTER THE CODE TO UNLOCK THE CURRENT UI MODE"
-#~ msgstr "ENTREZ LE CODE POUR DÉVERROUILLER L’INTERFACE"
-
-#~ msgid "DEVELOPER"
-#~ msgstr "DÉVELOPPEUR"
-
-#~ msgid "SCRAPER SETTINGS"
-#~ msgstr "OPTIONS DU SCRAPEUR"
-
-#~ msgid "ACCOUNT"
-#~ msgstr "COMPTE"
-
-#~ msgid "THE USER INTERFACE MODE IS NOW UNLOCKED"
-#~ msgstr "L'INTERFACE A ETE DEVERROUILLÉE"
-
-#~ msgid "SHOW NETPLAY OPTIONS WHEN LAUNCHING GAME"
-#~ msgstr "OPTIONS DES PARTIES EN RÉSEAU AU LANCEMENT D'UN JEU"
-
-#~ msgid "Allows choice of online, offline, or joining another game."
-#~ msgstr "Permettre de choisir de jouer en ligne, hors ligne."
-
-#~ msgid "Select a game lobby to create or join"
-#~ msgstr "Choisir la partie à créer ou rejoindre"
-
-#~ msgid "PLAY ONLINE AS HOST"
-#~ msgstr "JOUER EN LIGNE EN HÔTE"
-
-#~ msgid "PLAY OFFLINE"
-#~ msgstr "JOUER HORS LIGNE"
-
-#~ msgid "JOIN EXISTING GAME"
-#~ msgstr "REJOINDRE UNE PARTIE EXISTANTE"
-
-#~ msgid "MATRIX"
-#~ msgstr "MATRICE"
-
-#~ msgid "rgb dmd order"
-#~ msgstr "ordre des couleurs du dmd"
-
-#~ msgid "Reset values of GameTime, PlayCount and LastPlayed metadatas."
-#~ msgstr ""
-#~ "Réinitialiser les valeurs du temps de jeu, du nombre de parties et des "
-#~ "dernières jouées."
-
-#~ msgid "SAVING METADATAS. PLEASE WAIT..."
-#~ msgstr "SAUVEGARDE DES MÉTADONNÉES. VEUILLEZ PATIENTER…"
-
-#~ msgid "FORGET A BLUETOOTH DEVICE"
-#~ msgstr "OUBLIER UN PÉRIPHÉRIQUE BLUETOOTH"
-
-#~ msgid "-10 for auto"
-#~ msgstr "-10 pour automatique"
-
-#~ msgid "Achievements won"
-#~ msgstr "Succès gagnés"
-
-#~ msgid "CREATE NEW CUSTOM COLLECTION FROM THEME"
-#~ msgstr "CRÉER UNE COLLECTION DEPUIS UN THÈME"
-
-#~ msgid "SELECT THEME FOLDER"
-#~ msgstr "CHOISIR LE DOSSIER DU THÈME"
-
-#~ msgid "GROUP UNTHEMED CUSTOM COLLECTIONS"
-#~ msgstr "GROUPER LES COLLECTIONS SANS THÈME"
-
-#~ msgid "HAS MEDIAS"
-#~ msgstr "AVEC DES MÉDIAS"
-
-#~ msgctxt "joystick"
-#~ msgid "UP"
-#~ msgstr "D-PAD HAUT"
-
-#~ msgctxt "joystick"
-#~ msgid "DOWN"
-#~ msgstr "D-PAD BAS"
-
-#~ msgctxt "joystick"
-#~ msgid "LEFT"
-#~ msgstr "D-PAD GAUCHE"
-
-#~ msgctxt "joystick"
-#~ msgid "RIGHT"
-#~ msgstr "D-PAD DROITE"
-
-#~ msgid "SWITCH A & B BUTTONS IN EMULATIONSTATION"
-#~ msgstr "INVERSER LES BOUTONS A/B DANS EMULATIONSTATION"
-
-#~ msgid ""
-#~ "YOU ARE GOING TO MAP A CONTROLLER. MAP BASED ON THE BUTTON'S POSITION "
-#~ "RELATIVE TO ITS EQUIVALENT ON A SNES CONTROLLER, NOT ITS PHYSICAL LABEL. "
-#~ "IF YOU DO NOT HAVE A SPECIAL KEY FOR HOTKEY, USE THE SELECT BUTTON. SKIP "
-#~ "ALL BUTTONS/STICKS YOU DO NOT HAVE BY HOLDING ANY KEY. PRESS THE SOUTH "
-#~ "BUTTON TO CONFIRM WHEN DONE."
-#~ msgstr ""
-#~ "VOUS ALLEZ CONFIGURER UNE MANETTE. CECI EST BASÉ SUR LA POSITION RELATIVE "
-#~ "DES BOUTONS PAR RAPPORT À SON ÉQUIVALENT SUR UNE SNES, ET NON PAR SON "
-#~ "LIBELLÉ. SI VOUS N’AVEZ PAS DE TOUCHE SPÉCIALE POUR HOTKEY, UTILISEZ LE "
-#~ "BOUTON SELECT. IGNOREZ TOUS LES BOUTONS / PADS QUE VOUS N’AVEZ PAS EN "
-#~ "RESTANT APPUYÉ SUR UN BOUTON DÉJÀ CONFIGURÉ. APPUYEZ SUR LE BOUTON SUD "
-#~ "POUR CONFIRMER UNE FOIS TERMINÉ."
+msgid ""
+"Swaps A/B and X/Y RetroPad bindings during gameplay (position-aligned for "
+"PlayStation/PSP style symbol layouts)"
+msgstr ""
+"Échange les affectations A/B et X/Y de la RetroPad pendant le jeu (aligné "
+"par position pour les dispositions de symboles de type PlayStation/PSP)"

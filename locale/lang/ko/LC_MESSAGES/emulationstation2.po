@@ -4186,12 +4186,3 @@ msgstr "아무 버튼이나 누름"
 
 msgid "ALREADY TAKEN"
 msgstr "이미 사용 중"
-
-#~ msgid "SCRAPER SETTINGS"
-#~ msgstr "스크랩 설정"
-
-#~ msgid "ACCOUNT"
-#~ msgstr "계정"
-
-#~ msgid "THE USER INTERFACE MODE IS NOW UNLOCKED"
-#~ msgstr "사용자 인터페이스 모드가 사용 해제됨"

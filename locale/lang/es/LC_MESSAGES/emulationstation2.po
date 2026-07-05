@@ -4240,46 +4240,13 @@ msgstr "PRESIONAR CUALQUIER BOTÓN"
 msgid "ALREADY TAKEN"
 msgstr "EN USO"
 
-#~ msgid "SCRAPER SETTINGS"
-#~ msgstr "AJUSTES DE ESCRAPEO"
+msgid "SWITCH A/B, X/Y BUTTONS IN GAMES"
+msgstr "Intercambiar botones A/B y X/Y en los juegos"
 
-#~ msgid "ACCOUNT"
-#~ msgstr "CUENTA"
-
-#~ msgid "THE USER INTERFACE MODE IS NOW UNLOCKED"
-#~ msgstr "LA INTERFAZ DE USUARIO HA SIDO DESBLOQUEADA"
-
-#~ msgid "SHOW NETPLAY OPTIONS WHEN LAUNCHING GAME"
-#~ msgstr "MOSTRAR OPCIONES DE NETPLAY AL INICIAR EL JUEGO"
-
-#~ msgid "Allows choice of online, offline, or joining another game."
-#~ msgstr "Permite elegir entre jugar online, offline o unirse a otro juego."
-
-#~ msgid "Select a game lobby to create or join"
-#~ msgstr "Selecciona una sala de juego para crear o unirte"
-
-#~ msgid "PLAY ONLINE AS HOST"
-#~ msgstr "JUGAR ONLINE COMO ANFITRIÓN"
-
-#~ msgid "PLAY OFFLINE"
-#~ msgstr "JUGAR SIN CONEXIÓN"
-
-#~ msgid "JOIN EXISTING GAME"
-#~ msgstr "UNIRTE A JUEGO EXISTENTE"
-
-#~ msgid "MATRIX"
-#~ msgstr "MATRIZ"
-
-#~ msgid "rgb dmd order"
-#~ msgstr "orden rgb dmd"
-
-#~ msgid "Reset values of GameTime, PlayCount and LastPlayed metadatas."
-#~ msgstr ""
-#~ "Restablece los valores de los metadatos GameTime (Tiempo de juego), "
-#~ "PlayCount (Recuento de partidas) y LastPlayed (Jugado por última vez)."
-
-#~ msgid "SAVING METADATAS. PLEASE WAIT..."
-#~ msgstr "GUARDANDO METADATOS. POR FAVOR, ESPERE..."
-
-#~ msgid "NEVER"
-#~ msgstr "NUNCA"
+msgid ""
+"Swaps A/B and X/Y RetroPad bindings during gameplay (position-aligned for "
+"PlayStation/PSP style symbol layouts)"
+msgstr ""
+"Intercambia las asignaciones A/B y X/Y del RetroPad durante el juego "
+"(alineado por posición para distribuciones de símbolos estilo PlayStation/"
+"PSP)"
