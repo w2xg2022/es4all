@@ -554,7 +554,16 @@ bool ApiSystem::disableWifi()
 std::string ApiSystem::getIpAddress()
 {
 	LOG(LogDebug) << "ApiSystem::getIpAddress";
-	
+
+	// es4all: 优先取默认路由所在接口的 IP，避免多网卡(如同时接 eth0 + wlan0)时
+	// queryIPAddress 抓到非主接口(例如显示 wlan0 的 192.168.1.x 而非 eth0 主网段)。
+	std::string primary = Utils::Platform::getShOutput("ip route get 1.1.1.1 2>/dev/null | sed -n 's/.*src \\([0-9.]*\\).*/\\1/p'");
+	primary.erase(std::remove(primary.begin(), primary.end(), '\n'), primary.end());
+	primary.erase(std::remove(primary.begin(), primary.end(), '\r'), primary.end());
+	primary.erase(std::remove(primary.begin(), primary.end(), ' '), primary.end());
+	if (!primary.empty())
+		return primary;
+
 	std::string result = Utils::Platform::queryIPAddress(); // platform.h
 	if (result.empty())
 		return "NOT CONNECTED";

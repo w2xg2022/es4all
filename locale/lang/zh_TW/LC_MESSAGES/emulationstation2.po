@@ -4216,3 +4216,6 @@ msgstr "重新啟動至USB"
 
 msgid "Reboot to CoreELEC"
 msgstr "重新啟動至CoreELEC"
+
+msgid "Display the framerate on-screen in RetroArch games."
+msgstr "在RetroArch遊戲中於螢幕上顯示幀率。"
