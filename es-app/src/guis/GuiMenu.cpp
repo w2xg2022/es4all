@@ -572,15 +572,6 @@ void GuiMenu::openEmuELECSettings()
 			});
 #endif
 
-    auto fps_enabled = std::make_shared<SwitchComponent>(mWindow);
-		bool fpsEnabled = SystemConf::getInstance()->get("global.showFPS") == "1";
-		fps_enabled->setState(fpsEnabled);
-		s->addWithLabel(_("SHOW RETROARCH FPS"), fps_enabled);
-		s->addSaveFunc([fps_enabled] {
-			bool fpsenabled = fps_enabled->getState();
-                SystemConf::getInstance()->set("global.showFPS", fpsenabled ? "1" : "0");
-				SystemConf::getInstance()->saveSystemConf();
-			});       
 /*
        auto bezels_enabled = std::make_shared<SwitchComponent>(mWindow);
 		bool bezelsEnabled = SystemConf::getInstance()->get("global.bezel") == "1";
@@ -2085,6 +2076,13 @@ void GuiMenu::openDeveloperSettings()
 			s->setVariable("reloadAll", true);
 		}
 	});
+
+	// es4all: 遊戲內 A/B、X/Y 位置對調（透傳到 RetroArch per-core remap，由 setsettings.sh 套用）。
+	// 跟 InvertButtons 放同一畫面。預設開啟(位置對齊)，修正 PS/PSP 等幾何符號系統手感。
+	auto invertGameJoy = std::make_shared<SwitchComponent>(mWindow);
+	invertGameJoy->setState(Settings::getInstance()->getBool("InvertGameButtons"));
+	s->addWithDescription(_("SWITCH A/B & X/Y BUTTONS IN GAMES"), _("Swaps the A/B and X/Y button positions inside RetroArch games (per-core remap)."), invertGameJoy);
+	s->addSaveFunc([invertGameJoy] { Settings::getInstance()->setBool("InvertGameButtons", invertGameJoy->getState()); });
 
 	auto invertLongPress = std::make_shared<SwitchComponent>(mWindow);
 	invertLongPress->setState(Settings::getInstance()->getBool("GameOptionsAtNorth"));
@@ -3714,6 +3712,13 @@ void GuiMenu::openGamesSettings()
 	s->addSaveFunc([showSaveStates] { SystemConf::getInstance()->set("global.savestates", showSaveStates->getSelected()); });
 
 	s->addGroup(_("DEFAULT GLOBAL SETTINGS"));
+
+	// es4all: SHOW RETROARCH FPS —— 在所有 RetroArch 核心遊戲畫面顯示幀數。
+	// 寫入 global.showFPS，由啟動腳本套用到 retroarch.cfg 的 fps_show。跨 target 共用。
+	auto showFPS_enabled = std::make_shared<SwitchComponent>(mWindow);
+	showFPS_enabled->setState(SystemConf::getInstance()->get("global.showFPS") == "1");
+	s->addWithDescription(_("SHOW RETROARCH FPS"), _("Display the framerate on-screen in RetroArch games."), showFPS_enabled);
+	s->addSaveFunc([showFPS_enabled] { SystemConf::getInstance()->set("global.showFPS", showFPS_enabled->getState() ? "1" : "0"); });
 
 	// Screen ratio choice
 	if (!hasGlobalFeature("ratio"))
