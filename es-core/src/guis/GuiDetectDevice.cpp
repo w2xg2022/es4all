@@ -2,6 +2,7 @@
 
 #include "components/TextComponent.h"
 #include "guis/GuiInputConfig.h"
+#include "guis/GuiDetectLayout.h"
 #include "utils/FileSystemUtil.h"
 #include "utils/StringUtil.h"
 #include "InputManager.h"
@@ -146,7 +147,14 @@ void GuiDetectDevice::update(int deltaTime)
 			if(mHoldTime <= 0)
 			{
 				// picked one!
-				mWindow->pushGui(new GuiInputConfig(mWindow, mHoldingConfig, true, mDoneCallback));
+				// es4all: 進輸入設定前先偵測手柄佈局(按A定AB、按X定XY)，校準印刷標籤 vs 系統回報。
+				Window* win = mWindow;
+				InputConfig* cfg = mHoldingConfig;
+				auto done = mDoneCallback;
+				win->pushGui(new GuiDetectLayout(win, cfg, [win, cfg, done]()
+				{
+					win->pushGui(new GuiInputConfig(win, cfg, true, done));
+				}));
 				PowerSaver::resume();
 				delete this;
 			}

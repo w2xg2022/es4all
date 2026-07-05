@@ -196,6 +196,8 @@ void Settings::setDefaults()
 	// es4all: 游戏内 A/B、X/Y 位置对调（透传到 RetroArch per-core remap，由 setsettings.sh 套用）。
 	// 默认开启(位置对齐)，修正 PS/PSP 等几何符号系统手感；与 setsettings.sh「未设定视为 true」一致。
 	mBoolMap["InvertGameButtons"] = true;
+	// es4all: XY 位置對調（韌體把 X/Y 回報反、或任天堂式 XY 佈局時）。由佈局偵測(GuiDetectLayout)設定。
+	mBoolMap["InvertXYButtons"] = false;
 
 	mBoolMap["GameOptionsAtNorth"] = false;
 	mBoolMap["LoadEmptySystems"] = false;

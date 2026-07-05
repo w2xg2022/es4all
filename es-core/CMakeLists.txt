@@ -90,6 +90,7 @@ set(CORE_HEADERS
 
 	# Guis
 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiDetectDevice.h
+	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiDetectLayout.h
 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiInputConfig.h
 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiMsgBox.h
         ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiInfoPopup.h # batocera
@@ -221,6 +222,7 @@ set(CORE_SOURCES
 
 	# Guis
 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiDetectDevice.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiDetectLayout.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiInputConfig.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiMsgBox.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/guis/GuiInfoPopup.cpp # batocera
