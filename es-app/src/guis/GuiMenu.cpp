@@ -2077,12 +2077,7 @@ void GuiMenu::openDeveloperSettings()
 		}
 	});
 
-	// es4all: 游戏内 A/B、X/Y 位置对调（透传到 RetroArch per-core remap，由 setsettings.sh 套用）。
-	// 跟 InvertButtons 放同一画面。默认开启(位置对齐)，修正 PS/PSP 等几何符号系统手感。
-	auto invertGameJoy = std::make_shared<SwitchComponent>(mWindow);
-	invertGameJoy->setState(Settings::getInstance()->getBool("InvertGameButtons"));
-	s->addWithDescription(_("SWITCH A/B, X/Y BUTTONS IN GAMES"), _("Swaps A/B and X/Y RetroPad bindings during gameplay (position-aligned for PlayStation/PSP style symbol layouts)"), invertGameJoy);
-	s->addSaveFunc([invertGameJoy] { Settings::getInstance()->setBool("InvertGameButtons", invertGameJoy->getState()); });
+	// es4all: InvertGameButtons 开关已移到「手柄和蓝牙设置 → 手柄按键映射」旁（GuiControllersSettings）。
 
 	auto invertLongPress = std::make_shared<SwitchComponent>(mWindow);
 	invertLongPress->setState(Settings::getInstance()->getBool("GameOptionsAtNorth"));
@@ -2315,21 +2310,21 @@ void GuiMenu::openSystemSettings()
 #ifdef _ENABLEEMUELEC
 	auto emuelec_timezones = std::make_shared<OptionListComponent<std::string> >(mWindow, _("TIMEZONE"), false);
 	std::string currentTimezone = SystemConf::getInstance()->get("system.timezone");
-	std::string test_shell = Utils::Platform::getShOutput(R"(/usr/bin/emuelec-utils test)");
-	if (!test_shell.compare("success")) {
-		if (currentTimezone.empty())
-			currentTimezone = std::string(Utils::Platform::getShOutput(R"(/usr/bin/emuelec-utils current_timezone)"));
-		std::string a;
-		for(std::stringstream ss(Utils::Platform::getShOutput(R"(/usr/bin/emuelec-utils timezones)")); getline(ss, a, ','); ) {
-			emuelec_timezones->add(a, a, currentTimezone == a); // emuelec
-		}
+	// es4all: 用 ApiSystem::getTimezones()(直接读 /usr/share/zoneinfo，三边通用)取代
+	// emuelec-utils(ROCKNIX 无此工具，原本 test 不 success 会让时区选项整个隐藏)。
+	// 储存维持 system.timezone，各发行版启动时会读取并套用(ROCKNIX 走 es_settings + tz-data.service)。
+	std::vector<std::string> tzList = ApiSystem::getInstance()->getTimezones();
+	if (!tzList.empty()) {
+		for (auto tz : tzList)
+			emuelec_timezones->add(tz, tz, currentTimezone == tz);
 		s->addWithLabel(_("TIMEZONE"), emuelec_timezones);
 		s->addSaveFunc([emuelec_timezones] {
 			if (emuelec_timezones->changed()) {
 				std::string selectedTimezone = emuelec_timezones->getSelected();
 				Utils::Platform::ProcessStartInfo("ln -sf /usr/share/zoneinfo/" + selectedTimezone + " $(readlink /etc/localtime)").run();
+				SystemConf::getInstance()->set("system.timezone", selectedTimezone);
+				SystemConf::getInstance()->saveSystemConf();
 			}
-			SystemConf::getInstance()->set("system.timezone", emuelec_timezones->getSelected());
 		});
 	}
 

@@ -60,6 +60,10 @@ GuiControllersSettings::GuiControllersSettings(Window* wnd, int autoSel) : GuiSe
 			GuiMsgBoxIcon::ICON_INFORMATION));
 	});
 
+	// es4all: 游戏内 A/B、X/Y 位置对调开关，放在「手柄按键映射」旁边（原本在开发者选项）。
+	// 写入 Settings 的 InvertGameButtons（默认 true），由 setsettings.sh 套用到 per-core remap。
+	addSwitch(_("SWITCH A/B, X/Y BUTTONS IN GAMES"), _("Swaps A/B and X/Y RetroPad bindings during gameplay (position-aligned for PlayStation/PSP style symbol layouts)"), "InvertGameButtons", true, nullptr);
+
 	bool sindenguns_menu = false;
 	bool wiiguns_menu = false;
 	bool steamdeckguns_menu = false;
