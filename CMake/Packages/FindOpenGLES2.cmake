@@ -32,6 +32,22 @@ else()
     )
 endif()
 
+# es4all: pkg-config 對裝在預設 include 路徑的 GLES2 會回傳空的 INCLUDE_DIRS，
+# 使下方 REQUIRED_VARS 檢查 OPENGLES2_INCLUDE_DIR 失敗。補 fallback 直接找標頭/庫，
+# 確保獨立編譯（VM chroot / 雲編譯）在 GLES2 裝於預設路徑時也能通過。
+if(NOT OPENGLES2_INCLUDE_DIR)
+    find_path(OPENGLES2_INCLUDE_DIR GLES2/gl2.h
+        PATHS "${CMAKE_FIND_ROOT_PATH}/usr/include"
+        HINTS ${HINT_GLES_INCDIR}
+    )
+endif()
+if(NOT OPENGLES2_gl_LIBRARY)
+    find_library(OPENGLES2_gl_LIBRARY
+        NAMES ${HINT_GLES_LIBNAME}
+        HINTS ${HINT_GLES_LIBDIR}
+    )
+endif()
+
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(OpenGLES2
             REQUIRED_VARS OPENGLES2_gl_LIBRARY OPENGLES2_INCLUDE_DIR)

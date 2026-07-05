@@ -1275,7 +1275,7 @@ void GuiMenu::addVersionInfo()
 		else
 		{
 #ifdef _ENABLEEMUELEC	
-		label = "ES4Armbian V" + ApiSystem::getInstance()->getVersion() + ", IP: " + Utils::Platform::queryIPAddress();
+		label = "ES4All V" + ApiSystem::getInstance()->getVersion() + ", IP: " + Utils::Platform::queryIPAddress();
 #else
 			std::string aboutInfo = ApiSystem::getInstance()->getApplicationName() + " V" + ApiSystem::getInstance()->getVersion();
 			label = aboutInfo + buildDate;
@@ -2081,7 +2081,7 @@ void GuiMenu::openDeveloperSettings()
 	// 跟 InvertButtons 放同一畫面。預設開啟(位置對齊)，修正 PS/PSP 等幾何符號系統手感。
 	auto invertGameJoy = std::make_shared<SwitchComponent>(mWindow);
 	invertGameJoy->setState(Settings::getInstance()->getBool("InvertGameButtons"));
-	s->addWithDescription(_("SWITCH A/B & X/Y BUTTONS IN GAMES"), _("Swaps the A/B and X/Y button positions inside RetroArch games (per-core remap)."), invertGameJoy);
+	s->addWithDescription(_("SWITCH A/B, X/Y BUTTONS IN GAMES"), _("Swaps A/B and X/Y RetroPad bindings during gameplay (position-aligned for PlayStation/PSP style symbol layouts)"), invertGameJoy);
 	s->addSaveFunc([invertGameJoy] { Settings::getInstance()->setBool("InvertGameButtons", invertGameJoy->getState()); });
 
 	auto invertLongPress = std::make_shared<SwitchComponent>(mWindow);
