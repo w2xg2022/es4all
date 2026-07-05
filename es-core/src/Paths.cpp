@@ -106,10 +106,19 @@ Paths::Paths()
 	mDecorationsPath = "/storage/roms/bezels";
 	mUserDecorationsPath = "/tmp/overlays/bezels";
 	mVersionInfoPath = "/usr/config/EE_VERSION";
+	// es4all: 依 target 指向各自的 config store，避免空路径导致 SystemConf
+	// (时区/FPS/global.* 游戏设置)无法持久化。SystemConf 存档会保留不认得的 key，
+	// 故指向 ROCKNIX 自己的 system.cfg 安全，且 system.timezone 能被 es_settings 套用到系统时钟。
+#if defined(ES4ALL_PATHS_ROCKNIX)
+	mSystemConfFilePath = "/storage/.config/system/configs/system.cfg";
+#elif defined(ES4ALL_PATHS_ARMBIAN)
+	mSystemConfFilePath = mUserEmulationStationPath + "/system.conf";
+#else // emuelec
 	if (Utils::FileSystem::exists("/emuelec/configs/emuelec.conf"))
 		mSystemConfFilePath = "/emuelec/configs/emuelec.conf";
 	else
-		mSystemConfFilePath = "";
+		mSystemConfFilePath = "/storage/.config/emuelec/configs/emuelec.conf";
+#endif
 	mScreenShotsPath = "/storage/roms/screenshots";
 	mSaveStatesPath = "/storage/roms/savestates";
 	mTimeZonesPath = "/usr/share/zoneinfo/";

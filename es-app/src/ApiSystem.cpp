@@ -529,18 +529,22 @@ bool ApiSystem::launchFileManager(Window *window)
 	return exitCode == 0;
 }
 
-bool ApiSystem::enableWifi(std::string ssid, std::string key) 
+bool ApiSystem::enableWifi(std::string ssid, std::string key)
 {
-#ifdef _ENABLEEMUELEC
+#if defined(ES4ALL_PATHS_ROCKNIX)
+	return executeScript("wifictl enable \"" + ssid + "\" \"" + key + "\"");
+#elif defined(_ENABLEEMUELEC)
 	return executeScript("batocera-config wifi enable \"" + ssid + "\" \"" + key + "\"");
 #else
 	return executeScript("batocera-wifi enable \"" + ssid + "\" \"" + key + "\"");
 #endif
 }
 
-bool ApiSystem::disableWifi() 
+bool ApiSystem::disableWifi()
 {
-#ifdef _ENABLEEMUELEC
+#if defined(ES4ALL_PATHS_ROCKNIX)
+	return executeScript("wifictl disable");
+#elif defined(_ENABLEEMUELEC)
 	return executeScript("batocera-config wifi disable");
 #else
 	return executeScript("batocera-wifi disable");
@@ -1704,7 +1708,11 @@ void ApiSystem::setLEDEnabled(bool enabled)
 
 std::vector<std::string> ApiSystem::getWifiNetworks(bool scan)
 {
+#if defined(ES4ALL_PATHS_ROCKNIX)
+	return executeEnumerationScript(scan ? "wifictl scanlist" : "wifictl list");
+#else
 	return executeEnumerationScript(scan ? "batocera-wifi scanlist" : "batocera-wifi list");
+#endif
 }
 
 std::vector<std::string> ApiSystem::executeEnumerationScript(const std::string command)
@@ -1781,7 +1789,13 @@ bool ApiSystem::isScriptingSupported(ScriptId script)
 		executables.push_back("kodi");
 		break;
 	case ApiSystem::WIFI:
+#if defined(ES4ALL_PATHS_ROCKNIX)
+		// es4all: ROCKNIX 用 wifictl(nmcli 后端，命令与 batocera-wifi 兼容)取代 batocera-wifi，
+		// 让「网络设置」一级选单出现(否则找不到 batocera-wifi 会被隐藏)。
+		return Utils::FileSystem::exists("/usr/bin/wifictl");
+#else
 		executables.push_back("batocera-wifi");
+#endif
 		break;
 	case ApiSystem::BLUETOOTH:
 		executables.push_back("batocera-bluetooth");
