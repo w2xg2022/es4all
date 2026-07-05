@@ -61,8 +61,8 @@ option(ODROIDGOA "Set to ON to enable Odroid Go Advance specific changes" ${ODRO
 #-------------------------------------------------------------------------------
 # es4all: unified build target selector
 #
-# 同一份源碼、多個 build profile。分歧開關「不」直接用 target 名做 #if 判斷，
-# 而是先由 target 翻成一組「能力旗標」，程式碼只認能力、保留合併機會。
+# 同一份源码、多个 build profile。分歧开关「不」直接用 target 名做 #if 判断，
+# 而是先由 target 翻成一组「能力标志」，代码只认能力、保留合并机会。
 # 用法： -DES4ALL_TARGET=armbian | rocknix | emuelec
 #-------------------------------------------------------------------------------
 set(ES4ALL_TARGET "armbian" CACHE STRING "es4all build target: armbian | rocknix | emuelec")
@@ -73,12 +73,12 @@ if(NOT ES4ALL_TARGET MATCHES "^(armbian|rocknix|emuelec)$")
 endif()
 MESSAGE("-- es4all build target : ${ES4ALL_TARGET}")
 
-# target -> 能力旗標翻譯表
-# 三邊皆 systemd + glibc，故 INIT_SYSTEMD 對所有 target 皆開（共用重開機等邏輯）。
-# 真正三分的只有「路徑」與「是否走 buildroot 交叉打包」。
+# target -> 能力标志翻译表
+# 三边皆 systemd + glibc，故 INIT_SYSTEMD 对所有 target 皆开（共用重启等逻辑）。
+# 真正三分的只有「路径」与「是否走 buildroot 交叉打包」。
 string(TOUPPER "${ES4ALL_TARGET}" _ES4ALL_TARGET_UC)
 add_definitions(-DES4ALL_TARGET_${_ES4ALL_TARGET_UC}=1)   # ES4ALL_TARGET_ARMBIAN / _ROCKNIX / _EMUELEC
-add_definitions(-DES4ALL_INIT_SYSTEMD=1)                  # 三邊共用：systemd D-Bus 重開機等
+add_definitions(-DES4ALL_INIT_SYSTEMD=1)                  # 三边共用：systemd D-Bus 重启等
 
 if(ES4ALL_TARGET STREQUAL "armbian")
   add_definitions(-DES4ALL_PATHS_ARMBIAN=1)

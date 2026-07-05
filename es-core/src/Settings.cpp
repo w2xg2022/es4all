@@ -193,8 +193,8 @@ void Settings::setDefaults()
 	mBoolMap["Debug"] = false;
 
 	mBoolMap["InvertButtons"] = false;
-	// es4all: 遊戲內 A/B、X/Y 位置對調（透傳到 RetroArch per-core remap，由 setsettings.sh 套用）。
-	// 預設開啟(位置對齊)，修正 PS/PSP 等幾何符號系統手感；與 setsettings.sh「未設定視為 true」一致。
+	// es4all: 游戏内 A/B、X/Y 位置对调（透传到 RetroArch per-core remap，由 setsettings.sh 套用）。
+	// 默认开启(位置对齐)，修正 PS/PSP 等几何符号系统手感；与 setsettings.sh「未设定视为 true」一致。
 	mBoolMap["InvertGameButtons"] = true;
 
 	mBoolMap["GameOptionsAtNorth"] = false;

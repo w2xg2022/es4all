@@ -32,9 +32,9 @@ else()
     )
 endif()
 
-# es4all: pkg-config 對裝在預設 include 路徑的 GLES2 會回傳空的 INCLUDE_DIRS，
-# 使下方 REQUIRED_VARS 檢查 OPENGLES2_INCLUDE_DIR 失敗。補 fallback 直接找標頭/庫，
-# 確保獨立編譯（VM chroot / 雲編譯）在 GLES2 裝於預設路徑時也能通過。
+# es4all: pkg-config 对装在默认 include 路径的 GLES2 会返回空的 INCLUDE_DIRS，
+# 使下方 REQUIRED_VARS 检查 OPENGLES2_INCLUDE_DIR 失败。补 fallback 直接找头文件/库，
+# 确保独立编译（VM chroot / 云编译）在 GLES2 装于默认路径时也能通过。
 if(NOT OPENGLES2_INCLUDE_DIR)
     find_path(OPENGLES2_INCLUDE_DIR GLES2/gl2.h
         PATHS "${CMAKE_FIND_ROOT_PATH}/usr/include"

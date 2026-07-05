@@ -2077,8 +2077,8 @@ void GuiMenu::openDeveloperSettings()
 		}
 	});
 
-	// es4all: 遊戲內 A/B、X/Y 位置對調（透傳到 RetroArch per-core remap，由 setsettings.sh 套用）。
-	// 跟 InvertButtons 放同一畫面。預設開啟(位置對齊)，修正 PS/PSP 等幾何符號系統手感。
+	// es4all: 游戏内 A/B、X/Y 位置对调（透传到 RetroArch per-core remap，由 setsettings.sh 套用）。
+	// 跟 InvertButtons 放同一画面。默认开启(位置对齐)，修正 PS/PSP 等几何符号系统手感。
 	auto invertGameJoy = std::make_shared<SwitchComponent>(mWindow);
 	invertGameJoy->setState(Settings::getInstance()->getBool("InvertGameButtons"));
 	s->addWithDescription(_("SWITCH A/B, X/Y BUTTONS IN GAMES"), _("Swaps A/B and X/Y RetroPad bindings during gameplay (position-aligned for PlayStation/PSP style symbol layouts)"), invertGameJoy);
@@ -3713,8 +3713,8 @@ void GuiMenu::openGamesSettings()
 
 	s->addGroup(_("DEFAULT GLOBAL SETTINGS"));
 
-	// es4all: SHOW RETROARCH FPS —— 在所有 RetroArch 核心遊戲畫面顯示幀數。
-	// 寫入 global.showFPS，由啟動腳本套用到 retroarch.cfg 的 fps_show。跨 target 共用。
+	// es4all: SHOW RETROARCH FPS —— 在所有 RetroArch 核心游戏画面显示帧数。
+	// 写入 global.showFPS，由启动脚本套用到 retroarch.cfg 的 fps_show。跨 target 共用。
 	auto showFPS_enabled = std::make_shared<SwitchComponent>(mWindow);
 	showFPS_enabled->setState(SystemConf::getInstance()->get("global.showFPS") == "1");
 	s->addWithDescription(_("SHOW RETROARCH FPS"), _("Display the framerate on-screen in RetroArch games."), showFPS_enabled);

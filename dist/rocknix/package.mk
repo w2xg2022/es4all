@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 # Copyright (C) 2024-present ROCKNIX (https://github.com/ROCKNIX)
 
-# es4all: 源碼改由統一倉庫 es4all 提供（原 ROCKNIX/emulationstation-next）。
+# es4all: 源码改由统一仓库 es4all 提供（原 ROCKNIX/emulationstation-next）。
 PKG_NAME="emulationstation"
 PKG_VERSION="85f618b28adba6b3645067cb551158d3c3ad717f"
 PKG_GIT_CLONE_BRANCH="main"
