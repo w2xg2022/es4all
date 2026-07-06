@@ -3776,8 +3776,7 @@
           "name": "libretro",
           "cores": [
             {
-              "name": "ppsspp",
-              "default": true
+              "name": "ppsspp"
             },
             {
               "name": "spring_ppsspp"
@@ -3788,7 +3787,8 @@
           "name": "PPSSPPSDL",
           "cores": [
             {
-              "name": "PPSSPPSDL"
+              "name": "PPSSPPSDL",
+              "default": true
             }
           ]
         }
