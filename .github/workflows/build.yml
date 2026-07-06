@@ -1,4 +1,4 @@
-name: Build EmulationStation (Armbian aarch64)
+name: "Build EmulationStation (es4all aarch64: armbian/rocknix/emuelec)"
 
 on:
   push:
@@ -63,7 +63,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
-          name: es4armbian v${{ steps.version.outputs.version }}
+          name: es4all v${{ steps.version.outputs.version }}
           make_latest: true
           files: dist/emulationstation-armbian-aarch64.zip
           body: |
@@ -131,3 +131,60 @@ jobs:
         with:
           tag_name: v${{ steps.version.outputs.version }}
           files: dist/emulationstation-rocknix-aarch64.zip
+
+  build-emuelec:
+    runs-on: ubuntu-24.04-arm
+    needs: build
+    container:
+      image: arm64v8/debian:trixie
+    steps:
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential cmake git pkg-config gettext ca-certificates zip \
+            libsdl2-dev libsdl2-mixer-dev \
+            libfreeimage-dev libfreetype-dev \
+            libcurl4-openssl-dev libpugixml-dev rapidjson-dev \
+            libasound2-dev libvlc-dev libvlccore-dev
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure (CMake, emuelec target)
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DGLES=OFF -DGLES2=ON -DCEC=OFF -DES4ALL_TARGET=emuelec -DENABLE_EMUELEC=1
+
+      - name: Build
+        run: cmake --build build -j"$(nproc)"
+
+      - name: Package artifacts
+        run: |
+          mkdir -p dist/emulationstation
+          cp emulationstation dist/emulationstation/emulationstation
+          cp -r resources dist/emulationstation/
+          cp -r locale dist/emulationstation/
+          cd dist/emulationstation
+          zip -r ../emulationstation-emuelec-aarch64.zip .
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulationstation-emuelec-aarch64
+          path: dist/emulationstation/
+
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(grep -oP '#define PROGRAM_VERSION_STRING\s+"\K[^"]+' es-app/src/EmulationStation.h)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Publish Release (emuelec asset)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          files: dist/emulationstation-emuelec-aarch64.zip

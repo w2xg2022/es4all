@@ -2,8 +2,9 @@
 # Copyright (C) 2019-present Shanti Gilbert (https://github.com/shantigilbert)
 
 # es4all: 源码改由统一仓库 es4all 提供（原 EmuELEC/emuelec-emulationstation）。
+# 同步 w2xg2022/EmuELEC 主建置采用的版本(evdev布局侦测/AB可换位XY维持标准显示等)。
 PKG_NAME="emuelec-emulationstation"
-PKG_VERSION="85f618b28adba6b3645067cb551158d3c3ad717f"
+PKG_VERSION="c9865b25b2bfccdbec4933b064dc3d2bf20ac933"
 PKG_GIT_CLONE_BRANCH="main"
 PKG_REV="1"
 PKG_ARCH="any"
