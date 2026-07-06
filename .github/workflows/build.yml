@@ -77,6 +77,7 @@ jobs:
 
   build-rocknix:
     runs-on: ubuntu-24.04-arm
+    needs: build
     container:
       image: arm64v8/debian:trixie
     steps:
@@ -110,9 +111,23 @@ jobs:
           cp emulationstation dist/emulationstation/emulationstation
           cp -r resources dist/emulationstation/
           cp -r locale dist/emulationstation/
+          cd dist/emulationstation
+          zip -r ../emulationstation-rocknix-aarch64.zip .
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: emulationstation-rocknix-aarch64
           path: dist/emulationstation/
+
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(grep -oP '#define PROGRAM_VERSION_STRING\s+"\K[^"]+' es-app/src/EmulationStation.h)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Publish Release (rocknix asset)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          files: dist/emulationstation-rocknix-aarch64.zip
