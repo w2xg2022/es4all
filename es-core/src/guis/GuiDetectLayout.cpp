@@ -9,48 +9,61 @@
 #include "Log.h"
 #include "ThemeData.h"
 #include "renderers/Renderer.h"
-#include <cstdio>
+#include <cstring>
 #include <string>
 
-static int getBindButton(SDL_GameController* gc, SDL_GameControllerButton b)
-{
-	if (gc == nullptr)
-		return -1;
-	SDL_GameControllerButtonBind bind = SDL_GameControllerGetBindForButton(gc, b);
-	return (bind.bindType == SDL_CONTROLLER_BINDTYPE_BUTTON) ? bind.value.button : -1;
-}
+#ifdef __linux__
+#include <fcntl.h>
+#include <unistd.h>
+#include <dirent.h>
+#include <sys/ioctl.h>
+#include <linux/input.h>
+#endif
 
-// es4all 診斷：直接寫檔(立即 flush)，不依賴 ES log 系統
-static void dbgLog(const std::string& s)
+#ifdef __linux__
+// 找該手把的 /dev/input/eventN：優先用 SDL 給的 devicePath；否則掃描 event* 依裝置名匹配
+static int openEvdev(const std::string& devPath, const std::string& devName)
 {
-	FILE* f = fopen("/storage/detectlayout.log", "a");
-	if (f) { fputs(s.c_str(), f); fputc('\n', f); fclose(f); }
+	// 1) SDL 給的路徑本身就是 event 節點
+	if (devPath.rfind("/dev/input/event", 0) == 0)
+	{
+		int fd = open(devPath.c_str(), O_RDONLY | O_NONBLOCK);
+		if (fd >= 0) return fd;
+	}
+	// 2) 掃描 /dev/input/event*，用 EVIOCGNAME 比對裝置名
+	DIR* d = opendir("/dev/input");
+	if (d == nullptr) return -1;
+	int found = -1;
+	struct dirent* e;
+	while ((e = readdir(d)) != nullptr)
+	{
+		if (strncmp(e->d_name, "event", 5) != 0) continue;
+		std::string p = std::string("/dev/input/") + e->d_name;
+		int fd = open(p.c_str(), O_RDONLY | O_NONBLOCK);
+		if (fd < 0) continue;
+		char name[256] = {0};
+		if (ioctl(fd, EVIOCGNAME(sizeof(name) - 1), name) >= 0 && !devName.empty() && devName == name)
+		{
+			found = fd;
+			break;
+		}
+		close(fd);
+	}
+	closedir(d);
+	return found;
 }
+#endif
 
 GuiDetectLayout::GuiDetectLayout(Window* window, InputConfig* target, const std::function<void()>& doneCallback)
 	: GuiComponent(window), mTarget(target), mDoneCallback(doneCallback),
-	  mGC(nullptr), mBtnA(-1), mBtnB(-1), mBtnX(-1), mBtnY(-1),
-	  mPhase(0), mABInverted(false), mXYInverted(false),
+	  mEvFd(-1), mPhase(0), mABInverted(false), mXYInverted(false), mFinished(false),
 	  mBackground(window, ":/frame.png"), mGrid(window, Vector2i(1, 4))
 {
-	if (SDL_WasInit(SDL_INIT_GAMECONTROLLER) == 0)
-		SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
-
-	int idx = (mTarget != nullptr) ? mTarget->getDeviceIndex() : -1;
-	if (idx >= 0 && SDL_IsGameController(idx))
-		mGC = SDL_GameControllerOpen(idx);
-
-	mBtnA = getBindButton(mGC, SDL_CONTROLLER_BUTTON_A);
-	mBtnB = getBindButton(mGC, SDL_CONTROLLER_BUTTON_B);
-	mBtnX = getBindButton(mGC, SDL_CONTROLLER_BUTTON_X);
-	mBtnY = getBindButton(mGC, SDL_CONTROLLER_BUTTON_Y);
-
-	// es4all 診斷(LogError 確保寫入 log)：印出 SDL 反查的 binds
-	LOG(LogError) << "[DetectLayout] gc=" << (mGC != nullptr ? SDL_GameControllerName(mGC) : "NULL")
-		<< " idx=" << idx << " binds A=" << mBtnA << " B=" << mBtnB << " X=" << mBtnX << " Y=" << mBtnY;
-	dbgLog("binds A=" + std::to_string(mBtnA) + " B=" + std::to_string(mBtnB) +
-		" X=" + std::to_string(mBtnX) + " Y=" + std::to_string(mBtnY) +
-		" gc=" + std::string(mGC != nullptr && SDL_GameControllerName(mGC) ? SDL_GameControllerName(mGC) : "NULL"));
+	std::string devPath = (mTarget != nullptr) ? mTarget->getDevicePath() : "";
+	std::string devName = (mTarget != nullptr) ? mTarget->getDeviceName() : "";
+#ifdef __linux__
+	mEvFd = openEvdev(devPath, devName);
+#endif
 
 	auto theme = ThemeData::getMenuTheme();
 	mBackground.setImagePath(theme->Background.path);
@@ -64,9 +77,7 @@ GuiDetectLayout::GuiDetectLayout(Window* window, InputConfig* target, const std:
 
 	mTitle = std::make_shared<TextComponent>(mWindow, _("DETECT CONTROLLER LAYOUT"), theme->Title.font, theme->Title.color, ALIGN_CENTER);
 	mGrid.setEntry(mTitle, Vector2i(0, 0), false, true);
-
 	mGrid.setEntry(std::make_shared<GuiComponent>(mWindow), Vector2i(0, 1), false);
-
 	mMsg = std::make_shared<TextComponent>(mWindow, "", theme->TextSmall.font, theme->Text.color, ALIGN_CENTER);
 	mGrid.setEntry(mMsg, Vector2i(0, 2), false, true);
 
@@ -76,22 +87,20 @@ GuiDetectLayout::GuiDetectLayout(Window* window, InputConfig* target, const std:
 		setSize(Renderer::getScreenWidth() * 0.6f, Renderer::getScreenHeight() * 0.4f);
 	setPosition((Renderer::getScreenWidth() - mSize.x()) / 2, (Renderer::getScreenHeight() - mSize.y()) / 2);
 
-	setPrompt(_("PRESS THE BUTTON LABELED \"A\" (by its printed letter, not position)."));
+	setPrompt(_("PRESS THE BUTTON LABELED \"A\" (by its printed letter)."));
 }
 
 GuiDetectLayout::~GuiDetectLayout()
 {
-	if (mGC != nullptr)
-	{
-		SDL_GameControllerClose(mGC);
-		mGC = nullptr;
-	}
+#ifdef __linux__
+	if (mEvFd >= 0) close(mEvFd);
+#endif
+	mEvFd = -1;
 }
 
 void GuiDetectLayout::setPrompt(const std::string& msg)
 {
-	if (mMsg != nullptr)
-		mMsg->setText(msg);
+	if (mMsg != nullptr) mMsg->setText(msg);
 }
 
 void GuiDetectLayout::onSizeChanged()
@@ -103,75 +112,92 @@ void GuiDetectLayout::onSizeChanged()
 		mGrid.setRowHeight(0, mTitle->getFont()->getHeight() * 1.1f);
 }
 
-bool GuiDetectLayout::input(InputConfig* config, Input input)
+void GuiDetectLayout::update(int deltaTime)
 {
-	// 鍵盤 ESC 或非目標裝置的取消：跳過偵測直接進手動設定
-	if (input.device == DEVICE_KEYBOARD && input.type == TYPE_KEY && input.value && input.id == SDLK_ESCAPE)
+	GuiComponent::update(deltaTime);
+	if (mFinished)
+		return;
+
+#ifdef __linux__
+	if (mEvFd < 0)
+		return;
+
+	struct input_event ev;
+	ssize_t n;
+	while ((n = read(mEvFd, &ev, sizeof(ev))) == (ssize_t)sizeof(ev))
 	{
-		finishSkip();
-		return true;
+		if (ev.type != EV_KEY || ev.value != 1)
+			continue; // 只看按下(value==1)的按鍵
+		if (ev.code == BTN_SOUTH || ev.code == BTN_EAST || ev.code == BTN_NORTH || ev.code == BTN_WEST)
+			handlePhysBtn(ev.code);
+		if (mFinished)
+			break;
 	}
+#endif
+}
 
-	// SDL 反查不到對應(非標準手把) → 無法自動偵測，跳過
-	if (mBtnA < 0 || mBtnB < 0 || mBtnX < 0 || mBtnY < 0)
-	{
-		if (input.type == TYPE_BUTTON && input.value)
-			finishSkip();
-		return true;
-	}
-
-	if (config != mTarget || input.type != TYPE_BUTTON || input.value == 0)
-		return true;
-
-	int id = input.id;
-
+void GuiDetectLayout::handlePhysBtn(int btnCode)
+{
+#ifdef __linux__
 	if (mPhase == 0)
 	{
-		LOG(LogError) << "[DetectLayout] A-press id=" << id << " (mBtnA=" << mBtnA << " mBtnB=" << mBtnB << ")";
-		dbgLog("A-press id=" + std::to_string(id));
-		if (id == mBtnA)      mABInverted = false; // 印刷A = SDL_A = 南 → Xbox 式
-		else if (id == mBtnB) mABInverted = true;  // 印刷A = SDL_B = 東 → 任天堂式
-		else return true;                          // 非 A/B 臉鍵，忽略
+		if (btnCode == BTN_SOUTH)      mABInverted = false; // 印刷A在南 → Xbox 式
+		else if (btnCode == BTN_EAST)  mABInverted = true;  // 印刷A在東 → 任天堂式
+		else return;                                        // 上/左不是 A 該在的位置，忽略等重按
 		mPhase = 1;
 		setPrompt(_("NOW PRESS THE BUTTON LABELED \"X\"."));
 	}
 	else if (mPhase == 1)
 	{
-		LOG(LogError) << "[DetectLayout] X-press id=" << id << " (mBtnX=" << mBtnX << " mBtnY=" << mBtnY << ")";
-		dbgLog("X-press id=" + std::to_string(id));
-		if (id == mBtnX)      mXYInverted = false; // 印刷X = SDL_X = 西 → 正常
-		else if (id == mBtnY) mXYInverted = true;  // 印刷X = SDL_Y = 北 → XY 反
-		else return true;
+		if (btnCode == BTN_WEST)       mXYInverted = false; // 印刷X在西 → Xbox 式
+		else if (btnCode == BTN_NORTH) mXYInverted = true;  // 印刷X在北 → 任天堂式(XY反)
+		else return;                                        // 南/東不是 X 該在的位置，忽略
 		applyAndFinish();
 	}
+#endif
+}
+
+bool GuiDetectLayout::input(InputConfig* config, Input input)
+{
+	// 鍵盤 ESC 取消 → 跳過偵測
+	if (input.device == DEVICE_KEYBOARD && input.type == TYPE_KEY && input.value && input.id == SDLK_ESCAPE)
+	{
+		finishSkip();
+		return true;
+	}
+	// evdev 開不了(非 Linux / 無權限) → 按任意鍵跳過，走原本手動設定
+	if (mEvFd < 0 && input.type == TYPE_BUTTON && input.value)
+	{
+		finishSkip();
+		return true;
+	}
+	// 其餘吞掉：實體按鍵由 evdev 那條路處理，這裡不讓它去操作背後的選單
 	return true;
 }
 
 void GuiDetectLayout::applyAndFinish()
 {
-	// 前端 AB：InvertButtons(A在東=任天堂式時反轉確認/取消)
+	if (mFinished) return;
+	mFinished = true;
+
 	Settings::getInstance()->setBool("InvertButtons", mABInverted);
-	// 遊戲內 AB(透傳到 RA per-core remap)：A在南(Xbox)預設對調、A在東(任天堂)不對調
 	Settings::getInstance()->setBool("InvertGameButtons", !mABInverted);
-	// XY 對調(前端顯示；遊戲內 XY remap 另做)
 	Settings::getInstance()->setBool("InvertXYButtons", mXYInverted);
 	Settings::getInstance()->saveFile();
 	InputConfig::AssignActionButtons();
 
-	LOG(LogError) << "[DetectLayout] RESULT AB inverted=" << mABInverted << ", XY inverted=" << mXYInverted;
-	dbgLog("RESULT AB_inv=" + std::to_string(mABInverted ? 1 : 0) + " XY_inv=" + std::to_string(mXYInverted ? 1 : 0));
+	LOG(LogInfo) << "GuiDetectLayout: AB inverted=" << mABInverted << ", XY inverted=" << mXYInverted;
 
 	auto cb = mDoneCallback;
 	delete this;
-	if (cb)
-		cb();
+	if (cb) cb();
 }
 
 void GuiDetectLayout::finishSkip()
 {
-	LOG(LogInfo) << "GuiDetectLayout: skipped (controller not recognized or user cancelled).";
+	if (mFinished) return;
+	mFinished = true;
 	auto cb = mDoneCallback;
 	delete this;
-	if (cb)
-		cb();
+	if (cb) cb();
 }

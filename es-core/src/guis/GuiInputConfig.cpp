@@ -135,8 +135,27 @@ void GuiInputConfig::initInputConfigStructure(InputConfig* target)
 			for (auto& r : GUI_INPUT_CONFIG_LIST) if (r.name == n) return &r;
 			return nullptr;
 		};
-		if (invAB) { auto a = findRow("a"); auto b = findRow("b"); if (a && b) { std::swap(a->icon, b->icon); std::swap(a->dispName, b->dispName); } }
-		if (invXY) { auto x = findRow("x"); auto y = findRow("y"); if (x && y) { std::swap(x->icon, y->icon); std::swap(x->dispName, y->dispName); } }
+		// 只互換「位置」(glyph 圖 + dispName 裡 " / " 後的方位字)，保留字母與清單順序：
+		// 清單維持 A,B,X,Y 順序，但每個字母顯示其偵測到的真實物理位置(如 X / NORTH)。
+		auto swapPos = [](InputConfigStructure* p, InputConfigStructure* q) {
+			if (!p || !q) return;
+			std::swap(p->icon, q->icon);
+			auto split = [](const std::string& s, std::string& prefix, std::string& pos) {
+				auto i = s.rfind(" / ");
+				if (i == std::string::npos) { prefix = s; pos = ""; }
+				else { prefix = s.substr(0, i + 3); pos = s.substr(i + 3); }
+			};
+			std::string pp, ppos, qp, qpos;
+			split(p->dispName, pp, ppos);
+			split(q->dispName, qp, qpos);
+			if (!ppos.empty() && !qpos.empty()) { p->dispName = pp + qpos; q->dispName = qp + ppos; }
+		};
+		if (invAB) swapPos(findRow("a"), findRow("b"));
+		// es4all: X/Y 不對調顯示。因為有些手把(如混合/韌體對調式)會把 X/Y 的
+		// SDL/evdev 代碼一起對調，軟體無法從代碼判出真實物理位置(evtest 也被騙)，
+		// 硬套反而顯示錯。故 X/Y 一律照標準印刷位置顯示(X/WEST、Y/NORTH)，對上多數手把外殼。
+		// InvertXYButtons 仍保留供遊戲內 remap(距distro膠水,補償韌體對調)使用。
+		(void)invXY;
 	}
 }
 
