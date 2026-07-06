@@ -230,7 +230,7 @@ function map_retroarch_joystick() {
             keys=("input_x" "input_menu_toggle")
             ;;
         y)
-            keys=("input_y")
+            keys=("input_y" "input_fps_toggle")
             ;;
         leftbottom|leftshoulder)
             keys=("input_l" "input_load_state")
@@ -248,7 +248,7 @@ function map_retroarch_joystick() {
             keys=("input_l3")
             ;;
         rightthumb)
-            keys=("input_r3" "input_fps_toggle")
+            keys=("input_r3")
             ;;
         start)
             keys=("input_start" "input_exit_emulator")
