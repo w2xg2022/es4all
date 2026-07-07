@@ -72,9 +72,7 @@ namespace Utils
 #if WIN32
 		bool isWindows11();
 #endif
-        #ifdef _ENABLEEMUELEC
-            std::string getShOutput(const std::string& mStr); /* < emuelec */
-        #endif
+            std::string getShOutput(const std::string& mStr); /* es4all: 所有 target 皆可用(getIpAddress 等依赖) */
 	}
 }
 

@@ -604,12 +604,13 @@ namespace Utils
 		}
 #endif
 
-#ifdef _ENABLEEMUELEC
-/* < emuelec */
+/* es4all: 移出 _ENABLEEMUELEC guard，所有 target 皆可用(getIpAddress 等依赖) */
 std::string getShOutput(const std::string& mStr)
 {
     std::string result, file;
     FILE* pipe{popen(mStr.c_str(), "r")};
+    if (pipe == nullptr)
+        return result;
     char buffer[256];
 
     while(fgets(buffer, sizeof(buffer), pipe) != NULL)
@@ -621,8 +622,6 @@ std::string getShOutput(const std::string& mStr)
     pclose(pipe);
     return result;
 }
-/* emuelec >*/
-#endif
 
 		std::string getArchString()
 		{
