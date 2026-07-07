@@ -14,8 +14,11 @@ void guiSaveStateLoad(Window* window, FileData* game)
   if (guiSaveState && CloudSaves::getInstance().isSupported(game)) {
     auto callback = [](GuiComponent* guiComp) {
       GuiSaveState* guiSaveState = dynamic_cast<GuiSaveState*>(guiComp);
-      if (guiSaveState)
+      if (guiSaveState) {
+#ifdef _ENABLEEMUELEC
         guiSaveState->loadGridAndCenter();
+#endif
+      }
     };
     CloudSaves::getInstance().load(window, game, guiSaveState, callback);
   }  
@@ -54,13 +57,19 @@ void CloudSaves::save(Window* window, FileData* game)
 
 bool CloudSaves::isSupported(FileData* game)
 {
+#ifdef _ENABLEEMUELEC
   SystemData* system = game->getSourceFileData()->getSystem();
 	bool canCloudSave = system->isFeatureSupported(
 		game->getEmulator(true),
 		game->getEmulator(true),
 		EmulatorFeatures::cloudsave);
-  canCloudSave = canCloudSave && 
+  canCloudSave = canCloudSave &&
     SystemConf::getInstance()->get(system->getName() + ".cloudsave") == "1";
 	canCloudSave = canCloudSave && SaveStateRepository::isEnabled(game);
   return canCloudSave;
+#else
+  // 云存档是 EmuELEC 专属功能(loadGridAndCenter/cloudsave 均在 _ENABLEEMUELEC 下定义)
+  (void)game;
+  return false;
+#endif
 }
