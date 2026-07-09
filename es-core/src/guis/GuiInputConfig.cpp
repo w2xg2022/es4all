@@ -150,12 +150,14 @@ void GuiInputConfig::initInputConfigStructure(InputConfig* target)
 			split(q->dispName, qp, qpos);
 			if (!ppos.empty() && !qpos.empty()) { p->dispName = pp + qpos; q->dispName = qp + ppos; }
 		};
+		// es4all: A/B 与 X/Y 一致处理——都相信布局侦测(GuiDetectLayout)结果，
+		// 按侦测到的真实物理位置对调显示。理由：会把 X/Y 代码搞错的杂牌手柄，几乎
+		// 一定也把 A/B 代码搞错(同一套固件)，只信 A/B 不信 X/Y 是站不住脚的半套；
+		// 守规矩的手柄(代码可信)则 X/Y 也该跟着侦测走，位置提示才准(否则任天堂式
+		// 手柄的 X 明明在北却显示成西)。杂牌手柄反正 A/B 也会错，X/Y 一起错不更糟，
+		// 用户本就得靠「按字母」而非位置提示来设定。
 		if (invAB) swapPos(findRow("a"), findRow("b"));
-		// es4all: X/Y 不對調顯示。因為有些手把(如混合/韌體對調式)會把 X/Y 的
-		// SDL/evdev 代碼一起對調，軟體無法從代碼判出真實物理位置(evtest 也被騙)，
-		// 硬套反而顯示錯。故 X/Y 一律照標準印刷位置顯示(X/WEST、Y/NORTH)，對上多數手把外殼。
-		// InvertXYButtons 仍保留供遊戲內 remap(距distro膠水,補償韌體對調)使用。
-		(void)invXY;
+		if (invXY) swapPos(findRow("x"), findRow("y"));
 	}
 }
 
