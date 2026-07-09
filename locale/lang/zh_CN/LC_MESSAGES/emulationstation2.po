@@ -4228,3 +4228,15 @@ msgstr "重启到CoreELEC"
 
 msgid "Display the framerate on-screen in RetroArch games."
 msgstr "在RetroArch游戏中于屏幕上显示帧率。"
+
+msgid "SWITCH A/B BUTTONS IN GAMES"
+msgstr "游戏内互换A/B按键"
+
+msgid "Swaps A/B RetroPad bindings during gameplay (position-aligned for PlayStation/PSP style symbol layouts)"
+msgstr "游戏进行中互换A/B的RetroPad按键绑定（位置对齐，符合PlayStation/PSP等几何符号布局的手感）"
+
+msgid "SWITCH X/Y BUTTONS IN GAMES"
+msgstr "游戏内互换X/Y按键"
+
+msgid "Swaps X/Y RetroPad bindings during gameplay (position-aligned for PlayStation/PSP style symbol layouts)"
+msgstr "游戏进行中互换X/Y的RetroPad按键绑定（位置对齐，符合PlayStation/PSP等几何符号布局的手感）"
