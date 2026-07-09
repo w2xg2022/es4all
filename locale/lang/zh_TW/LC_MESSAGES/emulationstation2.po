@@ -4178,6 +4178,15 @@ msgid "HOLD FOR %iS TO SKIP"
 msgid_plural "HOLD FOR %iS TO SKIP"
 msgstr[0] "長按 %i 秒跳過"
 
+msgid "DETECT CONTROLLER LAYOUT"
+msgstr "偵測手把按鍵佈局"
+
+msgid "PRESS THE BUTTON LABELED \"A\" (by its printed letter)."
+msgstr "請按下印有字母「A」的按鍵（依實體印刷字母，不是位置）。"
+
+msgid "NOW PRESS THE BUTTON LABELED \"X\"."
+msgstr "現在請按下印有字母「X」的按鍵。"
+
 msgid "PRESS ANYTHING"
 msgstr "按下對應的按鈕"
 
