@@ -1274,8 +1274,10 @@ void GuiMenu::addVersionInfo()
 			label = "BATOCERA.LINUX ES V" + ApiSystem::getInstance()->getVersion() + buildDate;
 		else
 		{
-#ifdef _ENABLEEMUELEC	
-		label = "ES4All V" + ApiSystem::getInstance()->getVersion() + ", IP: " + Utils::Platform::queryIPAddress();
+#ifdef _ENABLEEMUELEC
+		// es4all: 版号以 PROGRAM_VERSION_STRING(EmulationStation.h)为唯一来源(同 es4armbian 做法)，
+		// 不再拿 EmuELEC 的 version.info 当版号(会误显示成底座版本如 4.8)；底座版本括号内注明。
+		label = "ES4All V" + std::string(PROGRAM_VERSION_STRING) + " (EmuELEC " + ApiSystem::getInstance()->getVersion() + "), IP: " + Utils::Platform::queryIPAddress();
 #else
 			std::string aboutInfo = ApiSystem::getInstance()->getApplicationName() + " V" + ApiSystem::getInstance()->getVersion();
 			label = aboutInfo + buildDate;
