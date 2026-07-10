@@ -60,14 +60,10 @@ GuiControllersSettings::GuiControllersSettings(Window* wnd, int autoSel) : GuiSe
 			GuiMsgBoxIcon::ICON_INFORMATION));
 	});
 
-	// es4all: 游戏内 A/B、X/Y 位置对调开关，放在「手柄按键映射」旁边（原本在开发者选项）。
-	// 写入 Settings 的 InvertGameButtons/InvertXYButtons，由 setsettings.sh 套用到 per-core remap。
-	// NOTE(w2xg2022): 原本只有一顆开关但标签写「A/B、X/Y」两者都换，实际只绑了InvertGameButtons，
-	// 导致InvertXYButtons(由DETECT CONTROLLER LAYOUT精灵按控制器实测结果单独写入)完全没有对应
-	// 的手动开关可调，用户切换时以为在管XY但其实只动了AB，表现为「切了没反应」。拆成两颗各自
-	// 对应各自变量，使用者才能真正手动覆盖精灵侦测的结果。
-	addSwitch(_("SWITCH A/B BUTTONS IN GAMES"), _("Swaps A/B RetroPad bindings during gameplay (position-aligned for PlayStation/PSP style symbol layouts)"), "InvertGameButtons", true, nullptr);
-	addSwitch(_("SWITCH X/Y BUTTONS IN GAMES"), _("Swaps X/Y RetroPad bindings during gameplay (position-aligned for PlayStation/PSP style symbol layouts)"), "InvertXYButtons", true, nullptr);
+	// es4all: 「游戏内互换 A/B、X/Y」两个开关已移除（2026-07 手柄三层架构定案）。
+	// 第三层（游戏内）改为「写死原厂位置对齐」，与手柄印刷无关、不需透传、不需开关——
+	// 物理南键在任何手柄上都在南，autoconfig 直接按物理位置对齐即可。开关只会造成困惑。
+	// 详见 EmuELEC repo docs/controller-guide.md。
 
 	bool sindenguns_menu = false;
 	bool wiiguns_menu = false;

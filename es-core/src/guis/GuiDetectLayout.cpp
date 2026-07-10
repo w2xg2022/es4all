@@ -139,21 +139,14 @@ void GuiDetectLayout::update(int deltaTime)
 void GuiDetectLayout::handlePhysBtn(int btnCode)
 {
 #ifdef __linux__
-	if (mPhase == 0)
-	{
-		if (btnCode == BTN_SOUTH)      mABInverted = false; // 印刷A在南 → Xbox 式
-		else if (btnCode == BTN_EAST)  mABInverted = true;  // 印刷A在東 → 任天堂式
-		else return;                                        // 上/左不是 A 該在的位置，忽略等重按
-		mPhase = 1;
-		setPrompt(_("NOW PRESS THE BUTTON LABELED \"X\"."));
-	}
-	else if (mPhase == 1)
-	{
-		if (btnCode == BTN_WEST)       mXYInverted = false; // 印刷X在西 → Xbox 式
-		else if (btnCode == BTN_NORTH) mXYInverted = true;  // 印刷X在北 → 任天堂式(XY反)
-		else return;                                        // 南/東不是 X 該在的位置，忽略
-		applyAndFinish();
-	}
+	// es4all（2026-07 手柄三层架构定案）：只需问「按 A」这一步。
+	// A 在南=Xbox 式、A 在东=任天堂式，就足以确定第一层（界面 A=确认/B=返回跟印刷走）。
+	// 原本还问「按 X」是为了第三层的 X/Y 透传——第三层已改成写死位置对齐、不透传，
+	// 故 X 那一步连同 InvertGameButtons/InvertXYButtons 一并废除，精灵只按一次 A 即完成。
+	if (btnCode == BTN_SOUTH)      mABInverted = false; // 印刷A在南 → Xbox 式
+	else if (btnCode == BTN_EAST)  mABInverted = true;  // 印刷A在东 → 任天堂式
+	else return;                                        // 上/左不是 A 该在的位置，忽略等重按
+	applyAndFinish();
 #endif
 }
 
@@ -180,13 +173,13 @@ void GuiDetectLayout::applyAndFinish()
 	if (mFinished) return;
 	mFinished = true;
 
+	// 只写 InvertButtons（第一层：界面 A=确认/B=返回跟印刷走）。
+	// InvertGameButtons/InvertXYButtons（第三层透传用）已废除，不再写入。
 	Settings::getInstance()->setBool("InvertButtons", mABInverted);
-	Settings::getInstance()->setBool("InvertGameButtons", !mABInverted);
-	Settings::getInstance()->setBool("InvertXYButtons", mXYInverted);
 	Settings::getInstance()->saveFile();
 	InputConfig::AssignActionButtons();
 
-	LOG(LogInfo) << "GuiDetectLayout: AB inverted=" << mABInverted << ", XY inverted=" << mXYInverted;
+	LOG(LogInfo) << "GuiDetectLayout: AB inverted=" << mABInverted << " (仅第一层，X/Y已废除)";
 
 	auto cb = mDoneCallback;
 	delete this;
