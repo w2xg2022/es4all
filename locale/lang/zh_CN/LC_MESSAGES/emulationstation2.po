@@ -4141,6 +4141,42 @@ msgctxt "joystick"
 msgid "HOTKEY"
 msgstr "热键"
 
+msgctxt "joystick"
+msgid "BUTTON A / SOUTH"
+msgstr "A 键 / 南"
+
+msgctxt "joystick"
+msgid "BUTTON A / EAST"
+msgstr "A 键 / 东"
+
+msgctxt "joystick"
+msgid "BUTTON B / EAST"
+msgstr "B 键 / 东"
+
+msgctxt "joystick"
+msgid "BUTTON B / SOUTH"
+msgstr "B 键 / 南"
+
+msgctxt "joystick"
+msgid "BUTTON X / WEST"
+msgstr "X 键 / 西"
+
+msgctxt "joystick"
+msgid "BUTTON X / NORTH"
+msgstr "X 键 / 北"
+
+msgctxt "joystick"
+msgid "BUTTON Y / NORTH"
+msgstr "Y 键 / 北"
+
+msgctxt "joystick"
+msgid "BUTTON Y / WEST"
+msgstr "Y 键 / 西"
+
+msgctxt "joystick"
+msgid "HOTKEY ENABLE"
+msgstr "热键启用"
+
 msgid "CONFIGURING"
 msgstr "配置"
 
