@@ -1274,15 +1274,19 @@ void GuiMenu::addVersionInfo()
 			label = "BATOCERA.LINUX ES V" + ApiSystem::getInstance()->getVersion() + buildDate;
 		else
 		{
-#ifdef _ENABLEEMUELEC
-		// es4all: 版号以 PROGRAM_VERSION_STRING(EmulationStation.h)为唯一来源(同 es4armbian 做法)，
-		// 不再拿 EmuELEC 的 version.info 当版号(会误显示成底座版本如 4.8)；底座版本括号内注明。
-		label = "ES4All V" + std::string(PROGRAM_VERSION_STRING) + " (EmuELEC " + ApiSystem::getInstance()->getVersion() + "), IP: " + Utils::Platform::queryIPAddress();
+			// es4all: 版号统一以 PROGRAM_VERSION_STRING(EmulationStation.h)为唯一来源，不再拿
+			// 各平台自己的底座版本文件(EmuELEC 的 version.info 等)当版号，避免误显示成
+			// 4.8 这类底座版本号。三个编译目标(armbian/rocknix/emuelec)共用同一格式
+			// "ES4All (<目标>) V<版本>, IP: <ip>"，只有目标名称随 ES4ALL_TARGET_* 宏而变。
+#if defined(ES4ALL_TARGET_EMUELEC)
+			std::string es4allTarget = "EmuELEC";
+#elif defined(ES4ALL_TARGET_ROCKNIX)
+			std::string es4allTarget = "ROCKNIX";
 #else
-			std::string aboutInfo = ApiSystem::getInstance()->getApplicationName() + " V" + ApiSystem::getInstance()->getVersion();
-			label = aboutInfo + buildDate;
+			std::string es4allTarget = "Armbian";
 #endif
-		}		
+			label = "ES4All (" + es4allTarget + ") V" + std::string(PROGRAM_VERSION_STRING) + ", IP: " + Utils::Platform::queryIPAddress();
+		}
 	}
 		
 	if (!label.empty())
