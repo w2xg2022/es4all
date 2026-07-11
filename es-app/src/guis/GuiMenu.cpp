@@ -2257,18 +2257,29 @@ void GuiMenu::openUpdatesSettings()
 			updatesTypeList->add("unstable", "unstable", updatesType == "unstable");
 		else
 #endif
-			if (updatesType.empty() || updatesType != BETA_NAME)
+			// es4all: 只维护单一 stable 更新线，不做 beta 通道(会造成困惑且无独立内容;
+			// updatecheck.sh 里 stable/beta 本就指向同一个仓库)。强制归一到 stable 并持久化，
+			// 顺带清掉历史上可能残留的 updates.type=beta。
+			if (updatesType != "stable")
+			{
 				updatesType = "stable";
+				if (SystemConf::getInstance()->set("updates.type", "stable"))
+					SystemConf::getInstance()->saveSystemConf();
+			}
 
 		updatesTypeList->add("stable", "stable", updatesType == "stable");
-		updatesTypeList->add(BETA_NAME, BETA_NAME, updatesType == BETA_NAME);
+		// es4all: BETA 选项已移除(原 updatesTypeList->add(BETA_NAME,...) 删除)。
 
+#if WIN32
+		// WIN32 有 unstable/stable 多选才显示更新类型选择器;其余平台(emuelec/armbian/
+		// rocknix)只有单一 stable，无需选择器，整行隐藏。
 		updateGui->addWithLabel(_("UPDATE TYPE"), updatesTypeList);
 		updatesTypeList->setSelectedChangedCallback([](std::string name)
 		{
 			if (SystemConf::getInstance()->set("updates.type", name))
 				SystemConf::getInstance()->saveSystemConf();
 		});
+#endif
 
 		// Start update
 		updateGui->addEntry(GuiUpdate::state == GuiUpdateState::State::UPDATE_READY ? _("APPLY UPDATE") : _("START UPDATE"), true, [this]
