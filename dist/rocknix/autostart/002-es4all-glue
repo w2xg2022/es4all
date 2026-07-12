@@ -52,8 +52,10 @@ if ! mountpoint -q /usr/bin/input_sense 2>/dev/null; then
   systemctl restart input.service 2>/dev/null
 fi
 
-# 4) RetroArch 默认：菜单 A/B 不互换（标准对齐下印刷 A=确定）/ 简体中文 / 不显示载入动画
-set_ra "${RA_CFG}" menu_swap_ok_cancel_buttons false
+# 4) RetroArch 默认：游戏内走位置对齐（autoconfig 已把面键按物理位置绑，南=✕）。
+#    autoconfig 里 A/B 已按位置交换，故菜单开 swap_ok_cancel 补偿，让「确定」仍落在南键。
+#    / 简体中文 / 不显示载入动画
+set_ra "${RA_CFG}" menu_swap_ok_cancel_buttons true
 set_ra "${RA_CFG}" user_language 12
 set_ra "${RA_CFG}" menu_show_load_content_animation false
 
