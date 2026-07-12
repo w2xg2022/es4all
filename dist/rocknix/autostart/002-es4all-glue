@@ -52,10 +52,11 @@ if ! mountpoint -q /usr/bin/input_sense 2>/dev/null; then
   systemctl restart input.service 2>/dev/null
 fi
 
-# 4) RetroArch 默认：游戏内走位置对齐（autoconfig 已把面键按物理位置绑，南=✕）。
-#    autoconfig 里 A/B 已按位置交换，故菜单开 swap_ok_cancel 补偿，让「确定」仍落在南键。
+# 4) RetroArch 默认：游戏内位置对齐由 ROCKNIX setsettings.sh 的 per-core remap 负责
+#    （autoconfig 保持标准 label 对齐，remap 在核心层翻 A/B，任何手柄/核心通吃）。
+#    菜单不 swap：标准 autoconfig 下 RetroPad A=南键，确定键即落在南键。
 #    / 简体中文 / 不显示载入动画
-set_ra "${RA_CFG}" menu_swap_ok_cancel_buttons true
+set_ra "${RA_CFG}" menu_swap_ok_cancel_buttons false
 set_ra "${RA_CFG}" user_language 12
 set_ra "${RA_CFG}" menu_show_load_content_animation false
 
