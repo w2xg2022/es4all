@@ -26,10 +26,10 @@ set_ra(){ f=$1; k=$2; v=$3; [ -f "$f" ] || return 0
 mkdir -p /storage/.cache/services
 # SSH：sshd.service 靠 /storage/.cache/services/sshd.conf 存在才起
 [ -f /storage/.cache/services/sshd.conf ] || : > /storage/.cache/services/sshd.conf
-systemctl start sshd 2>/dev/null
+systemctl --no-block start sshd 2>/dev/null
 # Samba：SAMBA_SERVER=yes 已 enable smbd/nmbd，机制是「无 samba.disabled 即启用」，确保未被禁用并拉起
 rm -f /storage/.cache/services/samba.disabled
-systemctl start samba-config nmbd smbd 2>/dev/null
+systemctl --no-block start samba-config nmbd smbd 2>/dev/null
 
 # 2) 常驻虚拟键盘（电视盒无板载输入时补上，让外接手柄单独可用），等注册好再放行
 if [ -f "${GLUE}/es4all-vkbd.py" ] && ! grep -q es4all-virtual-keyboard /proc/bus/input/devices 2>/dev/null; then
@@ -49,7 +49,7 @@ if [ ! -f /storage/es4all-input_sense ] || ! grep -q 'es4all: 2 key exit' /stora
 fi
 if ! mountpoint -q /usr/bin/input_sense 2>/dev/null; then
   mount --bind /storage/es4all-input_sense /usr/bin/input_sense
-  systemctl restart input.service 2>/dev/null
+  systemctl --no-block restart input.service 2>/dev/null
 fi
 
 # 4) RetroArch 默认：游戏内位置对齐由 ROCKNIX setsettings.sh 的 per-core remap 负责
