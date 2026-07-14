@@ -133,6 +133,19 @@ Paths::Paths()
 	mUserManualPath = "/usr/share/batocera/doc/notice.pdf";
 */
 #endif
+
+	// es4all: ROCKNIX 不定义 _ENABLEEMUELEC，上面整个 EmuElec 路径块被跳过，导致这些
+	// 路径为空。尤其 mSystemConfFilePath 空 → SystemConf 构造函数 `if(empty) return` 直接
+	// 不加载 system.cfg → system.language/timezone/global.* 全读不到 → UI 英文、时区/设置不生效。
+	// 原作者本想按 target 修(见上块内注释)，但误放进 _ENABLEEMUELEC guard 内。这里在 guard 外
+	// 按 target 补齐(仅 ES4ALL_PATHS_ROCKNIX 编译，emuelec/armbian 有 _ENABLEEMUELEC 走块内，零影响)。
+#if defined(ES4ALL_PATHS_ROCKNIX)
+	mSystemConfFilePath = "/storage/.config/system/configs/system.cfg";
+	mTimeZonesPath      = "/usr/share/zoneinfo/";
+	mScreenShotsPath    = "/storage/roms/screenshots";
+	mSaveStatesPath     = "/storage/roms/savestates";
+#endif
+
 	loadCustomConfiguration(true); // Load paths overrides from emulationstation.ini file
 }
 
