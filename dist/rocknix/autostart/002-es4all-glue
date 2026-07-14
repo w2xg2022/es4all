@@ -22,13 +22,12 @@ set_ra(){ f=$1; k=$2; v=$3; [ -f "$f" ] || return 0
   if grep -q "^${k} = " "$f" 2>/dev/null; then sed -i "s#^${k} = .*#${k} = \"${v}\"#" "$f"
   else echo "${k} = \"${v}\"" >> "$f"; fi; }
 
-# 1) SSH + Samba 默认开启（ES4All 无服务开关；沿用官方 flag 文件机制）
-mkdir -p /storage/.cache/services
-# SSH：sshd.service 靠 /storage/.cache/services/sshd.conf 存在才起
-[ -f /storage/.cache/services/sshd.conf ] || : > /storage/.cache/services/sshd.conf
+# 1) SSH + Samba 默认开启：写官方开关键 ssh.enabled/samba.enabled 到 system.cfg，
+#    让 099-networkservices 自己的 daemon loop 正确启动并持久化。
+#    （旧写法只 touch 旗标档+systemctl start，099 随后读到 system.cfg 未设 1 会 statemgr stop 关掉，等于白起）
+set_kv "${SYS_CFG}" ssh.enabled 1
+set_kv "${SYS_CFG}" samba.enabled 1
 systemctl --no-block start sshd 2>/dev/null
-# Samba：SAMBA_SERVER=yes 已 enable smbd/nmbd，机制是「无 samba.disabled 即启用」，确保未被禁用并拉起
-rm -f /storage/.cache/services/samba.disabled
 systemctl --no-block start samba-config nmbd smbd 2>/dev/null
 
 # 2) 常驻虚拟键盘（电视盒无板载输入时补上，让外接手柄单独可用），等注册好再放行
@@ -59,6 +58,11 @@ fi
 set_ra "${RA_CFG}" menu_swap_ok_cancel_buttons false
 set_ra "${RA_CFG}" user_language 12
 set_ra "${RA_CFG}" menu_show_load_content_animation false
+
+# 1b) ES4All 前端界面默认简体中文（面向大陆用户；与上面 RA 菜单语言分开设定）
+set_kv "${SYS_CFG}" system.language zh_CN
+# 1c) 默认时区 UTC+8（原默认 America/New_York）；ROCKNIX 由 tz-data.service 读 system.timezone 套用
+set_kv "${SYS_CFG}" system.timezone Asia/Shanghai
 
 # 5) 系统默认：关自动读/存档；PSP、Dreamcast 用独立模拟器（性能）
 set_kv "${SYS_CFG}" global.autosave 0

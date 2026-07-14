@@ -48,7 +48,9 @@
 
 void GuiInputConfig::initInputConfigStructure(InputConfig* target)
 {
-#ifdef _ENABLEEMUELEC
+// es4all: ROCKNIX 也用这份表（D-PAD 先、脸键 BUTTON A/SOUTH 字母+位置标签），
+// 让 GuiDetectLayout 布局侦测 + swapPos 生效（靠切 " / " 分字母/位置）。与 EmuELEC 同码。
+#if defined(_ENABLEEMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)
 	GUI_INPUT_CONFIG_LIST =
 	{
 	{ "Up",               false, "D-PAD UP",           ":/help/dpad_up.svg" },
@@ -332,7 +334,7 @@ GuiInputConfig::GuiInputConfig(Window* window, InputConfig* target, bool reconfi
 	buttons.push_back(std::make_shared<ButtonComponent>(mWindow, _("OK"), "ok", [this, okFunction] { 
 		// check if the hotkey enable button is set. if not prompt the user to use select or nothing.
 		Input input;
-#ifdef _ENABLEEMUELEC
+#if defined(_ENABLEEMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)
 		if (!mTargetConfig->getInputByName("HotKeyEnable", &input)) { // batocera
 #else
 		if (!mTargetConfig->getInputByName("hotkey", &input)) { 
@@ -342,7 +344,7 @@ GuiInputConfig::GuiInputConfig(Window* window, InputConfig* target, bool reconfi
 				_("SET SELECT AS HOTKEY"), [this, okFunction] { 
 					Input input;
 					mTargetConfig->getInputByName("Select", &input);
-#ifdef _ENABLEEMUELEC
+#if defined(_ENABLEEMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)
 					mTargetConfig->mapInput("HotKeyEnable", input); // emuelec
 #else
 					mTargetConfig->mapInput("hotkey", input); 
@@ -352,7 +354,7 @@ GuiInputConfig::GuiInputConfig(Window* window, InputConfig* target, bool reconfi
 				_("DO NOT ASSIGN HOTKEY"), [this, okFunction] { 
 					// for a disabled hotkey enable button, set to a key with id 0,
 					// so the input configuration script can be backwards compatible.
-#ifdef _ENABLEEMUELEC
+#if defined(_ENABLEEMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)
                     mTargetConfig->mapInput("HotKeyEnable", Input(DEVICE_KEYBOARD, TYPE_KEY, 0, 1, true)); // emuelec
 #else
 					mTargetConfig->mapInput("hotkey", Input(DEVICE_KEYBOARD, TYPE_KEY, 0, 1, true)); 
@@ -486,7 +488,7 @@ bool GuiInputConfig::assign(Input input, int inputId)
 	// (if it's the same as what it was before, allow it)
 	if (mTargetConfig->getMappedTo(input).size() > 0 && 
 		!mTargetConfig->isMappedTo(GUI_INPUT_CONFIG_LIST[inputId].name, input) && 
-#ifdef _ENABLEEMUELEC		
+#if defined(_ENABLEEMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)		
         GUI_INPUT_CONFIG_LIST[inputId].name != "HotKeyEnable") // emuelec
 #else
 		GUI_INPUT_CONFIG_LIST[inputId].name != "hotkey") 

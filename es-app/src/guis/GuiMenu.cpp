@@ -271,10 +271,12 @@ GuiMenu::GuiMenu(Window *window, bool animate) : GuiComponent(window), mMenu(win
 
 		addEntry(_("SOUND SETTINGS").c_str(), true, [this] { openSoundSettings(); }, "iconSound");
 
-#ifdef _ENABLEEMUELEC
+// es4all: ROCKNIX 也显示 NETWORK SETTINGS（openNetworkSettings 函数本身未 guard、已可编；
+// isScriptingSupported(WIFI) 在 ROCKNIX=检查 /usr/bin/wifictl 存在，为真）。
+#if defined(_ENABLEEMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)
 if (ApiSystem::getInstance()->isScriptingSupported(ApiSystem::WIFI))
-			addEntry(_("NETWORK SETTINGS").c_str(), true, [this] { openNetworkSettings(); }, "iconNetwork");   
-#endif        
+			addEntry(_("NETWORK SETTINGS").c_str(), true, [this] { openNetworkSettings(); }, "iconNetwork");
+#endif
 
 		addEntry(_("GAME COLLECTION SETTINGS").c_str(), true, [this] { openCollectionSystemSettings(); }, "iconAdvanced");
 
@@ -2324,7 +2326,8 @@ void GuiMenu::openSystemSettings()
 	// System informations
 	s->addEntry(_("INFORMATION"), true, [this] { openSystemInformations(); });
 
-#ifdef _ENABLEEMUELEC
+// es4all: ROCKNIX 也用这块时区（已改用 getTimezones() 读 /usr/share/zoneinfo，三边通用）。
+#if defined(_ENABLEEMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)
 	auto emuelec_timezones = std::make_shared<OptionListComponent<std::string> >(mWindow, _("TIMEZONE"), false);
 	std::string currentTimezone = SystemConf::getInstance()->get("system.timezone");
 	// es4all: 用 ApiSystem::getTimezones()(直接读 /usr/share/zoneinfo，三边通用)取代
@@ -2406,7 +2409,8 @@ void GuiMenu::openSystemSettings()
 		}		
 	});
 
-#if !defined(_ENABLEEMUELEC)
+// es4all: ROCKNIX 走上面 emuelec_timezones 那块，避免这里重复出现第二个时区项。
+#if !defined(_ENABLEEMUELEC) && !defined(ES4ALL_TARGET_ROCKNIX)
 	// Timezone
 	if (ApiSystem::getInstance()->isScriptingSupported(ApiSystem::ScriptId::TIMEZONES))
 	{
