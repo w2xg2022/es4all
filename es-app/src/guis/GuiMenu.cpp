@@ -231,9 +231,7 @@ GuiMenu::GuiMenu(Window *window, bool animate) : GuiComponent(window), mMenu(win
 	}, "iconKodi");	
 #endif
 
-// es4all: ROCKNIX 也显示 PLATFORM SETTINGS。openEmuELECSettings 函数体未 guard、已可编；
-// 其中 VIDEO MODE / AUDIO DEVICE(调 emuelec-utils/写 Amlogic /sys/class/display/mode)对 ROCKNIX 另行排除。
-#if defined(_ENABLEEMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)
+#ifdef _ENABLEEMUELEC
 	if (isFullUI)
 	{
 		addEntry(_("PLATFORM SETTINGS").c_str(), true, [this] { openEmuELECSettings(); }, "iconEmuelec"); /* < emuelec */
@@ -395,8 +393,7 @@ void GuiMenu::openEmuELECSettings()
 
 	Window* window = mWindow;
 	std::string a;
-// es4all: VIDEO MODE 是 Amlogic 专属(emuelec-utils + /sys/class/display/mode)，ROCKNIX 排除。
-#if !defined(_ENABLEGAMEFORCE) && !defined(ODROIDGOA) && !defined(ES4ALL_TARGET_ROCKNIX)
+#if !defined(_ENABLEGAMEFORCE) && !defined(ODROIDGOA)
 	auto emuelec_video_mode = std::make_shared< OptionListComponent<std::string> >(mWindow, "VIDEO MODE", false);
         std::vector<std::string> videomode;
 		videomode.push_back("1080p60hz");
@@ -523,8 +520,7 @@ void GuiMenu::openEmuELECSettings()
 			}
 		});
 #endif	
-// es4all: AUDIO DEVICE 走 emuelec-utils setauddev，ROCKNIX 排除(音频设备由发行版另管)。
-#if !defined(_ENABLEGAMEFORCE) && !defined(ODROIDGOA) && !defined(ES4ALL_TARGET_ROCKNIX)
+#if !defined(_ENABLEGAMEFORCE) && !defined(ODROIDGOA)
 		auto emuelec_audiodev_def = std::make_shared< OptionListComponent<std::string> >(mWindow, "AUDIO DEVICE", false);
 		std::vector<std::string> Audiodevices;
 		Audiodevices.push_back("auto");
