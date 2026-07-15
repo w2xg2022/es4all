@@ -79,7 +79,12 @@ private:
 
         void openSystemSettings();
         void openGamesSettings();       
-        void openNetworkSettings(bool selectWifiEnable = false);        
+        void openNetworkSettings(bool selectWifiEnable = false);
+#if defined(ES4ALL_TARGET_ROCKNIX)
+        // es4all: ROCKNIX 专属 PLATFORM SETTINGS(独立于 emuelec 的 openEmuELECSettings)
+        void openPlatformSettings();
+        void openRocknixExternalMount(Window* win);
+#endif
         void openQuitMenu();
         void openSystemInformations();
         void openServicesSettings();

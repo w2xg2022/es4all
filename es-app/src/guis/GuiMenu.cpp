@@ -238,6 +238,16 @@ GuiMenu::GuiMenu(Window *window, bool animate) : GuiComponent(window), mMenu(win
 	}
 #endif
 
+#if defined(ES4ALL_TARGET_ROCKNIX)
+	// es4all: ROCKNIX 专属 PLATFORM SETTINGS —— 全新独立函数，不碰 openEmuELECSettings 那团
+	// (Amlogic/emuelec 级联)。只放在 ROCKNIX 上真生效的平台级项:RETROARCH 菜单风格、
+	// CPU 调速器、RA 边框、RA 日志、外接挂载(走 ROCKNIX 原生 system.automount 机制)。
+	if (isFullUI)
+	{
+		addEntry(_("PLATFORM SETTINGS").c_str(), true, [this] { openPlatformSettings(); }, "iconEmuelec");
+	}
+#endif
+
 	if (ApiSystem::getInstance()->isScriptingSupported(ApiSystem::RETROACHIVEMENTS) &&
 		SystemConf::getInstance()->getBool("global.retroachievements") &&
 		Settings::getInstance()->getBool("RetroachievementsMenuitem") && 
@@ -5283,6 +5293,129 @@ void GuiMenu::openNetworkSettings(bool selectWifiEnable)
 
 	mWindow->pushGui(s);
 }
+
+#if defined(ES4ALL_TARGET_ROCKNIX)
+// es4all: ROCKNIX 专属 PLATFORM SETTINGS —— 全新独立实现，只放 ROCKNIX 上真生效的平台级项，
+// 完全不依赖 openEmuELECSettings/createConfigureSplash 等 _ENABLEEMUELEC 里那团 Amlogic/emuelec 代码。
+void GuiMenu::openPlatformSettings()
+{
+	auto s = new GuiSettings(mWindow, _("PLATFORM SETTINGS"));
+	Window* window = mWindow;
+
+	s->addGroup(_("RETROARCH"));
+
+	// RetroArch 菜单风格 —— ROCKNIX setsettings.sh 读 retroarch.menu_driver
+	auto menu_driver = std::make_shared< OptionListComponent<std::string> >(mWindow, _("RETROARCH MENU"), false);
+	std::string curDriver = SystemConf::getInstance()->get("global.retroarch.menu_driver");
+	menu_driver->addRange({ { _("AUTO"), "" }, { "XMB", "xmb" }, { "OZONE", "ozone" }, { "RGUI", "rgui" }, { "GLUI", "glui" } }, curDriver);
+	s->addWithLabel(_("RETROARCH MENU"), menu_driver);
+	s->addSaveFunc([menu_driver] {
+		if (menu_driver->changed() && SystemConf::getInstance()->set("global.retroarch.menu_driver", menu_driver->getSelected()))
+			SystemConf::getInstance()->saveSystemConf();
+	});
+
+	// RA 边框 —— global.bezel（与 GAME SETTINGS 同一开关）
+	auto bezel = std::make_shared<SwitchComponent>(mWindow);
+	bezel->setState(SystemConf::getInstance()->getBool("global.bezel"));
+	s->addWithLabel(_("ENABLE RA BEZELS"), bezel);
+	s->addSaveFunc([bezel] {
+		if (SystemConf::getInstance()->setBool("global.bezel", bezel->getState()))
+			SystemConf::getInstance()->saveSystemConf();
+	});
+
+	// 日志等级 —— system.loglevel（ROCKNIX runemu.sh 原生读取:off / verbose / 默认normal，零 shell 改动）
+	auto loglevel = std::make_shared< OptionListComponent<std::string> >(mWindow, _("LOG LEVEL"), false);
+	std::string curLog = SystemConf::getInstance()->get("system.loglevel");
+	loglevel->addRange({ { _("DEFAULT"), "" }, { _("OFF"), "off" }, { _("VERBOSE"), "verbose" } }, curLog);
+	s->addWithDescription(_("LOG LEVEL"), _("RetroArch/system logging verbosity (verbose = full debug)."), loglevel);
+	s->addSaveFunc([loglevel] {
+		if (loglevel->changed() && SystemConf::getInstance()->set("system.loglevel", loglevel->getSelected()))
+			SystemConf::getInstance()->saveSystemConf();
+	});
+
+	s->addGroup(_("SYSTEM"));
+
+	// CPU 调速器 —— system.cpugovernor
+	auto gov = std::make_shared< OptionListComponent<std::string> >(mWindow, _("CPU GOVERNOR"), false);
+	std::string curGov = SystemConf::getInstance()->get("system.cpugovernor");
+	gov->addRange({ { _("AUTO"), "" }, { "PERFORMANCE", "performance" }, { "SCHEDUTIL", "schedutil" }, { "ONDEMAND", "ondemand" }, { "POWERSAVE", "powersave" } }, curGov);
+	s->addWithDescription(_("CPU GOVERNOR"), _("CPU frequency scaling policy."), gov);
+	s->addSaveFunc([gov] {
+		if (gov->changed() && SystemConf::getInstance()->set("system.cpugovernor", gov->getSelected()))
+			SystemConf::getInstance()->saveSystemConf();
+	});
+
+	s->addGroup(_("STORAGE"));
+
+	// 外接挂载 —— 子菜单（走 ROCKNIX 原生 system.automount 机制）
+	s->addEntry(_("EXTERNAL MOUNT OPTIONS"), true, [this, window] { openRocknixExternalMount(window); });
+
+	mWindow->pushGui(s);
+}
+
+void GuiMenu::openRocknixExternalMount(Window* win)
+{
+	auto s = new GuiSettings(win, _("EXTERNAL MOUNT OPTIONS"));
+
+	// 自动挂载外接盘 —— system.automount（automount 脚本读，默认 1）
+	auto automount = std::make_shared<SwitchComponent>(win);
+	automount->setState(SystemConf::getInstance()->get("system.automount") != "0");
+	s->addWithDescription(_("AUTOMOUNT EXTERNAL"), _("Auto-detect and mount an external drive for games at boot."), automount);
+	s->addSaveFunc([automount] {
+		SystemConf::getInstance()->set("system.automount", automount->getState() ? "1" : "0");
+		SystemConf::getInstance()->saveSystemConf();
+	});
+
+	// 游戏装置 —— system.gamesdevice（用 blkid 枚举可挂载分区）
+	auto gamesdev = std::make_shared< OptionListComponent<std::string> >(win, _("GAMES DEVICE"), false);
+	std::string curDev = SystemConf::getInstance()->get("system.gamesdevice");
+	gamesdev->add(_("AUTO"), "", curDev.empty());
+	std::string devLine;
+	std::string devs = Utils::Platform::getShOutput(R"(blkid 2>/dev/null | awk -F: '/ext4|btrfs|vfat|exfat|ntfs/ {print $1}' | grep -E 'mmcblk|sd|nvme' | sort -u)");
+	for (std::stringstream ss(devs); std::getline(ss, devLine); )
+	{
+		while (!devLine.empty() && (devLine.back() == '\r' || devLine.back() == ' ')) devLine.pop_back();
+		if (!devLine.empty())
+			gamesdev->add(devLine, devLine, curDev == devLine);
+	}
+	s->addWithDescription(_("GAMES DEVICE"), _("Force a specific partition for /storage/roms (else auto-detect)."), gamesdev);
+	s->addSaveFunc([gamesdev] {
+		if (gamesdev->changed() && SystemConf::getInstance()->set("system.gamesdevice", gamesdev->getSelected()))
+			SystemConf::getInstance()->saveSystemConf();
+	});
+
+	// 主储存 —— system.merged.device
+	auto primary = std::make_shared< OptionListComponent<std::string> >(win, _("PRIMARY STORAGE"), false);
+	std::string curPrim = SystemConf::getInstance()->get("system.merged.device");
+	primary->addRange({ { _("AUTO"), "" }, { _("INTERNAL"), "internal" }, { _("EXTERNAL"), "external" } }, curPrim);
+	s->addWithDescription(_("PRIMARY STORAGE"), _("Which storage is primary when merging internal + external."), primary);
+	s->addSaveFunc([primary] {
+		if (primary->changed() && SystemConf::getInstance()->set("system.merged.device", primary->getSelected()))
+			SystemConf::getInstance()->saveSystemConf();
+	});
+
+	// 合并储存 —— system.merged.storage（overlay 叠加内部+外接 ROM）
+	auto merged = std::make_shared<SwitchComponent>(win);
+	merged->setState(SystemConf::getInstance()->get("system.merged.storage") == "1");
+	s->addWithDescription(_("MERGED STORAGE"), _("Overlay internal and external ROMs together."), merged);
+	s->addSaveFunc([merged] {
+		SystemConf::getInstance()->set("system.merged.storage", merged->getState() ? "1" : "0");
+		SystemConf::getInstance()->saveSystemConf();
+	});
+
+	// 应用（外接挂载在开机时套用，需重启）
+	s->addEntry(_("REBOOT TO APPLY"), false, [win] {
+		win->pushGui(new GuiMsgBox(win, _("Storage changes are applied at boot. Reboot now?"),
+			_("YES"), [] {
+				SystemConf::getInstance()->saveSystemConf();
+				Utils::Platform::ProcessStartInfo("reboot").run();
+			},
+			_("NO"), nullptr));
+	});
+
+	win->pushGui(s);
+}
+#endif
 
 void GuiMenu::openQuitMenu()
 {
