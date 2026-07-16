@@ -414,7 +414,10 @@ void InputConfig::AssignActionButtons()
 	BUTTON_BACK = invertButtons ? BBUTTON : ABUTTON;
 #endif
 
-#ifdef _ENABLEEMUELEC
+// es4all: ROCKNIX 与 EmuELEC 同惯例——默认(InvertButtons=false)确认键=逻辑 a
+// (即用户在手柄配置里映射为 A/南面的那颗)。否则落到上面 #else 分支会把确认键
+// 绑到逻辑 b，Xbox 手柄上就变成"要按 B 才确认"。
+#if defined(_ENABLEEMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)
 	BUTTON_OK = invertButtons ? BBUTTON : ABUTTON;
 	BUTTON_BACK = invertButtons ? ABUTTON : BBUTTON;
 #endif
