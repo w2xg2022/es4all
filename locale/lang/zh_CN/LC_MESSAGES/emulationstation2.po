@@ -4310,8 +4310,5 @@ msgstr "合并存储"
 msgid "Overlay internal and external ROMs together."
 msgstr "把内部与外接的 ROM 叠加在一起。"
 
-msgid "REBOOT TO APPLY"
-msgstr "重启以应用"
-
 msgid "Storage changes are applied at boot. Reboot now?"
 msgstr "存储更改将在开机时套用。现在重启？"
