@@ -4276,3 +4276,42 @@ msgstr "遊戲內互換X/Y按鍵"
 
 msgid "Swaps X/Y RetroPad bindings during gameplay (position-aligned for PlayStation/PSP style symbol layouts)"
 msgstr "遊戲進行中互換X/Y的RetroPad按鍵綁定（位置對齊，符合PlayStation/PSP等幾何符號佈局的手感）"
+
+msgid "CPU GOVERNOR"
+msgstr "CPU 調速器"
+
+msgid "CPU frequency scaling policy."
+msgstr "CPU 頻率調節策略。"
+
+msgid "RetroArch/system logging verbosity (verbose = full debug)."
+msgstr "RetroArch/系統日誌詳細程度（verbose = 完整除錯）。"
+
+msgid "AUTOMOUNT EXTERNAL"
+msgstr "自動掛載外接盤"
+
+msgid "Auto-detect and mount an external drive for games at boot."
+msgstr "開機時自動偵測並掛載外接盤作為遊戲盤。"
+
+msgid "GAMES DEVICE"
+msgstr "遊戲盤裝置"
+
+msgid "Force a specific partition for /storage/roms (else auto-detect)."
+msgstr "強制指定 /storage/roms 用的分割區（否則自動偵測）。"
+
+msgid "PRIMARY STORAGE"
+msgstr "主儲存"
+
+msgid "Which storage is primary when merging internal + external."
+msgstr "合併內部+外接時以哪個為主。"
+
+msgid "MERGED STORAGE"
+msgstr "合併儲存"
+
+msgid "Overlay internal and external ROMs together."
+msgstr "把內部與外接的 ROM 疊加在一起。"
+
+msgid "REBOOT TO APPLY"
+msgstr "重啟以套用"
+
+msgid "Storage changes are applied at boot. Reboot now?"
+msgstr "儲存變更將在開機時套用。現在重啟？"

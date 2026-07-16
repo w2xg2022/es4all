@@ -58,6 +58,15 @@ fi
 set_ra "${RA_CFG}" menu_swap_ok_cancel_buttons false
 set_ra "${RA_CFG}" user_language 12
 set_ra "${RA_CFG}" menu_show_load_content_animation false
+# 中文选单 + OSD 字体修正：RA 内建 xmb 字体无 CJK 字形 -> 中文显示为方块(tofu)。
+# 改指 es4all 随镜像打包的中文字体（含 CJK）。字体装在 /usr/config/es4all/fonts/。
+FONT_CJK=/usr/config/es4all/fonts/regular.ttf
+if [ -f "$FONT_CJK" ]; then
+  set_ra "${RA_CFG}" xmb_font "$FONT_CJK"
+  set_ra "${RA_CFG}" video_font_path "$FONT_CJK"
+fi
+# 菜单默认 XMB（system.cfg 出厂默认也改成 xmb，setsettings 会据此套用）
+set_ra "${RA_CFG}" menu_driver xmb
 
 # 1b) ES4All 前端界面默认简体中文（面向大陆用户；与上面 RA 菜单语言分开设定）
 set_kv "${SYS_CFG}" system.language zh_CN
