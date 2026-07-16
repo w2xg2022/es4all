@@ -1,0 +1,21 @@
+#!/bin/sh
+# es4all ROCKNIX 蓝牙垫片
+# ES（batocera 血统）统一调用 `batocera-bluetooth <verb>`；ROCKNIX 自带
+# `rocknix-bluetooth`，动词几乎一一对应，唯一差别是 ES 用 `live_devices`
+# 而 ROCKNIX 用 `start_live_devices`。这里翻译这一个，其余原样转发。
+# 保持 ES 本体与发行版解耦（命令边界=batocera-bluetooth）。
+
+cmd="$1"
+[ $# -gt 0 ] && shift
+
+case "$cmd" in
+  live_devices)
+    exec /usr/bin/rocknix-bluetooth start_live_devices "$@"
+    ;;
+  "")
+    exec /usr/bin/rocknix-bluetooth
+    ;;
+  *)
+    exec /usr/bin/rocknix-bluetooth "$cmd" "$@"
+    ;;
+esac

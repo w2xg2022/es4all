@@ -244,7 +244,8 @@ GuiMenu::GuiMenu(Window *window, bool animate) : GuiComponent(window), mMenu(win
 	// CPU 调速器、RA 边框、RA 日志、外接挂载(走 ROCKNIX 原生 system.automount 机制)。
 	if (isFullUI)
 	{
-		addEntry(_("PLATFORM SETTINGS").c_str(), true, [this] { openPlatformSettings(); }, "iconEmuelec");
+		// es4all: ROCKNIX 主题没有 iconEmuelec，用主题实际存在的 iconAdvanced（否则图标空缺）
+		addEntry(_("PLATFORM SETTINGS").c_str(), true, [this] { openPlatformSettings(); }, "iconAdvanced");
 	}
 #endif
 
