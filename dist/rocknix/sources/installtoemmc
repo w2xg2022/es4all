@@ -1,0 +1,189 @@
+#!/bin/bash
+# installtoemmc - 把 U 盘启动的 ROCKNIX 装进内部 eMMC(参数化,一支通吃)
+#
+# 架构仿 EmuELEC 的 installtoemmc.sh:一支程序 + 内置 board 表(board_config
+# case),加机型只加一条 case,不再一个型号一支脚本。
+#
+# 用法:
+#   installtoemmc list                 列出支持的机型
+#   installtoemmc auto   [--yes]       自动检测本机机型并安装
+#   installtoemmc <board>[--yes]       指定机型安装(也接受 -<board>)
+#   (--yes 跳过 YES 确认,供 ES 菜单一键调用)
+#
+# 单系统:抹掉 Armbian rootfs,eMMC 交给 ROCKNIX。保留(机械上必需 + MASKROM
+# 救援基础):① 保留区 vendor u-boot(DRAM 校准过) ② p1 BOOT(boot.scr +
+# rocknix/Image chainload 宿主;u-boot 读不了 USB,故 kernel 必须在 eMMC)。
+# 布局: p1 BOOT(不动) | p2 ROCKNIX(SYSTEM) | p3 STORAGE(其余,游戏/存档)。
+# 只搬 OS + 设置,不搬游戏与可重建缓存。装完拔 U 盘即纯 eMMC。
+# 开不了机 -> MASKROM 重刷 Armbian(分区表/bootloader 保留区全程没动,一律可救)。
+set -uo pipefail
+
+# ============================ board 表 ============================
+# 加新机型:在此加一条 case,并把名字加进 BOARDS。字段:
+#   DESC       人类可读描述(list 显示)
+#   COMPAT     /proc/device-tree/compatible 里的唯一串(auto 检测用)
+#   EMMC_DEV   目标内部 eMMC 块设备
+#   RK_SIZE_GIB ROCKNIX(SYSTEM)分区大小,其余全给 STORAGE
+board_config() {
+  case "$1" in
+    md1000)
+      DESC="MD1000 (RK3566 电视盒)"
+      COMPAT="rockchip,rk3566-md1000"
+      EMMC_DEV="/dev/mmcblk0"
+      RK_SIZE_GIB=2
+      ;;
+    # ---- 未来机型照抄一条 ----
+    # e900v22c)
+    #   DESC="..."; COMPAT="rockchip,rk35xx-..."; EMMC_DEV="/dev/mmcblk?"; RK_SIZE_GIB=2 ;;
+    *) return 1 ;;
+  esac
+  return 0
+}
+BOARDS="md1000"
+# =================================================================
+
+FLASH=/flash
+STORAGE=/storage
+LOG=/storage/installtoemmc.log
+
+fail(){ echo "!! 中止: $*" >&2; exit 1; }
+
+do_list() {
+  echo "支持的机型:"
+  for b in $BOARDS; do board_config "$b"; printf "  %-12s %s\n" "$b" "$DESC"; done
+}
+
+detect_board() {
+  local compat b
+  compat=$(tr '\0' '\n' < /proc/device-tree/compatible 2>/dev/null)
+  for b in $BOARDS; do
+    board_config "$b"
+    if echo "$compat" | grep -qF "$COMPAT"; then echo "$b"; return 0; fi
+  done
+  return 1
+}
+
+# ------------------------- 解析参数 -------------------------
+BOARD=""
+ASSUME_YES=0
+for a in "$@"; do
+  case "$a" in
+    --yes|-y) ASSUME_YES=1 ;;
+    list|--list) do_list; exit 0 ;;
+    auto|-auto|--auto) BOARD="auto" ;;
+    -*) BOARD="${a#-}" ;;   # -md1000 -> md1000
+    *) BOARD="$a" ;;
+  esac
+done
+[ -n "$BOARD" ] || { echo "用法: installtoemmc list|auto|<board> [--yes]"; do_list; exit 1; }
+
+if [ "$BOARD" = "auto" ]; then
+  BOARD=$(detect_board) || fail "auto 检测失败:本机 compatible 不在 board 表中(installtoemmc list 看支持机型)"
+  echo "auto 检测到机型: $BOARD"
+fi
+board_config "$BOARD" || fail "未知机型 '$BOARD'(installtoemmc list 看支持机型)"
+
+EMMC="$EMMC_DEV"
+exec > >(tee -a "$LOG") 2>&1
+echo "===== $(date) installtoemmc $BOARD ($DESC) ====="
+
+# ------------------------- 前置检查 -------------------------
+[ -b "$EMMC" ] || fail "找不到 $EMMC"
+FLASH_DEV=$(awk '$2=="/flash"{print $1}' /proc/mounts)
+case "$FLASH_DEV" in
+  ${EMMC}*) fail "当前已从 eMMC 启动(/flash=$FLASH_DEV),无需安装";;
+  /dev/sd*) : ;;
+  *) fail "/flash 来源异常: $FLASH_DEV(应为 USB /dev/sd*)";;
+esac
+[ -f "$FLASH/SYSTEM" ] || fail "$FLASH/SYSTEM 不存在"
+grep -q "${EMMC}p2 " /proc/mounts && fail "${EMMC}p2 已挂载,先卸载"
+grep -q "${EMMC}p3 " /proc/mounts && fail "${EMMC}p3 已挂载,先卸载"
+
+# ------------------------- 动态几何 -------------------------
+DISKSZ=$(blockdev --getsz "$EMMC")
+LAST_USABLE=$((DISKSZ - 34))
+P2_START=$(parted -s "$EMMC" unit s print 2>/dev/null | awk '/^[[:space:]]*2[[:space:]]/{gsub(/s/,"",$2); print $2}')
+[ -n "${P2_START:-}" ] || fail "读不到 p2 起始扇区"
+RK_SIZE_S=$((RK_SIZE_GIB*1024*1024*1024/512))
+RK_END=$((P2_START + RK_SIZE_S - 1))
+ST_START=$((RK_END + 1))
+[ "$ST_START" -lt "$LAST_USABLE" ] || fail "空间不足以放 STORAGE"
+ST_GIB=$(( (LAST_USABLE - ST_START) / 2048 / 1024 ))
+echo "eMMC=$EMMC  ROCKNIX=${RK_SIZE_GIB}GiB(${P2_START}s..${RK_END}s)  STORAGE=~${ST_GIB}GiB(${ST_START}s..${LAST_USABLE}s)"
+
+# ------------------------- 确认 -------------------------
+if [ "$ASSUME_YES" != 1 ]; then
+  echo
+  echo "警告: 这会抹掉 $EMMC 从扇区 $P2_START 之后的一切(Armbian 系统)。"
+  echo "u-boot 引导与 BOOT 分区保留。装完拔 U 盘即纯 eMMC 启动。"
+  printf "输入大写 YES 继续: "
+  read ans
+  [ "$ans" = "YES" ] || fail "未输入 YES"
+fi
+
+# ------------------------- 备份 GPT -------------------------
+BK="$STORAGE/emmc-gpt-backup"; mkdir -p "$BK"
+dd if="$EMMC" of="$BK/gpt-primary.bin"   bs=512 count=34 2>/dev/null
+dd if="$EMMC" of="$BK/gpt-secondary.bin" bs=512 skip="$((DISKSZ-33))" count=33 2>/dev/null
+echo "GPT 已备份到 $BK"
+
+# ------------------------- 重分区 -------------------------
+echo "-- 重分区 --"
+for n in $(parted -s "$EMMC" print 2>/dev/null | awk '/^[[:space:]]*[0-9]+[[:space:]]/{print $1}' | sort -rn); do
+  [ "$n" -ge 2 ] && parted -s "$EMMC" rm "$n"
+done
+parted -s "$EMMC" unit s mkpart primary fat32 "${P2_START}s" "${RK_END}s" || fail "建 ROCKNIX 失败"
+parted -s "$EMMC" name 2 ROCKNIX
+parted -s "$EMMC" set 2 msftdata on
+parted -s "$EMMC" unit s mkpart primary ext4 "${ST_START}s" "${LAST_USABLE}s" || fail "建 STORAGE 失败"
+parted -s "$EMMC" name 3 STORAGE
+partprobe "$EMMC"; sleep 3
+{ [ -b "${EMMC}p2" ] && [ -b "${EMMC}p3" ]; } || { sleep 3; partprobe "$EMMC"; sleep 2; }
+{ [ -b "${EMMC}p2" ] && [ -b "${EMMC}p3" ]; } || fail "新分区未出现"
+
+# ------------------------- 格式化 -------------------------
+echo "-- 格式化 --"
+mkfs.vfat -F 32 -n ROCKNIX "${EMMC}p2" >/dev/null || fail "mkfs.vfat 失败"
+mkfs.ext4 -F -q -L STORAGE -m 0 -O ^orphan_file "${EMMC}p3" >/dev/null || fail "mkfs.ext4 失败"
+
+# ------------------------- 搬 OS -> ROCKNIX -------------------------
+mkdir -p /tmp/erk /tmp/est /tmp/eb
+mount "${EMMC}p2" /tmp/erk || fail "挂载 ROCKNIX 失败"
+echo "-- 复制 OS 到 ROCKNIX --"
+for it in KERNEL KERNEL.md5 SYSTEM SYSTEM.md5 device_trees extlinux overlays; do
+  [ -e "$FLASH/$it" ] && cp -a "$FLASH/$it" /tmp/erk/
+done
+sync
+
+# ------------------------- 搬设置 -> STORAGE(排除游戏/缓存) -------------------------
+mount "${EMMC}p3" /tmp/est || fail "挂载 STORAGE 失败"
+echo "-- 复制设置到 STORAGE(排除游戏/缓存) --"
+cd "$STORAGE"
+for e in * .[!.]*; do
+  [ -e "$e" ] || continue
+  case "$e" in
+    roms|games-internal|games-external|lost+found|.tmp|.update|emmc-gpt-backup|installtoemmc.log) continue;;
+  esac
+  cp -a "$STORAGE/$e" /tmp/est/ 2>/dev/null || echo "  警告: $e"
+done
+rm -rf /tmp/est/.cache/cores 2>/dev/null
+mkdir -p /tmp/est/roms /tmp/est/games-internal /tmp/est/games-external
+sync
+
+# ------------------------- 刷新 p1 chainload kernel/dtb + TRIGGER -------------------------
+echo "-- 刷新 eMMC p1 rocknix/Image + dtb --"
+mount "${EMMC}p1" /tmp/eb || fail "挂载 p1 失败"
+[ -d /tmp/eb/rocknix ] || mkdir -p /tmp/eb/rocknix
+cp -f "$FLASH/KERNEL" /tmp/eb/rocknix/Image
+DTB="$FLASH/device_trees/${COMPAT#rockchip,}.dtb"
+[ -f "$DTB" ] || DTB=$(ls "$FLASH"/device_trees/*.dtb 2>/dev/null | head -1)
+[ -n "$DTB" ] && [ -f "$DTB" ] && cp -f "$DTB" /tmp/eb/rocknix/"$(basename "$DTB")"
+[ -e /tmp/eb/rocknix/TRIGGER ] || : > /tmp/eb/rocknix/TRIGGER
+sync
+
+umount /tmp/erk /tmp/est /tmp/eb 2>/dev/null
+echo "===== 完成 ($BOARD) ====="
+parted -s "$EMMC" print
+echo
+echo ">> 关机、拔掉 U 盘、再开机 -> 从 eMMC 启动 ROCKNIX。"
+echo ">> 出问题可插回 U 盘,或 MASKROM 重刷 Armbian 救援。"
