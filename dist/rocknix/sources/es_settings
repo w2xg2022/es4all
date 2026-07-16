@@ -23,7 +23,11 @@ then
   MYLANG="${MYLOCALE}.${MYCHARMAP}"
   MYLOCPATH="/storage/.config/emulationstation"
 
-  if [ ! -e "${MYLOCPATH}/locale/${MYLANG}/LC_NAME" ]; then
+  # es4all: 以 LC_CTYPE（而非 LC_NAME）作为"已生成"判据。底包曾种入残缺
+  # zh_CN.UTF-8（有 LC_NAME、缺 LC_CTYPE），用 LC_NAME 判断会误判为已完成而跳过，
+  # 导致 setlocale(LC_MESSAGES,"") 失败、gettext 关闭翻译、界面退回英文。改判
+  # LC_CTYPE 后，残缺语系会被重新生成。
+  if [ ! -e "${MYLOCPATH}/locale/${MYLANG}/LC_CTYPE" ]; then
     performance
  I18NPATH="/usr/share/i18n"
  localedef -i ${MYLOCALE} \
