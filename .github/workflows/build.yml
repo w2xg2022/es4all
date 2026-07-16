@@ -2,7 +2,8 @@ name: "Build EmulationStation (es4all aarch64: armbian/rocknix/emuelec)"
 
 on:
   push:
-    branches: [ main ]
+    # es4all: v1.1-dev 也建置(验证三目标可编)，但只有 main 会发布 Release(见各 job 的 if 守卫)
+    branches: [ main, v1.1-dev ]
   workflow_dispatch:
 
 permissions:
@@ -60,6 +61,8 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Publish Release
+        # es4all: 只有 main 发布 Release; dev 分支只产 artifacts, 不动线上 Release
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
@@ -127,6 +130,8 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Publish Release (rocknix asset)
+        # es4all: 只有 main 发布 Release; dev 分支只产 artifacts, 不动线上 Release
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
@@ -184,6 +189,8 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Publish Release (emuelec asset)
+        # es4all: 只有 main 发布 Release; dev 分支只产 artifacts, 不动线上 Release
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
