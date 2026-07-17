@@ -585,17 +585,9 @@ void GuiMenu::openEmuELECSettings()
 			});
 #endif
 
-/*
-       auto bezels_enabled = std::make_shared<SwitchComponent>(mWindow);
-		bool bezelsEnabled = SystemConf::getInstance()->get("global.bezel") == "1";
-		bezels_enabled->setState(bezelsEnabled);
-		s->addWithLabel(_("ENABLE RA BEZELS"), bezels_enabled);
-		s->addSaveFunc([bezels_enabled] {
-			bool bezelsenabled = bezels_enabled->getState();
-                SystemConf::getInstance()->set("global.bezel", bezelsenabled ? "1" : "0");
-				SystemConf::getInstance()->saveSystemConf();
-			});	
-*/       
+       // es4all: 此处原有一段注释掉的 ENABLE RA BEZELS(布尔版)已删除 ——
+       // 该功能由 游戏设置 → DEFAULT GLOBAL SETTINGS 的三档版(AUTO/ON/OFF)统一提供。
+
        auto splash_enabled = std::make_shared<SwitchComponent>(mWindow);
 		bool splashEnabled = SystemConf::getInstance()->get("ee_splash.enabled") == "1";
 		splash_enabled->setState(splashEnabled);
@@ -5315,14 +5307,10 @@ void GuiMenu::openPlatformSettings()
 			SystemConf::getInstance()->saveSystemConf();
 	});
 
-	// RA 边框 —— global.bezel（与 GAME SETTINGS 同一开关）
-	auto bezel = std::make_shared<SwitchComponent>(mWindow);
-	bezel->setState(SystemConf::getInstance()->getBool("global.bezel"));
-	s->addWithLabel(_("ENABLE RA BEZELS"), bezel);
-	s->addSaveFunc([bezel] {
-		if (SystemConf::getInstance()->setBool("global.bezel", bezel->getState()))
-			SystemConf::getInstance()->saveSystemConf();
-	});
+	// es4all: ENABLE RA BEZELS 已移除 —— 与 游戏设置 → DEFAULT GLOBAL SETTINGS 的同名项
+	// 重复(同一个 global.bezel 键)。保留游戏设置那个三档版(AUTO/ON/OFF)，因为:
+	// 1) 位置更合理(全局游戏设定，与 SHOW RETROARCH FPS 同组)；
+	// 2) 此处的布尔 Switch 只写 "1"/"0"，一旦操作会把三档版的 "auto" 值毁掉。
 
 	// 日志等级 —— system.loglevel（ROCKNIX runemu.sh 原生读取:off / verbose / 默认normal，零 shell 改动）
 	auto loglevel = std::make_shared< OptionListComponent<std::string> >(mWindow, _("LOG LEVEL"), false);
