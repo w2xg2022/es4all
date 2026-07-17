@@ -588,27 +588,31 @@ void GuiMenu::openEmuELECSettings()
 				SystemConf::getInstance()->saveSystemConf();
 			});
 
-	auto enable_bootvideo = std::make_shared<SwitchComponent>(mWindow);
+	// es4all: BOOT VIDEO —— 由原本两个互相干扰的 Switch 合并为单一三档 OptionList。
+	// 原实现的问题:
+	//   ALWAYS SHOW BOOT VIDEO  → ee_bootvideo.enabled
+	//   RANDOMIZE BOOT VIDEO    → ee_randombootvideo.enabled，且开启时会偷偷把
+	//                             ee_bootvideo.enabled 也设为 "1"，但上面那个 Switch 的
+	//                             UI 状态不会跟着跳(要重进菜单才看得到)，用户会困惑。
+	//   两键的四种组合里 (bootvideo=0, random=1) 是矛盾态，只能靠那行 if 硬修。
+	// 三档把矛盾态从根本上消除；底层两个键不变，发行版脚本无须改动。
+	auto bootvideo_mode = std::make_shared< OptionListComponent<std::string> >(mWindow, _("BOOT VIDEO"), false);
 	bool bootEnabled = SystemConf::getInstance()->get("ee_bootvideo.enabled") == "1";
-	enable_bootvideo->setState(bootEnabled);
-	s->addWithLabel(_("ALWAYS SHOW BOOT VIDEO"), enable_bootvideo);
-	
-	s->addSaveFunc([enable_bootvideo, window] {
-		bool bootvideoenabled = enable_bootvideo->getState();
-		SystemConf::getInstance()->set("ee_bootvideo.enabled", bootvideoenabled ? "1" : "0");
-		SystemConf::getInstance()->saveSystemConf();
-	});
-
-	auto enable_randombootvideo = std::make_shared<SwitchComponent>(mWindow);
 	bool randombootEnabled = SystemConf::getInstance()->get("ee_randombootvideo.enabled") == "1";
-	enable_randombootvideo->setState(randombootEnabled);
-	s->addWithLabel(_("RANDOMIZE BOOT VIDEO"), enable_randombootvideo);
-	
-	s->addSaveFunc([enable_randombootvideo, window] {
-		bool randombootvideoenabled = enable_randombootvideo->getState();
-		SystemConf::getInstance()->set("ee_randombootvideo.enabled", randombootvideoenabled ? "1" : "0");
-        if (randombootvideoenabled)
-        SystemConf::getInstance()->set("ee_bootvideo.enabled", "1");
+	std::string bootvideoCur = !bootEnabled ? "off" : (randombootEnabled ? "random" : "fixed");
+
+	bootvideo_mode->add(_("OFF"), "off", bootvideoCur == "off");
+	bootvideo_mode->add(_("FIXED"), "fixed", bootvideoCur == "fixed");
+	bootvideo_mode->add(_("RANDOM"), "random", bootvideoCur == "random");
+	s->addWithDescription(_("BOOT VIDEO"), _("Play a video at boot: a fixed one, or a random pick."), bootvideo_mode);
+
+	s->addSaveFunc([bootvideo_mode] {
+		if (!bootvideo_mode->changed())
+			return;
+
+		const std::string mode = bootvideo_mode->getSelected();
+		SystemConf::getInstance()->set("ee_bootvideo.enabled", mode == "off" ? "0" : "1");
+		SystemConf::getInstance()->set("ee_randombootvideo.enabled", mode == "random" ? "1" : "0");
 		SystemConf::getInstance()->saveSystemConf();
 	});
 
