@@ -34,7 +34,7 @@ jobs:
         run: |
           mkdir -p build
           cd build
-          cmake .. -DGLES=OFF -DGLES2=ON -DCEC=OFF -DENABLE_EMUELEC=1
+          cmake .. -DGLES=OFF -DGLES2=ON -DCEC=OFF -DENABLE_EMUELEC=1 -DDISABLE_KODI=1
 
       - name: Build
         run: cmake --build build -j"$(nproc)"
@@ -103,7 +103,7 @@ jobs:
         run: |
           mkdir -p build
           cd build
-          cmake .. -DGLES=OFF -DGLES2=ON -DCEC=OFF -DES4ALL_TARGET=rocknix -DENABLE_EMUELEC=1
+          cmake .. -DGLES=OFF -DGLES2=ON -DCEC=OFF -DES4ALL_TARGET=rocknix -DENABLE_EMUELEC=1 -DDISABLE_KODI=1
 
       - name: Build
         run: cmake --build build -j"$(nproc)"
@@ -162,7 +162,7 @@ jobs:
         run: |
           mkdir -p build
           cd build
-          cmake .. -DGLES=OFF -DGLES2=ON -DCEC=OFF -DES4ALL_TARGET=emuelec -DENABLE_EMUELEC=1
+          cmake .. -DGLES=OFF -DGLES2=ON -DCEC=OFF -DES4ALL_TARGET=emuelec -DENABLE_EMUELEC=1 -DDISABLE_KODI=1
 
       - name: Build
         run: cmake --build build -j"$(nproc)"
