@@ -62,7 +62,6 @@ private:
         void addEntry(const std::string& name, bool add_arrow, const std::function<void()>& func, const std::string iconName = "");
         void addVersionInfo();
         void openCollectionSystemSettings();
-        void openConfigInput(); 
         void openScraperSettings();
         void openScreensaverOptions();  
         void openSoundSettings();
@@ -97,8 +96,6 @@ private:
         void exitKidMode();
 
         // windows
-        void openEmulatorSettings();
-        void openSystemEmulatorSettings(SystemData* system);
 
         static void openWifiSettings(Window* win, std::string title, std::string data, const std::function<void(std::string)>& onsave);
 

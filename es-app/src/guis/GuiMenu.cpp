@@ -275,10 +275,9 @@ GuiMenu::GuiMenu(Window *window, bool animate) : GuiComponent(window), mMenu(win
 
 		addEntry(_("USER INTERFACE SETTINGS").c_str(), true, [this] { openUISettings(); }, "iconUI");
 
-		if (ApiSystem::getInstance()->isScriptingSupported(ApiSystem::GAMESETTINGS))		
-			addEntry(GuiControllersSettings::getControllersSettingsLabel(), true, [window] { GuiControllersSettings::openControllersSettings(window); }, "iconControllers");
-		else
-			addEntry(_("CONFIGURE INPUT"), true, [this] { openConfigInput(); }, "iconControllers");
+		// es4all: 原本 GAMESETTINGS 为假时改显示「配置控制器」(CONFIGURE INPUT)，但
+		// GAMESETTINGS 在 isScriptingSupported() 的 switch 中无 case → 恒真，该分支永不触发。
+		addEntry(GuiControllersSettings::getControllersSettingsLabel(), true, [window] { GuiControllersSettings::openControllersSettings(window); }, "iconControllers");
 
 		addEntry(_("SOUND SETTINGS").c_str(), true, [this] { openSoundSettings(); }, "iconSound");
 
@@ -291,17 +290,10 @@ if (ApiSystem::getInstance()->isScriptingSupported(ApiSystem::WIFI))
 
 		addEntry(_("GAME COLLECTION SETTINGS").c_str(), true, [this] { openCollectionSystemSettings(); }, "iconAdvanced");
 
-		if (!ApiSystem::getInstance()->isScriptingSupported(ApiSystem::GAMESETTINGS))
-		{
-			for (auto system : SystemData::sSystemVector)
-			{
-				if (system->isCollection() || system->getEmulators().size() == 0 || (system->getEmulators().size() == 1 && system->getEmulators().begin()->cores.size() <= 1))
-					continue;
-
-				addEntry(_("EMULATOR SETTINGS"), true, [this] { openEmulatorSettings(); }, "iconGames");
-				break;
-			}
-		}
+		// es4all: 原本 GAMESETTINGS 为假时显示「模拟器设置」一级入口，但 GAMESETTINGS 恒真
+		// → 永不触发。逐系统挑 emulator/core 的功能由
+		// 游戏设置 → 每个系统的高级设置 → popSystemConfigurationGui() 提供，
+		// 故一并移除该入口及其孤儿函数 openEmulatorSettings()/openSystemEmulatorSettings()。
 #endif
 
 		addEntry(_("SCRAPER").c_str(), true, [this] { openScraperSettings(); }, "iconScraper");		
@@ -1083,14 +1075,6 @@ void GuiMenu::openScraperSettings()
 	mWindow->pushGui(new GuiScraperStart(mWindow));
 }
 
-void GuiMenu::openConfigInput()
-{
-	Window* window = mWindow;
-	window->pushGui(new GuiMsgBox(window, _("ARE YOU SURE YOU WANT TO CONFIGURE THE INPUT?"), 
-		_("YES"), [window] { window->pushGui(new GuiDetectDevice(window, false, nullptr)); }, 
-		_("NO"), nullptr)
-	);
-}
 
 void GuiMenu::addVersionInfo()
 {
@@ -3946,108 +3930,7 @@ void GuiMenu::updateGameLists(Window* window, bool confirm)
 		_("NO"), nullptr));
 }
 
-void GuiMenu::openSystemEmulatorSettings(SystemData* system)
-{
-	auto theme = ThemeData::getMenuTheme();
 
-	GuiSettings* s = new GuiSettings(mWindow, system->getFullName().c_str());
-
-	auto emul_choice = std::make_shared<OptionListComponent<std::string>>(mWindow, _("Emulator"), false);
-	auto core_choice = std::make_shared<OptionListComponent<std::string>>(mWindow, _("Core"), false);
-
-	std::string currentEmul = system->getEmulator(false);
-	std::string defaultEmul = system->getDefaultEmulator();
-
-	emul_choice->add(_("AUTO"), "", false);
-
-	bool found = false;
-	for (auto emul : system->getEmulators())
-	{
-		if (emul.name == currentEmul)
-			found = true;
-
-		emul_choice->add(emul.name, emul.name, emul.name == currentEmul);
-	}
-
-	if (!found)
-		emul_choice->selectFirstItem();
-
-	ComponentListRow row;
-	row.addElement(std::make_shared<TextComponent>(mWindow, Utils::String::toUpper(_("Emulator")), theme->Text.font, theme->Text.color), true);
-	row.addElement(emul_choice, false);
-
-	s->addRow(row);
-
-	emul_choice->setSelectedChangedCallback([this, system, core_choice](std::string emulatorName)
-	{
-		std::string currentCore = system->getCore(false);
-		std::string defaultCore = system->getDefaultCore(emulatorName);
-
-		core_choice->clear();	
-		core_choice->add(_("AUTO"), "", false);
-
-		bool found = false;
-
-		for (auto& emulator : system->getEmulators())
-		{
-			if (emulatorName != emulator.name)
-				continue;
-			
-			for (auto core : emulator.cores)
-			{
-				core_choice->add(core.name, core.name, currentCore == core.name);
-				if (currentCore == core.name)
-					found = true;
-			}			
-		}
-	
-		if (!found)
-			core_choice->selectFirstItem();
-		else
-			core_choice->invalidate();
-	});
-
-	row.elements.clear();
-	row.addElement(std::make_shared<TextComponent>(mWindow, Utils::String::toUpper(_("Core")), theme->Text.font, theme->Text.color), true);
-	row.addElement(core_choice, false);
-	s->addRow(row);
-
-	// force change event to load core list
-	emul_choice->invalidate();
-
-
-	s->addSaveFunc([system, emul_choice, core_choice]
-	{
-		Settings::getInstance()->setString(system->getName() + ".emulator", emul_choice->getSelected());
-		Settings::getInstance()->setString(system->getName() + ".core", core_choice->getSelected());
-	});
-
-	mWindow->pushGui(s);
-}
-
-void GuiMenu::openEmulatorSettings()
-{
-	GuiSettings* configuration = new GuiSettings(mWindow, _("EMULATOR SETTINGS").c_str());
-
-	Window* window = mWindow;
-
-	// For each activated system
-	for (auto system : SystemData::sSystemVector)
-	{
-		if (system->isCollection())
-			continue;
-
-		if (system->getEmulators().size() == 0)
-			continue;
-
-		if (system->getEmulators().size() == 1 && system->getEmulators().cbegin()->cores.size() <= 1)
-			continue;
-
-		configuration->addEntry(system->getFullName(), true, [this, system] { openSystemEmulatorSettings(system); });
-	}
-
-	window->pushGui(configuration);
-}
 
 struct ThemeConfigOption
 {
