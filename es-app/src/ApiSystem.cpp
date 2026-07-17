@@ -1790,10 +1790,17 @@ bool ApiSystem::isScriptingSupported(ScriptId script)
 	case ApiSystem::THEMESDOWNLOADER:
 		return true;
 	case ApiSystem::RETROACHIVEMENTS:
+		// es4all: 原本未定义 CHEEVOS_DEV_LOGIN 时会 break 掉出 switch，
+		// 而下方 `if (executables.size() == 0) return true;` 使其**回传 true** ——
+		// 与原意(没编入 cheevos 开发者凭证就不支持)相反。
+		// 结果: 游戏设置→ACCOUNTS/RETROACHIEVEMENT SETTINGS、系统设置→RETROACHIEVEMENT SETTINGS
+		// 等菜单照常显示，但没有凭证根本无法向 RetroAchievements 认证 → 看得见却不能用。
+		// 改为明确 return false，恢复原意；若要启用，编译时带 -DCHEEVOS_DEV_LOGIN 即可。
 #ifdef CHEEVOS_DEV_LOGIN
 		return true;
+#else
+		return false;
 #endif
-		break;
 	case ApiSystem::KODI:
 		executables.push_back("kodi");
 		break;

@@ -1553,7 +1553,11 @@ void GuiMenu::openDeveloperSettings()
 	s->addWithLabel(_("VRAM LIMIT"), max_vram);
 	s->addSaveFunc([max_vram] { Settings::getInstance()->setInt("MaxVRAM", (int)round(max_vram->getValue())); });
 	
-	s->addSwitch(_("SHOW FRAMERATE"), _("Also turns on the emulator's native FPS counter, if available."), "DrawFramerate", true, nullptr);
+	// es4all: 原描述为 "Also turns on the emulator's native FPS counter, if available."，
+	// 那是继承自 batocera 的过时文案 —— 在 es4all 里 DrawFramerate 只在 Window.cpp 用于
+	// 绘制 ES 前端自己的帧率，完全不会传给模拟器。游戏内的帧率显示是另一个独立设定:
+	// 游戏设置 → DEFAULT GLOBAL SETTINGS → SHOW RETROARCH FPS (global.showFPS)。
+	s->addSwitch(_("SHOW FRAMERATE"), _("Display EmulationStation's own framerate. Does not affect games."), "DrawFramerate", true, nullptr);
 	s->addSwitch(_("VSYNC"), "VSync", true, [] { Renderer::setSwapInterval(); });
 
 #ifdef BATOCERA
