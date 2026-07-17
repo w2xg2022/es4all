@@ -25,9 +25,12 @@ public:
 		VIDEO = 4,
 		DIRECTORY = 8,
 		FILES = 16,
-#ifdef _ENABLEEMUELEC
+		// es4all: 定义无条件。44bcfac 把使用端(GuiMenu.cpp 的 CUSTOM MENU SCROLL
+		// SOUND)移出了 _ENABLEEMUELEC 守卫，却漏了这里的定义端，于是 ROCKNIX 上
+		// `GuiFileBrowser::AUDIO` 变成引用一个未定义的枚举值，编译直接失败。这批
+		// 改动此前从没在 ROCKNIX 上编过(pin 一直停在旧版)，所以一直没暴露。AUDIO
+		// 只是个 filetype 位标志，三边都该有它。
 		AUDIO = 32,
-#endif		
 
 		ALL = 255
 	};
