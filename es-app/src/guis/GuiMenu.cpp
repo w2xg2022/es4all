@@ -4842,9 +4842,11 @@ void GuiMenu::openSoundSettings()
 
 	s->addGroup(_("SOUNDS"));
 
-#ifdef _ENABLEEMUELEC
-	s->addFileBrowser(_("CUSTOM MENU SCROLL SOUND"), "ee_menuscrollsound", GuiFileBrowser::AUDIO); 
-#endif
+	// es4all: 移除多余的 #ifdef _ENABLEEMUELEC 守卫 —— 本项与 EmuELEC 无关。
+	// ee_menuscrollsound 是 es-core/components/ComponentList.cpp 读取并由 ES 自己播放的
+	// 菜单滚动音效, 三边皆完全可用(只是键名沿用了带误导性的 ee_ 前缀)。
+	// 原守卫因三个 target 都带 -DENABLE_EMUELEC=1 而恰好都成立, 属无效守卫。
+	s->addFileBrowser(_("CUSTOM MENU SCROLL SOUND"), "ee_menuscrollsound", GuiFileBrowser::AUDIO);
 	s->addSwitch(_("ENABLE NAVIGATION SOUNDS"), "EnableSounds", true, []
 	{
 		if (Settings::getInstance()->getBool("EnableSounds") && PowerSaver::getMode() == PowerSaver::INSTANT)
