@@ -578,15 +578,10 @@ void GuiMenu::openEmuELECSettings()
        // es4all: 此处原有一段注释掉的 ENABLE RA BEZELS(布尔版)已删除 ——
        // 该功能由 游戏设置 → DEFAULT GLOBAL SETTINGS 的三档版(AUTO/ON/OFF)统一提供。
 
-       auto splash_enabled = std::make_shared<SwitchComponent>(mWindow);
-		bool splashEnabled = SystemConf::getInstance()->get("ee_splash.enabled") == "1";
-		splash_enabled->setState(splashEnabled);
-		s->addWithLabel(_("ENABLE RA SPLASH"), splash_enabled);
-		s->addSaveFunc([splash_enabled] {
-                bool splashenabled = splash_enabled->getState();
-                SystemConf::getInstance()->set("ee_splash.enabled", splashenabled ? "1" : "0");
-				SystemConf::getInstance()->saveSystemConf();
-			});
+       // es4all: ENABLE RA SPLASH 已移入「SPLASH SETTINGS」子菜单(createConfigureSplash)。
+       // 它与该子菜单同属 splash 一类(只是键不同: ee_splash.enabled = RetroArch 启动画面;
+       // 子菜单内为 ES 的载入/退出动画 ee_splashloading/ee_splashexit/...)，
+       // 原本一个在外、一个在内，归类混乱。
 
 	// es4all: BOOT VIDEO —— 由原本两个互相干扰的 Switch 合并为单一三档 OptionList。
 	// 原实现的问题:
@@ -616,9 +611,9 @@ void GuiMenu::openEmuELECSettings()
 		SystemConf::getInstance()->saveSystemConf();
 	});
 
-	// Splash Settings
-	//s->addGroup(_("SPLASH SETTINGS"));
-	s->addEntry(_("CONFIGURE SPLASH OPTIONS"), true, [this] {
+	// es4all: 原「CONFIGURE SPLASH OPTIONS」改名为「SPLASH SETTINGS」——
+	// 与子菜单标题一致，且现已收纳 ENABLE RA SPLASH，是 splash 一类的统一入口。
+	s->addEntry(_("SPLASH SETTINGS"), true, [this] {
 		createConfigureSplash(mWindow);
 	});
 
@@ -664,9 +659,21 @@ if (UIModeController::getInstance()->isUIModeFull())
 void GuiMenu::createConfigureSplash(Window* mWindow, int menuIndex)
 {
 	auto s = new GuiSettings(mWindow, _("SPLASH SETTINGS"));
-	
+
 	s->setUpdateType(ComponentListFlags::UPDATE_ALWAYS);
-	
+
+	// es4all: ENABLE RA SPLASH 由平台设置父层移入此处 —— 它与本子菜单同属 splash 一类
+	// (本项 ee_splash.enabled = RetroArch 启动画面; 以下各项为 ES 的载入/退出动画)。
+	// 注意: 本子菜单的 ENABLE LOADING SPLASH SCREEN 变更时会 delete s 并重建整个菜单,
+	// 届时未落盘的 addSaveFunc 会丢失, 故此项采「变更即存」。
+	auto ra_splash_enabled = std::make_shared<SwitchComponent>(mWindow);
+	ra_splash_enabled->setState(SystemConf::getInstance()->get("ee_splash.enabled") == "1");
+	s->addWithDescription(_("ENABLE RA SPLASH"), _("Show the RetroArch splash screen when a game starts."), ra_splash_enabled);
+	ra_splash_enabled->setOnChangedCallback([ra_splash_enabled] {
+		SystemConf::getInstance()->set("ee_splash.enabled", ra_splash_enabled->getState() ? "1" : "0");
+		SystemConf::getInstance()->saveSystemConf();
+	});
+
 		auto enable_splashscreen = std::make_shared<SwitchComponent>(mWindow);
 	enable_splashscreen->setState(Settings::getInstance()->getBool("SplashScreen"));
 	s->addWithLabel(_("ENABLE LOADING SPLASH SCREEN"), enable_splashscreen);
