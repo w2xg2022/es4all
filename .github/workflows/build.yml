@@ -24,7 +24,7 @@ jobs:
             libfreeimage-dev libfreetype-dev \
             libcurl4-openssl-dev libpugixml-dev rapidjson-dev \
             libasound2-dev libvlc-dev libvlccore-dev \
-            libpulse-dev libespeak-ng-dev
+            libpulse-dev libespeak-dev
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -94,7 +94,7 @@ jobs:
             libfreeimage-dev libfreetype-dev \
             libcurl4-openssl-dev libpugixml-dev rapidjson-dev \
             libasound2-dev libvlc-dev libvlccore-dev \
-            libpulse-dev libespeak-ng-dev
+            libpulse-dev libespeak-dev
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -157,7 +157,7 @@ jobs:
             libfreeimage-dev libfreetype-dev \
             libcurl4-openssl-dev libpugixml-dev rapidjson-dev \
             libasound2-dev libvlc-dev libvlccore-dev \
-            libpulse-dev libespeak-ng-dev
+            libpulse-dev libespeak-dev
 
       - name: Checkout
         uses: actions/checkout@v4
