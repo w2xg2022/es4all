@@ -183,7 +183,15 @@ GuiControllersSettings::GuiControllersSettings(Window* wnd, int autoSel) : GuiSe
 		});
 #endif
 
-#if defined(BATOCERA) || defined(WIN32) || defined(_ENABLEEMUELEC)
+// es4all: ROCKNIX 也要这一项。上面那条「自动配对」走 `batocera-bluetooth trust
+// input`，只会自动信任输入设备；要「扫描 → 列出来让你挑」就得进 GuiBluetoothPair，
+// 而它是本菜单里唯一的入口。ROCKNIX 不是 BATOCERA/WIN32/_ENABLEEMUELEC，整项在编译
+// 期被拿掉，于是蓝牙区只剩「自动配对」和「设备列表」——设备列表列的是已配对的，没配
+// 对过自然是空的，看起来就像「扫描不到任何外设」。实际上底层一直是好的：hci0 UP、
+// bluetoothd 与 agent 都在跑，CLI 下 `batocera-bluetooth live_devices` 正常吐设备。
+// GuiBluetoothPair 本身无 guard、CMakeLists 里无条件编译，缺的只是这个入口。
+// 守卫写法同 GuiMenu.cpp 的 NETWORK SETTINGS(commit e5ae385)。
+#if defined(BATOCERA) || defined(WIN32) || defined(_ENABLEEMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)
 		// PAIR A BLUETOOTH CONTROLLER OR BT AUDIO DEVICE
 		addEntry(_("PAIR A BLUETOOTH DEVICE MANUALLY"), false, [window]
 		{
