@@ -544,9 +544,9 @@ void GuiMenu::openEmuELECSettings()
        // 子菜单内为 ES 的载入/退出动画 ee_splashloading/ee_splashexit/...)，
        // 原本一个在外、一个在内，归类混乱。
 
-	// es4all: BOOT VIDEO 与 SPLASH SETTINGS 均为 EmuELEC 专属 ——
-	// 开机影片(ee_bootvideo.*)与 ES 载入/退出动画(ee_splash*)都是 EmuELEC 的机制，
-	// armbian/rocknix 上没有对应实作。
+	// es4all: BOOT VIDEO 为 EmuELEC 专属 —— ee_bootvideo.enabled / ee_randombootvideo.enabled
+	// 在 ES 内【没有任何读取者】，纯靠 EmuELEC 开机脚本读取，armbian/rocknix 上选了没作用。
+	// (注意: SPLASH SETTINGS 与此不同，它是 ES 自己实作的跨平台功能，见下方，不可门控。)
 #if defined(ES4ALL_CAP_EMUELEC_PLATFORM)
 
 	// es4all: BOOT VIDEO —— 由原本两个互相干扰的 Switch 合并为单一三档 OptionList。
@@ -577,13 +577,22 @@ void GuiMenu::openEmuELECSettings()
 		SystemConf::getInstance()->saveSystemConf();
 	});
 
-	// es4all: 原「CONFIGURE SPLASH OPTIONS」改名为「SPLASH SETTINGS」——
-	// 与子菜单标题一致，且现已收纳 ENABLE RA SPLASH，是 splash 一类的统一入口。
+#endif // ES4ALL_CAP_EMUELEC_PLATFORM (BOOT VIDEO)
+
+	// es4all: SPLASH SETTINGS —— 【跨平台，不可门控】。
+	// 经查证其主体是 ES 自己实作的功能(本专案在 armbian 版上开发的):
+	//   ENABLE LOADING SPLASH SCREEN → Settings "SplashScreen"
+	//        → main.cpp / ViewController.cpp / Window.cpp 读取
+	//   ENABLE EXIT SPLASH SCREEN    → Settings "SplashScreenExit" → main.cpp / Window.cpp
+	//   自订图片                      → Settings "AlternateSplashScreen"
+	//        → Window::getCustomSplashScreenImage()
+	//   SPLASH EXIT DURATION         → SystemConf "ee_splash_exit_duration" → main.cpp
+	// 仅其中少数项(ENABLE RA SPLASH / SPLASH LOADING OPTION 等 ee_splashloading 系列)
+	// 在 ES 内无读取者、属 EmuELEC 侧，已在子菜单内各自门控。
+	// 原「CONFIGURE SPLASH OPTIONS」改名为「SPLASH SETTINGS」，与子菜单标题一致。
 	s->addEntry(_("SPLASH SETTINGS"), true, [this] {
 		createConfigureSplash(mWindow);
 	});
-
-#endif // ES4ALL_CAP_EMUELEC_PLATFORM (BOOT VIDEO + SPLASH SETTINGS)
 
 
 	// es4all: GAMEPAD CONFIG 入口已移除 —— 其内容实为 Wiimote 配对工具
@@ -632,8 +641,12 @@ void GuiMenu::createConfigureSplash(Window* mWindow, int menuIndex)
 
 	// es4all: ENABLE RA SPLASH 由平台设置父层移入此处 —— 它与本子菜单同属 splash 一类
 	// (本项 ee_splash.enabled = RetroArch 启动画面; 以下各项为 ES 的载入/退出动画)。
-	// 注意: 本子菜单的 ENABLE LOADING SPLASH SCREEN 变更时会 delete s 并重建整个菜单,
+	// es4all: ENABLE RA SPLASH 为 EmuELEC 专属 —— ee_splash.enabled 在 ES 内无读取者,
+	// 由 EmuELEC 侧套用。本子菜单其余各项(SplashScreen / SplashScreenExit /
+	// AlternateSplashScreen / ee_splash_exit_duration)则是 ES 自己实作的跨平台功能。
+	// 注: 本子菜单的 ENABLE LOADING SPLASH SCREEN 变更时会 delete s 并重建整个菜单,
 	// 届时未落盘的 addSaveFunc 会丢失, 故此项采「变更即存」。
+#if defined(ES4ALL_CAP_EMUELEC_PLATFORM)
 	auto ra_splash_enabled = std::make_shared<SwitchComponent>(mWindow);
 	ra_splash_enabled->setState(SystemConf::getInstance()->get("ee_splash.enabled") == "1");
 	s->addWithDescription(_("ENABLE RA SPLASH"), _("Show the RetroArch splash screen when a game starts."), ra_splash_enabled);
@@ -641,6 +654,7 @@ void GuiMenu::createConfigureSplash(Window* mWindow, int menuIndex)
 		SystemConf::getInstance()->set("ee_splash.enabled", ra_splash_enabled->getState() ? "1" : "0");
 		SystemConf::getInstance()->saveSystemConf();
 	});
+#endif
 
 		auto enable_splashscreen = std::make_shared<SwitchComponent>(mWindow);
 	enable_splashscreen->setState(Settings::getInstance()->getBool("SplashScreen"));
