@@ -1885,15 +1885,36 @@ bool ApiSystem::isScriptingSupported(ScriptId script)
 	if (executables.size() == 0)
 		return true;
 
-	for (auto executable : executables)
-#ifdef _ENABLEEMUELEC
-		if (!Utils::FileSystem::exists("/usr/bin/batocera/" + executable))
-			return false;
-#else
-		if (!Utils::FileSystem::exists("/usr/bin/" + executable))
-			return false;
+	// es4all: 脚本查找路径改为依序 fallback。
+	// 原本 #ifdef _ENABLEEMUELEC 只查 /usr/bin/batocera/(EmuELEC 布局)，#else 查 /usr/bin/；
+	// 但三个 target(armbian/rocknix/emuelec)都带 -DENABLE_EMUELEC=1，故 #else 永不编译 ——
+	// Armbian/ROCKNIX 把 batocera-* 脚本装在 /usr/bin 或 /usr/local/bin 时一律找不到，
+	// 导致蓝牙/分辨率/BIOS/格式化/超频/音频/服务等菜单被静默隐藏。
+	// 改为逐目录查找，任一命中即视为支持；三边通用，不再依赖 target 宏。
+	static const std::vector<std::string> searchDirs =
+	{
+		"/usr/bin/batocera/",
+		"/usr/bin/",
+		"/usr/local/bin/"
+	};
 
-#endif
+	for (auto executable : executables)
+	{
+		bool found = false;
+
+		for (auto dir : searchDirs)
+		{
+			if (Utils::FileSystem::exists(dir + executable))
+			{
+				found = true;
+				break;
+			}
+		}
+
+		if (!found)
+			return false;
+	}
+
 	return true;
 }
 
