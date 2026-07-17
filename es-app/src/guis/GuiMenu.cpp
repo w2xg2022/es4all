@@ -303,11 +303,8 @@ if (ApiSystem::getInstance()->isScriptingSupported(ApiSystem::WIFI))
 
 		addEntry(_("SYSTEM SETTINGS").c_str(), true, [this] { openSystemSettings(); }, "iconSystem");
 	}
-	else
-	{
-		addEntry(_("INFORMATION").c_str(), true, [this] { openSystemInformations(); }, "iconSystem");
-		addEntry(_("UNLOCK USER INTERFACE MODE").c_str(), true, [this] { exitKidMode(); }, "iconAdvanced");
-	}
+	// es4all: 原本 else 分支(受限模式下只显示「信息」+「解锁用户界面模式」)已移除 ——
+	// Kid/Kiosk 已废除, isFullUI 恒真, 该分支不可达。
 
 #ifdef WIN32
 	addEntry(_("QUIT"), !Settings::getInstance()->getBool("ShowOnlyExit") || !Settings::getInstance()->getBool("ShowExit"), [this] { openQuitMenu(); }, "iconQuit");
@@ -2270,34 +2267,10 @@ void GuiMenu::openSystemSettings()
 	}
 #endif
 
-	// UI RESTRICTIONS
-	auto UImodeSelection = std::make_shared< OptionListComponent<std::string> >(mWindow, _("USER INTERFACE MODE"), false);
-	std::vector<std::string> UImodes = UIModeController::getInstance()->getUIModes();
-	for (auto it = UImodes.cbegin(); it != UImodes.cend(); it++)
-		UImodeSelection->add(_(it->c_str()), *it, Settings::getInstance()->getString("UIMode") == *it);
-
-	s->addWithDescription(_("USER INTERFACE MODE"), _("Lock down certain config menus for use with guest users/kids."), UImodeSelection);
-	s->addSaveFunc([UImodeSelection, window]
-	{
-		if (UImodeSelection->changed())
-		{
-			std::string selectedMode = UImodeSelection->getSelected();
-			if (selectedMode == "Basic" || selectedMode == "Full")
-				Settings::getInstance()->setString("UIMode", selectedMode);
-			else
-			{
-				std::string msg = _("You are changing the user interface to a restricted mode:\nThis will hide most menu options to prevent changes to the system.\nTo unlock and return to the full user interface, enter this code:") + "\n";
-				msg += "\"" + UIModeController::getInstance()->getFormattedPassKeyStr() + "\"\n\n";
-				msg += _("Do you want to proceed?");
-				window->pushGui(new GuiMsgBox(window, msg,
-					_("YES"), [selectedMode] {
-					LOG(LogDebug) << "Setting user interface mode to " << selectedMode;
-					Settings::getInstance()->setString("UIMode", selectedMode);
-					Settings::getInstance()->saveFile();
-				}, _("NO"), nullptr));
-			}
-		}
-	});
+	// es4all: 「用户界面模式」(USER INTERFACE MODE) 已移除 —— Kid / Kiosk 受限界面模式不再提供，
+	// 界面恒为「完整」(见 UIModeController::isUIModeFull() 等已定为常数)。
+	// 连带: 主菜单的「信息」「解锁用户界面模式」(只在受限模式出现)也不再显示。
+	// 原选单里的 "Basic" 本就选不到(mUIModes 中被注释掉)且 isUIModeBasic() 全专案零调用。
 
 	// KODI SETTINGS
 #ifdef _ENABLE_KODI_

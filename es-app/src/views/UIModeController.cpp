@@ -109,24 +109,40 @@ bool UIModeController::LoadEmptySystems()
 	return getInstance()->isUIModeFull() && Settings::LoadEmptySystems();
 }
 
+// es4all: Kid / Kiosk / Basic 受限界面模式已移除，界面恒为「完整」。
+//
+// 取舍说明：不去逐一改写 32 处调用点(isUIModeFull 13 处 / isUIModeKid 15 处 /
+// isUIModeKiosk 4 处，散落 18 个档案)，而是把这四个判断式定为常数 ——
+// 所有调用点自然走「完整模式」那条路，零遗漏；若逐处手改，一个 ! 方向弄反就会
+// 静默改变菜单，而 CI 只验编译不验行为，抓不到。被绕过的分支成为不可达代码，
+// 后续可安全清理。
+//
+// 附带效果(已确认接受)：
+//   - 主菜单的「信息」「解锁用户界面模式」只在 !isFullUI 时出现 → 不再出现
+//   - 「退出」原本在 Kid 模式隐藏 → 恒显示
+//   - 命令行 --force-kid / --force-kiosk (ForceKid/ForceKiosk 设定) 不再生效
+//   - 既有用户 es_settings.cfg 里若残留 UIMode="Kid"/"Kiosk"，会自动回到完整模式
+//
+// isUIModeBasic() 本就是死码：mUIModes 里 "Basic" 被注释掉(选不到)，且全专案零调用。
+
 bool UIModeController::isUIModeFull()
 {
-	return (mCurrentUIMode == "Full" && !Settings::getInstance()->getBool("ForceKiosk") && !Settings::getInstance()->getBool("ForceKid"));
+	return true;
 }
 
 bool UIModeController::isUIModeBasic()
 {
-	return (mCurrentUIMode == "Basic" && !Settings::getInstance()->getBool("ForceKiosk") && !Settings::getInstance()->getBool("ForceKid"));
+	return false;
 }
 
 bool UIModeController::isUIModeKid()
 {
-	return (Settings::getInstance()->getBool("ForceKid") || (mCurrentUIMode == "Kid" && !Settings::getInstance()->getBool("ForceKiosk")));
+	return false;
 }
 
 bool UIModeController::isUIModeKiosk()
 {
-	return (Settings::getInstance()->getBool("ForceKiosk") || (mCurrentUIMode == "Kiosk" && !Settings::getInstance()->getBool("ForceKid")));
+	return false;
 }
 
 std::string UIModeController::getFormattedPassKeyStr()
