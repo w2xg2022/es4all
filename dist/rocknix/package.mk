@@ -25,7 +25,13 @@ if [ ! "${OPENGLES_SUPPORT}" = no ]; then
   PKG_CMAKE_OPTS_TARGET+=" -DGLES2=1"
 fi
 
+# es4all: 必须带 -DENABLE_EMUELEC=1。
+# 它并非「启用 EmuELEC」的意思，而是 es4all 的完整功能集开关(源自 EmuELEC 分支的一批功能)，
+# 三个 target 都要开。少了它, CloudSaves.cpp 会因 EmulatorFeatures::cloudsave 与
+# GuiSaveState::loadGridAndCenter 未定义而编译失败 —— 本档原先缺此旗标, 用它做 buildroot
+# 编译会直接挂掉。CI(.github/workflows/build.yml) 三个 job 皆已带此旗标。
 PKG_CMAKE_OPTS_TARGET+=" -DES4ALL_TARGET=rocknix \
+                         -DENABLE_EMUELEC=1 \
                          -DROCKNIX=1 \
                          -DDISABLE_KODI=1 \
                          -DENABLE_FILEMANAGER=0 \

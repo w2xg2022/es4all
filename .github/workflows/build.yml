@@ -23,7 +23,8 @@ jobs:
             libsdl2-dev libsdl2-mixer-dev \
             libfreeimage-dev libfreetype-dev \
             libcurl4-openssl-dev libpugixml-dev rapidjson-dev \
-            libasound2-dev libvlc-dev libvlccore-dev
+            libasound2-dev libvlc-dev libvlccore-dev \
+            libpulse-dev libespeak-ng-dev
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -92,7 +93,8 @@ jobs:
             libsdl2-dev libsdl2-mixer-dev \
             libfreeimage-dev libfreetype-dev \
             libcurl4-openssl-dev libpugixml-dev rapidjson-dev \
-            libasound2-dev libvlc-dev libvlccore-dev
+            libasound2-dev libvlc-dev libvlccore-dev \
+            libpulse-dev libespeak-ng-dev
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -103,7 +105,10 @@ jobs:
         run: |
           mkdir -p build
           cd build
-          cmake .. -DGLES=OFF -DGLES2=ON -DCEC=OFF -DES4ALL_TARGET=rocknix -DENABLE_EMUELEC=1 -DDISABLE_KODI=1
+          # es4all: 与 dist/rocknix/package.mk 对齐
+          cmake .. -DGLES=OFF -DGLES2=ON -DES4ALL_TARGET=rocknix -DENABLE_EMUELEC=1 \
+                   -DROCKNIX=1 -DDISABLE_KODI=1 -DENABLE_FILEMANAGER=0 -DCEC=0 \
+                   -DENABLE_PULSE=1 -DUSE_SYSTEM_PUGIXML=1
 
       - name: Build
         run: cmake --build build -j"$(nproc)"
@@ -151,7 +156,8 @@ jobs:
             libsdl2-dev libsdl2-mixer-dev \
             libfreeimage-dev libfreetype-dev \
             libcurl4-openssl-dev libpugixml-dev rapidjson-dev \
-            libasound2-dev libvlc-dev libvlccore-dev
+            libasound2-dev libvlc-dev libvlccore-dev \
+            libpulse-dev libespeak-ng-dev
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -162,7 +168,9 @@ jobs:
         run: |
           mkdir -p build
           cd build
-          cmake .. -DGLES=OFF -DGLES2=ON -DCEC=OFF -DES4ALL_TARGET=emuelec -DENABLE_EMUELEC=1 -DDISABLE_KODI=1
+          # es4all: 与 dist/emuelec/package.mk 对齐(该档未带 CEC，故 CEC 保持 CMake 预设 ON)
+          cmake .. -DGLES=OFF -DGLES2=ON -DES4ALL_TARGET=emuelec -DENABLE_EMUELEC=1 \
+                   -DDISABLE_KODI=1 -DENABLE_FILEMANAGER=1 -DENABLE_TTS=1
 
       - name: Build
         run: cmake --build build -j"$(nproc)"
