@@ -392,9 +392,13 @@ void GuiMenu::openEmuELECSettings()
 {
 	auto s = new GuiSettings(mWindow, _("PLATFORM SETTINGS"));
 
+	// es4all: VIDEO MODE 为 EmuELEC 专属 —— 选项写死 Amlogic 电视盒的输出模式
+	// (1080p60hz / 480cvbs / 576cvbs ... 其中 cvbs 是 AV 端子，掌机根本没有)，
+	// 且依赖 /flash/EE_VIDEO_MODE 与 emuelec-utils resolutions，armbian/rocknix 上按了没用。
+	// 注: window / a 只服务本区块，故一并放在门控内，避免 CAP 关闭时产生未使用变量。
+#if defined(ES4ALL_CAP_EMUELEC_PLATFORM) && !defined(_ENABLEGAMEFORCE) && !defined(ODROIDGOA)
 	Window* window = mWindow;
 	std::string a;
-#if !defined(_ENABLEGAMEFORCE) && !defined(ODROIDGOA)
 	auto emuelec_video_mode = std::make_shared< OptionListComponent<std::string> >(mWindow, "VIDEO MODE", false);
         std::vector<std::string> videomode;
 		videomode.push_back("1080p60hz");
@@ -469,59 +473,15 @@ void GuiMenu::openEmuELECSettings()
 		 }
 		});
 #endif
-#ifdef _ENABLEGAMEFORCE
-		auto emuelec_blrgboptions_def = std::make_shared< OptionListComponent<std::string> >(mWindow, "BUTTON LED COLOR", false);
-		std::vector<std::string> blrgboptions;
-		blrgboptions.push_back("off");
-		blrgboptions.push_back("red");
-		blrgboptions.push_back("green");
-		blrgboptions.push_back("blue");
-		blrgboptions.push_back("white");
-		blrgboptions.push_back("purple");
-		blrgboptions.push_back("yellow");
-		blrgboptions.push_back("cyan");
-		
-		auto blrgboptionsS = SystemConf::getInstance()->get("bl_rgb");
-		if (blrgboptionsS.empty())
-		blrgboptionsS = "off";
-		
-		for (auto it = blrgboptions.cbegin(); it != blrgboptions.cend(); it++)
-		emuelec_blrgboptions_def->add(*it, *it, blrgboptionsS == *it);
-		
-		s->addWithLabel(_("BUTTON LED COLOR"), emuelec_blrgboptions_def);
-		s->addSaveFunc([emuelec_blrgboptions_def] {
-			if (emuelec_blrgboptions_def->changed()) {
-				std::string selectedblrgb = emuelec_blrgboptions_def->getSelected();
-                Utils::Platform::ProcessStartInfo("/usr/bin/odroidgoa_utils.sh bl " +selectedblrgb).run();
-				SystemConf::getInstance()->set("bl_rgb", selectedblrgb);
-                SystemConf::getInstance()->saveSystemConf();
-			}
-		});
-		
-        auto emuelec_powerled_def = std::make_shared< OptionListComponent<std::string> >(mWindow, "STATUS LED", false);
-		std::vector<std::string> powerledoptions;
-		powerledoptions.push_back("off");
-		powerledoptions.push_back("heartbeat");
-        powerledoptions.push_back("on");
-		
-		auto powerledoptionsS = SystemConf::getInstance()->get("gf_statusled");
-		if (powerledoptionsS.empty())
-		powerledoptionsS = "heartbeat";
-		
-		for (auto it = powerledoptions.cbegin(); it != powerledoptions.cend(); it++)
-		emuelec_powerled_def->add(*it, *it, powerledoptionsS == *it);
-		
-		s->addWithLabel(_("STATUS LED"), emuelec_powerled_def);
-		s->addSaveFunc([emuelec_powerled_def] {
-			if (emuelec_powerled_def->changed()) {
-				std::string selectedpowerled = emuelec_powerled_def->getSelected();
-                Utils::Platform::ProcessStartInfo("/usr/bin/odroidgoa_utils.sh pl " +selectedpowerled).run();
-				SystemConf::getInstance()->set("gf_statusled", selectedpowerled);
-                SystemConf::getInstance()->saveSystemConf();
-			}
-		});
-#endif	
-#if !defined(_ENABLEGAMEFORCE) && !defined(ODROIDGOA)
+	// es4all: BUTTON LED COLOR(bl_rgb) / STATUS LED(gf_statusled) 已删除 ——
+	// 两者包在 #ifdef _ENABLEGAMEFORCE 内，而 CI 三个 job 与 rocknix/emuelec 的 package.mk
+	// 均未定义 ENABLE_GAMEFORCE，属彻底死码；且为 GameForce 掌机专属硬件功能。
+	// es4all: AUDIO DEVICE 为 EmuELEC 专属 —— 选项写死 ALSA card,device 组合(切 HDMI/AV 输出)，
+	// 套用靠 /usr/bin/emuelec-utils setauddev，armbian/rocknix 无此工具 → 选了不会有任何反应
+	// (且 ee_audio_device 这个键在 ES 内除本菜单外无人读取)。
+	// 系统设置 → AUDIO OUTPUT (audio.device + ApiSystem::setAudioOutputDevice) 才是有抽象层的正牌入口。
+	// 未来若为其它 target 补上后端实作，可比照 EXTERNAL MOUNT 升为共用。
+#if defined(ES4ALL_CAP_EMUELEC_PLATFORM) && !defined(_ENABLEGAMEFORCE) && !defined(ODROIDGOA)
 		auto emuelec_audiodev_def = std::make_shared< OptionListComponent<std::string> >(mWindow, "AUDIO DEVICE", false);
 		std::vector<std::string> Audiodevices;
 		Audiodevices.push_back("auto");
@@ -548,6 +508,9 @@ void GuiMenu::openEmuELECSettings()
                 Utils::Platform::ProcessStartInfo("/usr/bin/emuelec-utils setauddev " +selectedaudio).run();
             });
 #endif
+	// es4all: START AT BOOT 为 EmuELEC 专属 —— 只写 ee_boot 这个键，
+	// 实际生效靠 EmuELEC 的开机脚本读取；armbian/rocknix 不读它 → 选了没作用。
+#if defined(ES4ALL_CAP_EMUELEC_PLATFORM)
 		auto emuelec_boot_def = std::make_shared< OptionListComponent<std::string> >(mWindow, _("START AT BOOT"), false);
 		std::vector<std::string> devices;
 		devices.push_back("Emulationstation");
@@ -562,6 +525,7 @@ void GuiMenu::openEmuELECSettings()
 				SystemConf::getInstance()->saveSystemConf();
 			}
 		});
+#endif
 
 #ifdef _ENABLEEMUELEC
 		auto ra_logging_enabled = std::make_shared<SwitchComponent>(mWindow);
@@ -582,6 +546,11 @@ void GuiMenu::openEmuELECSettings()
        // 它与该子菜单同属 splash 一类(只是键不同: ee_splash.enabled = RetroArch 启动画面;
        // 子菜单内为 ES 的载入/退出动画 ee_splashloading/ee_splashexit/...)，
        // 原本一个在外、一个在内，归类混乱。
+
+	// es4all: BOOT VIDEO 与 SPLASH SETTINGS 均为 EmuELEC 专属 ——
+	// 开机影片(ee_bootvideo.*)与 ES 载入/退出动画(ee_splash*)都是 EmuELEC 的机制，
+	// armbian/rocknix 上没有对应实作。
+#if defined(ES4ALL_CAP_EMUELEC_PLATFORM)
 
 	// es4all: BOOT VIDEO —— 由原本两个互相干扰的 Switch 合并为单一三档 OptionList。
 	// 原实现的问题:
@@ -616,6 +585,8 @@ void GuiMenu::openEmuELECSettings()
 	s->addEntry(_("SPLASH SETTINGS"), true, [this] {
 		createConfigureSplash(mWindow);
 	});
+
+#endif // ES4ALL_CAP_EMUELEC_PLATFORM (BOOT VIDEO + SPLASH SETTINGS)
 
 
 	// es4all: GAMEPAD CONFIG 入口已移除 —— 其内容实为 Wiimote 配对工具

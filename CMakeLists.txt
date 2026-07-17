@@ -88,6 +88,14 @@ elseif(ES4ALL_TARGET STREQUAL "rocknix")
 elseif(ES4ALL_TARGET STREQUAL "emuelec")
   add_definitions(-DES4ALL_PATHS_EMUELEC=1)
   add_definitions(-DES4ALL_BUILD_BUILDROOT=1)
+  # EmuELEC 专属的平台级功能，其实作只在 EmuELEC 上存在:
+  #   VIDEO MODE   —— Amlogic 输出模式(1080p/cvbs...)，依赖 /flash/EE_VIDEO_MODE 与 emuelec-utils resolutions
+  #   AUDIO DEVICE —— 写死 ALSA card,device，套用靠 emuelec-utils setauddev
+  #   START AT BOOT—— 只写 ee_boot，靠 EmuELEC 开机脚本读取
+  #   BOOT VIDEO / SPLASH SETTINGS —— EmuELEC 的开机影片与载入/退出动画机制
+  # 这些在 armbian/rocknix 上「显示得出来但按了没用」，故以能力旗标关闭。
+  # 未来若为其它 target 补上后端实作(如 AUDIO DEVICE、EXTERNAL MOUNT)，再把对应项升为共用。
+  add_definitions(-DES4ALL_CAP_EMUELEC_PLATFORM=1)
 endif()
 
 project(emulationstation-all)
