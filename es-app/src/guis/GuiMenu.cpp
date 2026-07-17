@@ -231,23 +231,21 @@ GuiMenu::GuiMenu(Window *window, bool animate) : GuiComponent(window), mMenu(win
 	}, "iconKodi");	
 #endif
 
-#ifdef _ENABLEEMUELEC
+	// es4all: 「平台设置」单一入口。
+	// 此前 _ENABLEEMUELEC 与 ES4ALL_TARGET_ROCKNIX 两块各自 addEntry，而三个 target 都带
+	// -DENABLE_EMUELEC=1，导致 ROCKNIX 上出现【两个同名的「平台设置」】(翻译后完全一样，
+	// 用户无从分辨)，且内容重叠(RETROARCH MENU / RA BEZELS / LOG LEVEL / EXTERNAL MOUNT)。
+	// 改为互斥：ROCKNIX 走自己的 openPlatformSettings()(只含在 ROCKNIX 上真生效的项)，
+	// 其余走 openEmuELECSettings()。后续将两者合并为单一全集函数(共用项 + CAP 门控的专属项)。
 	if (isFullUI)
 	{
-		addEntry(_("PLATFORM SETTINGS").c_str(), true, [this] { openEmuELECSettings(); }, "iconEmuelec"); /* < emuelec */
-	}
-#endif
-
 #if defined(ES4ALL_TARGET_ROCKNIX)
-	// es4all: ROCKNIX 专属 PLATFORM SETTINGS —— 全新独立函数，不碰 openEmuELECSettings 那团
-	// (Amlogic/emuelec 级联)。只放在 ROCKNIX 上真生效的平台级项:RETROARCH 菜单风格、
-	// CPU 调速器、RA 边框、RA 日志、外接挂载(走 ROCKNIX 原生 system.automount 机制)。
-	if (isFullUI)
-	{
-		// es4all: ROCKNIX 主题没有 iconEmuelec，用主题实际存在的 iconAdvanced（否则图标空缺）
+		// ROCKNIX 主题没有 iconEmuelec，用主题实际存在的 iconAdvanced（否则图标空缺）
 		addEntry(_("PLATFORM SETTINGS").c_str(), true, [this] { openPlatformSettings(); }, "iconAdvanced");
-	}
+#elif defined(_ENABLEEMUELEC)
+		addEntry(_("PLATFORM SETTINGS").c_str(), true, [this] { openEmuELECSettings(); }, "iconEmuelec");
 #endif
+	}
 
 	if (ApiSystem::getInstance()->isScriptingSupported(ApiSystem::RETROACHIVEMENTS) &&
 		SystemConf::getInstance()->getBool("global.retroachievements") &&
