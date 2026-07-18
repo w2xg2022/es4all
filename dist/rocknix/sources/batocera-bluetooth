@@ -8,9 +8,25 @@
 cmd="$1"
 [ $# -gt 0 ] && shift
 
+# es4all: 确保蓝牙 agent 就绪。
+# rocknix-bluetooth 的 start_live_devices / trust 需要 bluetooth-agent 服务，否则报
+# "Bluetooth agent is not running" 而扫不到/配不上设备。而 ES 的 ENABLE BLUETOOTH 开关
+# (走 EmuELEC 路径)只 `systemctl start bluetooth`、不起 agent。故在扫描/配对前经
+# rocknix-bluetooth enable(会 systemctl start bluetooth + bluetooth-agent 并等待就绪)补上。
+# 已 active 时跳过, 避免每次都等 agent 启动。
+ensure_bt_agent() {
+    systemctl is-active --quiet bluetooth-agent 2>/dev/null && return 0
+    /usr/bin/rocknix-bluetooth enable >/dev/null 2>&1
+}
+
 case "$cmd" in
   live_devices)
+    ensure_bt_agent
     exec /usr/bin/rocknix-bluetooth start_live_devices "$@"
+    ;;
+  trust)
+    ensure_bt_agent
+    exec /usr/bin/rocknix-bluetooth trust "$@"
     ;;
   "")
     exec /usr/bin/rocknix-bluetooth
