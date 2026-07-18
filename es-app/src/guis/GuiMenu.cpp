@@ -479,7 +479,8 @@ void GuiMenu::openEmuELECSettings()
 	// 系统设置 → AUDIO OUTPUT (audio.device + ApiSystem::setAudioOutputDevice) 才是有抽象层的正牌入口。
 	// 未来若为其它 target 补上后端实作，可比照 EXTERNAL MOUNT 升为共用。
 #if defined(ES4ALL_CAP_EMUELEC_PLATFORM) && !defined(_ENABLEGAMEFORCE) && !defined(ODROIDGOA)
-		auto emuelec_audiodev_def = std::make_shared< OptionListComponent<std::string> >(mWindow, "AUDIO DEVICE", false);
+		// es4all: 标题用 _() 才会翻译(原为裸字符串, 弹窗标题一直显示英文 AUDIO DEVICE)。
+		auto emuelec_audiodev_def = std::make_shared< OptionListComponent<std::string> >(mWindow, _("AUDIO DEVICE"), false);
 		std::vector<std::string> Audiodevices;
 		Audiodevices.push_back("auto");
 		Audiodevices.push_back("0,0");
@@ -493,8 +494,10 @@ void GuiMenu::openEmuELECSettings()
 		if (AudiodevicesS.empty())
 		AudiodevicesS = "auto";
 		
+		// es4all: 值维持 ALSA card,device(底层 emuelec-utils setauddev 要吃), 仅标签友善化:
+		// auto → 翻译为「自动」; card,device 要映射成 HDMI/耳机需按机型硬件(见后续建议)。
 		for (auto it = Audiodevices.cbegin(); it != Audiodevices.cend(); it++)
-		emuelec_audiodev_def->add(*it, *it, AudiodevicesS == *it);
+		emuelec_audiodev_def->add(*it == "auto" ? _("AUTO") : *it, *it, AudiodevicesS == *it);
 		
 		s->addWithDescription(_("AUDIO DEVICE"), _("Changes will need an EmulationStation restart."), emuelec_audiodev_def);
         
