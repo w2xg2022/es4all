@@ -131,8 +131,12 @@ void GuiInputConfig::initInputConfigStructure(InputConfig* target)
 	// 直接互換 a↔b / x↔y 的 icon(與 dispName)，不管本表預設極性，互換即正確；
 	// 未偵測(預設 false)時完全不動 → 零回歸。
 	{
+		// es4all: XY 跟着 AB 走(都用 InvertButtons)。
+		// 布局侦测 GuiDetectLayout 已简化为「只按一次 A」，只写 InvertButtons、不再写
+		// InvertXYButtons(后者遂永远为 false)。而标准手柄任天堂式(A在东)与 Xbox 式(A在南)
+		// 是 A/B 与 X/Y 两对一起换的:任天堂式两对都换、Xbox 式都不换。故 X/Y 直接跟 invAB,
+		// 否则任天堂式手柄 A/B 换了、X/Y 没换 —— X 明明在北却显示成西(实测 bug)。
 		bool invAB = Settings::getInstance()->getBool("InvertButtons");
-		bool invXY = Settings::getInstance()->getBool("InvertXYButtons");
 		auto findRow = [this](const std::string& n) -> InputConfigStructure* {
 			for (auto& r : GUI_INPUT_CONFIG_LIST) if (r.name == n) return &r;
 			return nullptr;
@@ -152,14 +156,11 @@ void GuiInputConfig::initInputConfigStructure(InputConfig* target)
 			split(q->dispName, qp, qpos);
 			if (!ppos.empty() && !qpos.empty()) { p->dispName = pp + qpos; q->dispName = qp + ppos; }
 		};
-		// es4all: A/B 与 X/Y 一致处理——都相信布局侦测(GuiDetectLayout)结果，
-		// 按侦测到的真实物理位置对调显示。理由：会把 X/Y 代码搞错的杂牌手柄，几乎
-		// 一定也把 A/B 代码搞错(同一套固件)，只信 A/B 不信 X/Y 是站不住脚的半套；
-		// 守规矩的手柄(代码可信)则 X/Y 也该跟着侦测走，位置提示才准(否则任天堂式
-		// 手柄的 X 明明在北却显示成西)。杂牌手柄反正 A/B 也会错，X/Y 一起错不更糟，
-		// 用户本就得靠「按字母」而非位置提示来设定。
-		if (invAB) swapPos(findRow("a"), findRow("b"));
-		if (invXY) swapPos(findRow("x"), findRow("y"));
+		if (invAB)
+		{
+			swapPos(findRow("a"), findRow("b"));
+			swapPos(findRow("x"), findRow("y"));
+		}
 	}
 }
 

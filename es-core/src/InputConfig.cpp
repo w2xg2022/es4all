@@ -373,13 +373,13 @@ std::string InputConfig::buttonLabel(const std::string& button)
 
 std::string InputConfig::buttonDisplayName(const std::string& button)
 {
-	// es4all: 跟 buttonImage 一致，依 InvertButtons/InvertXYButtons 回傳方位名。
+	// es4all: A/B 与 X/Y 都跟 InvertButtons(布局侦测只按一次 A、只写此设定)。
+	// 标准手柄任天堂/Xbox 是两对一起换，X/Y 跟 A/B 走位置才准。
 	bool invAB = Settings::getInstance()->getBool("InvertButtons");
-	bool invXY = Settings::getInstance()->getBool("InvertXYButtons");
 	if (button == "a") return invAB ? "SOUTH" : "EAST";
 	if (button == "b") return invAB ? "EAST" : "SOUTH";
-	if (button == "x") return invXY ? "WEST" : "NORTH";
-	if (button == "y") return invXY ? "NORTH" : "WEST";
+	if (button == "x") return invAB ? "WEST" : "NORTH";
+	if (button == "y") return invAB ? "NORTH" : "WEST";
 	return button;
 }
 
@@ -387,17 +387,16 @@ std::string InputConfig::buttonImage(const std::string& button)
 {
 	// es4all: 鍵位圖跟著佈局偵測結果(GuiDetectLayout)走。
 	// 預設(未反轉)：a=東 b=南 x=北 y=西(emuelec 慣例，與原行為一致，零回歸)。
-	// InvertButtons=true 時 AB 互換；InvertXYButtons=true 時 XY 互換。
+	// A/B 与 X/Y 都跟 InvertButtons(只按一次 A、只写此设定)——标准手柄两对一起换。
 	bool invAB = Settings::getInstance()->getBool("InvertButtons");
-	bool invXY = Settings::getInstance()->getBool("InvertXYButtons");
 	if (button == "a")
 		return invAB ? ":/help/buttons_south.svg" : ":/help/buttons_east.svg";
 	if (button == "b")
 		return invAB ? ":/help/buttons_east.svg" : ":/help/buttons_south.svg";
 	if (button == "x")
-		return invXY ? ":/help/buttons_west.svg" : ":/help/buttons_north.svg";
+		return invAB ? ":/help/buttons_west.svg" : ":/help/buttons_north.svg";
 	if (button == "y")
-		return invXY ? ":/help/buttons_north.svg" : ":/help/buttons_west.svg";
+		return invAB ? ":/help/buttons_north.svg" : ":/help/buttons_west.svg";
 
 	return button;
 }
