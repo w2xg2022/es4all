@@ -62,22 +62,21 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Publish Release
-        # es4all: 只有 main 发布 Release; dev 分支只产 artifacts, 不动线上 Release
-        if: github.ref == 'refs/heads/main'
+        # es4all: 发布类型由 PROGRAM_VERSION_STRING 是否含 "pre" 决定, 与分支无关。
+        #   含 pre(如 1.1pre) → 预览版(prerelease, 不设为 latest); 否则(如 1.0/1.1) → 正式版 latest。
+        #   版本序: 1.0 < 1.1pre < 1.1 < 1.2pre < 1.2 ...  main=1.0 发正式版, v1.1-dev=1.1pre 发预览版,
+        #   两者 tag 不同(v1.0 / v1.1pre)不冲突。ES 自我更新读 releases(含 prerelease)即可 OTA。
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: es4all v${{ steps.version.outputs.version }}
-          make_latest: true
+          prerelease: ${{ contains(steps.version.outputs.version, 'pre') }}
+          make_latest: ${{ !contains(steps.version.outputs.version, 'pre') }}
           files: dist/emulationstation-armbian-aarch64.zip
           body: |
-            压缩包内含三部分：emulationstation（主程序）、resources（图标、启动画面等资源文件）、locale（多语言翻译文件）。解压后三者直接位于压缩包根目录，分别复制覆盖到设备 /opt/emulationstation/ 对应目录，无需重新编译，重启 EmulationStation 即可生效。
-
-            ## 本版内容
-            - 补齐与 EmuELEC 基准对比缺漏的简体/繁体中文翻译
-            - Release 打包脚本修正：解压后不再多出一层 `emulationstation/` 目录
-            - 「平台设置」菜单图标改用 Emuelec 单色图标（配合主题风格）
-            - 手柄配置界面 ABXY 方位改为比照实体手柄印刷布局（A=下 / B=右 / X=左 / Y=上）
+            es4all 三平台(armbian / rocknix / emuelec)aarch64 构建。
+            每个 zip 内含 emulationstation(主程序) + resources + locale，解压后覆盖到设备对应目录即可，无需重新编译，重启 EmulationStation 生效。
+            版本号含 "pre" 为预览版(开发中)。
 
   build-rocknix:
     runs-on: ubuntu-24.04-arm
@@ -135,11 +134,12 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Publish Release (rocknix asset)
-        # es4all: 只有 main 发布 Release; dev 分支只产 artifacts, 不动线上 Release
-        if: github.ref == 'refs/heads/main'
+        # es4all: 追加 rocknix 产物到同一 release; 发布类型同随版本号(含 pre = 预览版)。
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
+          prerelease: ${{ contains(steps.version.outputs.version, 'pre') }}
+          make_latest: ${{ !contains(steps.version.outputs.version, 'pre') }}
           files: dist/emulationstation-rocknix-aarch64.zip
 
   build-emuelec:
@@ -197,9 +197,10 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Publish Release (emuelec asset)
-        # es4all: 只有 main 发布 Release; dev 分支只产 artifacts, 不动线上 Release
-        if: github.ref == 'refs/heads/main'
+        # es4all: 追加 emuelec 产物到同一 release; 发布类型同随版本号(含 pre = 预览版)。
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
+          prerelease: ${{ contains(steps.version.outputs.version, 'pre') }}
+          make_latest: ${{ !contains(steps.version.outputs.version, 'pre') }}
           files: dist/emulationstation-emuelec-aarch64.zip
