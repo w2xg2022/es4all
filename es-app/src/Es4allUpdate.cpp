@@ -251,6 +251,16 @@ namespace Es4allUpdate
 		if (n <= 0)
 			return std::make_pair(std::string("无法定位当前程序路径"), 1);
 		std::string realBin(exeBuf, n);
+		// 关键: readlink 在 exe 的 inode 已被替换(滚动更新时旧 /storage 文件被 mv 覆盖, 运行中的
+		// 进程仍持有旧 inode)会返回带 " (deleted)" 后缀的路径。若直接使用, 会污染挂载目标路径,
+		// 且未转义的括号会让生成的 shell/systemd 命令语法错误(实测 EMUELEC selfmount 服务因此在
+		// 重启后失败 → 退回镜像自带 ES)。这里剥掉该后缀, 取回干净的安装路径。
+		{
+			const std::string delSuffix = " (deleted)";
+			if (realBin.size() > delSuffix.size() &&
+			    realBin.compare(realBin.size() - delSuffix.size(), delSuffix.size(), delSuffix) == 0)
+				realBin = realBin.substr(0, realBin.size() - delSuffix.size());
+		}
 		// ES 实际读取的 resources = ~/.emulationstation/resources, 运行期解析到可写目录, 直接覆盖。
 		std::string userResDir = Paths::getUserEmulationStationPath() + "/resources";
 
