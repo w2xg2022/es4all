@@ -259,6 +259,35 @@ bool ApiSystem::setOverclock(std::string mode)
 	return executeScript("batocera-overclock set " + mode);
 }
 
+std::vector<std::string> ApiSystem::getAvailableCpuGovernors()
+{
+	// 读第 0 个 policy 的可用 governor(同一 SoC 各 policy 通常一致)。因设备/内核而异
+	// (RK3566 有 ondemand/powersave/performance/schedutil, 某些 Amlogic 只有 ondemand/performance),
+	// 故动态读取, 避免菜单列出内核不支持的项。
+	std::vector<std::string> govs;
+	std::string out = Utils::Platform::getShOutput(
+		"cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors 2>/dev/null");
+	for (auto& g : Utils::String::split(out, ' ', true))
+	{
+		std::string t = Utils::String::trim(g);
+		if (!t.empty())
+			govs.push_back(t);
+	}
+	return govs;
+}
+
+void ApiSystem::setCpuGovernor(const std::string& gov)
+{
+	// 空 = AUTO(不强制, 保持内核默认), 不动。否则写到所有 CPU 的 scaling_governor。
+	// EMUELEC 无发行版消费脚本, 由 ES 直接套用(需 root, EMUELEC 的 ES 以 root 运行)。
+	if (gov.empty())
+		return;
+
+	std::string sh = "for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do "
+	                 "[ -w \"$f\" ] && echo '" + gov + "' > \"$f\" 2>/dev/null; done";
+	Utils::Platform::ProcessStartInfo(sh).run();
+}
+
 // BusyComponent* ui
 std::pair<std::string, int> ApiSystem::updateSystem(const std::function<void(const std::string)>& func)
 {

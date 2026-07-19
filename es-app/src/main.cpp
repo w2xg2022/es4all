@@ -549,7 +549,13 @@ int err = snd_pcm_open(&pcm_handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
 	atexit(&onExit);
 
 	// Set locale
-	setLocale(argv[0]);	
+	setLocale(argv[0]);
+
+#if defined(ES4ALL_TARGET_EMUELEC)
+	// es4all: EMUELEC 无发行版消费脚本(不像 ROCKNIX 有 autostart 读 system.cpugovernor), 故开机时
+	// 由 ES 重新套用保存的 CPU governor 以持久化。空值(AUTO)则不动, 保持内核默认。
+	ApiSystem::getInstance()->setCpuGovernor(SystemConf::getInstance()->get("system.cpugovernor"));
+#endif
 
 #if !WIN32
 	if(enable_startup_game) {

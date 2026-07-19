@@ -530,6 +530,29 @@ void GuiMenu::openEmuELECSettings()
 		});
 #endif
 
+#if defined(ES4ALL_TARGET_EMUELEC)
+	// es4all: CPU 调速器(governor)。移植自 ROCKNIX 平台设置。EMUELEC 无发行版消费脚本(ROCKNIX 靠
+	// autostart/runemu.sh 读 system.cpugovernor 套用), 故由 ES 直接写 sysfs(ApiSystem::setCpuGovernor)
+	// 即时生效 + 开机重套(main.cpp)。列表动态读 scaling_available_governors, 只列内核实际支持的。
+	{
+		auto govs = ApiSystem::getInstance()->getAvailableCpuGovernors();
+		if (!govs.empty())
+		{
+			auto cpugov = std::make_shared< OptionListComponent<std::string> >(mWindow, _("CPU GOVERNOR"), false);
+			std::string curGov = SystemConf::getInstance()->get("system.cpugovernor");
+			cpugov->add(_("AUTO"), "", curGov.empty());
+			for (auto& g : govs)
+				cpugov->add(g, g, curGov == g);
+			s->addWithDescription(_("CPU GOVERNOR"), _("CPU frequency scaling policy."), cpugov);
+			cpugov->setSelectedChangedCallback([cpugov](std::string val) {
+				if (SystemConf::getInstance()->set("system.cpugovernor", val))
+					SystemConf::getInstance()->saveSystemConf();
+				ApiSystem::getInstance()->setCpuGovernor(val);
+			});
+		}
+	}
+#endif
+
 #ifdef _ENABLEEMUELEC
 		auto ra_logging_enabled = std::make_shared<SwitchComponent>(mWindow);
 		// es4all: 默认关闭(原为 != "0" 即未设时默认开)。仅显式设为 "1" 才开。

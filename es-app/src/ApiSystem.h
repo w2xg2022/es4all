@@ -155,6 +155,11 @@ public:
 
     bool setOverclock(std::string mode);
 
+    // es4all: CPU 调速器(governor)。读 sysfs 的 scaling_available_governors 动态列出;
+    // setCpuGovernor 直接写 sysfs(EMUELEC 用 —— 无发行版消费脚本, 由 ES 自己套用)。
+    std::vector<std::string> getAvailableCpuGovernors();
+    void setCpuGovernor(const std::string& gov);
+
     virtual std::pair<std::string, int> updateSystem(const std::function<void(const std::string)>& func = nullptr);
 
     std::pair<std::string, int> backupSystem(BusyComponent* ui, std::string device);
