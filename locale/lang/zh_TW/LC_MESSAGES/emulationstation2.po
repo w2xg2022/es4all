@@ -4339,3 +4339,6 @@ msgstr "正在解壓"
 
 msgid "INSTALLING"
 msgstr "正在安裝"
+
+msgid "OPTICAL"
+msgstr "光纖"

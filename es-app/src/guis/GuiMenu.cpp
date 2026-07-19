@@ -511,6 +511,41 @@ void GuiMenu::openEmuELECSettings()
                 Utils::Platform::ProcessStartInfo("/usr/bin/emuelec-utils setauddev " +selectedaudio).run();
             });
 #endif
+
+#if defined(ES4ALL_CAP_EMUELEC_PLATFORM)
+	// es4all: AUDIO OUTPUT —— HDMI / AV / 光纤(SPDIF) 三向切换。复用 emuelec-utils setauddev 机制:
+	// 写 ee_audio_device 并调 `emuelec-utils setauddev <card,device>`, 后者把 /storage/.config/
+	// asound.conf 的默认 PCM 改成 pcm "hw:<card,device>"。这是原隐藏 AUDIO DEVICE 同一套后端,
+	// 只是把隐晦的 0,0/1,1/... 换成 3 个友善标签。
+	//
+	// ⚠️⚠️ 下面三个 card,device 是【占位值】, 机型相关, 必须在实机(E900V22C .165)确认后再填:
+	//   1) 开机后 `aplay -l` 列出所有播放设备;
+	//   2) 逐一 setauddev 测试, 听哪个物理孔出声, 确定 HDMI / AV(T9015模拟) / 光纤(SPDIF) 各是哪个;
+	//   3) 把下面 kHdmiDev/kAvDev/kSpdifDev 改成实测值。
+	// (Amlogic 上 HDMI 通常是默认 hw:0,0; AV=T9015 内置 DAC; 光纤=SPDIF, 但编号各机型不同。)
+	{
+		auto audioout = std::make_shared< OptionListComponent<std::string> >(mWindow, _("AUDIO OUTPUT"), false);
+		const std::string kHdmiDev  = "0,0";   // TODO 实机验证: HDMI
+		const std::string kAvDev    = "1,1";   // TODO 实机验证: AV / 模拟(T9015)
+		const std::string kSpdifDev = "0,1";   // TODO 实机验证: 光纤 / SPDIF
+
+		std::string cur = SystemConf::getInstance()->get("ee_audio_device");
+		// setauddev 把 auto 当 0,0; 若当前是 auto 且 HDMI 占位=0,0, 视为 HDMI 已选。
+		if (cur.empty() || cur == "auto")
+			cur = kHdmiDev;
+
+		audioout->add(_("HDMI"),    kHdmiDev,  cur == kHdmiDev);
+		audioout->add(_("AV"),      kAvDev,    cur == kAvDev);
+		audioout->add(_("OPTICAL"), kSpdifDev, cur == kSpdifDev);
+		s->addWithDescription(_("AUDIO OUTPUT"), _("Changes will need an EmulationStation restart."), audioout);
+		audioout->setSelectedChangedCallback([audioout](std::string dev) {
+			if (SystemConf::getInstance()->set("ee_audio_device", dev))
+				SystemConf::getInstance()->saveSystemConf();
+			Utils::Platform::ProcessStartInfo("/usr/bin/emuelec-utils setauddev " + dev).run();
+		});
+	}
+#endif
+
 	// es4all: START AT BOOT 为 EmuELEC 专属 —— 只写 ee_boot 这个键，
 	// 实际生效靠 EmuELEC 的开机脚本读取；armbian/rocknix 不读它 → 选了没作用。
 #if defined(ES4ALL_CAP_EMUELEC_PLATFORM)
