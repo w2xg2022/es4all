@@ -585,8 +585,10 @@ void GuiMenu::openEmuELECSettings()
 			auto cpugov = std::make_shared< OptionListComponent<std::string> >(mWindow, _("CPU GOVERNOR"), false);
 			std::string curGov = SystemConf::getInstance()->get("system.cpugovernor");
 			cpugov->add(_("AUTO"), "", curGov.empty());
+			// es4all: 值保持内核 governor 名(小写, 写 sysfs 用); 显示用大写名过 _() 翻译
+			// (ONDEMAND/PERFORMANCE/... 已加 zh_CN/zh_TW; 未翻的 governor 回退显示大写原名)。
 			for (auto& g : govs)
-				cpugov->add(g, g, curGov == g);
+				cpugov->add(_(Utils::String::toUpper(g).c_str()), g, curGov == g);
 			s->addWithDescription(_("CPU GOVERNOR"), _("CPU frequency scaling policy."), cpugov);
 			cpugov->setSelectedChangedCallback([cpugov](std::string val) {
 				if (SystemConf::getInstance()->set("system.cpugovernor", val))

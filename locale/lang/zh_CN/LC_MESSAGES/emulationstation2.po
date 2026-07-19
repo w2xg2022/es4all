@@ -4342,3 +4342,18 @@ msgstr "正在安装"
 
 msgid "OPTICAL"
 msgstr "光纤"
+
+msgid "ONDEMAND"
+msgstr "按需"
+
+msgid "PERFORMANCE"
+msgstr "性能"
+
+msgid "POWERSAVE"
+msgstr "省电"
+
+msgid "SCHEDUTIL"
+msgstr "智能调度"
+
+msgid "CONSERVATIVE"
+msgstr "保守"
