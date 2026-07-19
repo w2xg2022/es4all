@@ -1,0 +1,123 @@
+#!/bin/bash
+# es4all EMUELEC 蓝牙垫片
+# -----------------------------------------------------------------------------
+# ES(batocera 血统)统一调用 `batocera-bluetooth <verb>`。配对 GUI(GuiBluetoothPair)用
+# `live_devices` 流式接收扫描到的设备(每行 <device id=".." name=".." status=".." type=".."/>),
+# 选中后用 `trust <mac>` 配对。但 EmuELEC 自带的 /usr/bin/batocera/batocera-bluetooth 只有
+# list/trust(跑 Python dialog 互动工具)/remove, 【没有 live_devices】→ ES 扫描卡住、配不上。
+#
+# 本垫片用 bluetoothctl 直接实作 ES 需要的动词, 让 ES 原生扫描+配对 GUI 在 EmuELEC 上可用。
+# 部署: 覆盖 /usr/bin/batocera/batocera-bluetooth(bind-mount 或烤进镜像)。与 ROCKNIX 的
+# batocera-bluetooth 垫片同定位(命令边界=batocera-bluetooth, ES 与发行版解耦)。
+# -----------------------------------------------------------------------------
+
+. /etc/profile 2>/dev/null
+
+BTCTL=/usr/bin/bluetoothctl
+LOGF=/emuelec/logs/bluetooth.log
+SCANFLAG=/tmp/es4all-bt-scanning
+MACRE='([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}'
+
+btctl() { printf '%b\n' "$1" | "$BTCTL" >> "$LOGF" 2>&1; }
+
+ensure_agent() {
+    rfkill unblock bluetooth 2>/dev/null
+    btctl "power on\nagent on\ndefault-agent\npairable on"
+}
+
+emit_device() {   # mac name status
+    local mac="$1" name="$2" status="$3"
+    [ -z "$name" ] && name="$mac"
+    printf '<device id="%s" name="%s" status="%s" type="joystick" />\n' "$mac" "$name" "$status"
+}
+
+ACTION="$1"; shift
+
+case "$ACTION" in
+  enable)
+    ensure_agent
+    ;;
+
+  disable)
+    btctl "scan off\npower off"
+    ;;
+
+  live_devices)
+    ensure_agent
+    # 先补一遍开扫描前已知(未配对)的设备, 避免漏掉
+    "$BTCTL" devices 2>/dev/null | while read -r _ mac name; do
+        printf '%s' "$mac" | grep -qiE "^$MACRE$" && emit_device "$mac" "$name" "found"
+    done
+    # 关键: `bluetoothctl scan on`(非交互)只设置扫描就退出、不流式输出设备事件。必须让
+    # bluetoothctl 保持【交互】运行才会持续打印 [NEW]/[CHG]/[DEL] Device。用旗标档撑住 stdin:
+    # 喂 scan on 后循环 sleep 直到 stop_live_devices 删掉旗标档 → 喂 scan off/quit → 干净收尾。
+    touch "$SCANFLAG"
+    # 注: bluetoothctl 即使管道也输出 ANSI 色码(如 [<ESC>[0;92mNEW<ESC>[0m] Device ...), 且事件行
+    # 前常有 [bluetooth]# 提示前缀。busybox sed 不支持 -u(管道剥 ANSI 会破坏 live 流), 故不剥 ANSI:
+    # 用【宽松子串】匹配 NEW/CHG/DEL + Device(ANSI 夹在中间不影响子串), MAC 用 grep 抓, name 取 MAC
+    # 之后的部分(名字在行尾、无 ANSI)。逐行处理保持实时。
+    { printf 'scan on\n'; while [ -f "$SCANFLAG" ]; do sleep 1; done; printf 'scan off\nquit\n'; } \
+      | stdbuf -oL "$BTCTL" 2>/dev/null \
+      | while IFS= read -r line; do
+        case "$line" in
+          *NEW*Device*|*CHG*Device*)
+            mac=$(printf '%s' "$line" | grep -oiE "$MACRE" | head -1)
+            [ -z "$mac" ] && continue
+            name=$(printf '%s' "$line" | sed -E "s/.*$mac[[:space:]]*//")
+            # [CHG] 常是 RSSI/属性更新而非名字, 无有效名字就跳过(避免刷屏)
+            case "$name" in ""|RSSI*|ManufacturerData*|ServiceData*|TxPower*|UUIDs*|Connected*|Paired*|Trusted*|Bonded*|LegacyPairing*|ServicesResolved*|WakeAllowed*|Modalias*|AdvertisingFlags*|Alias*) continue ;; esac
+            emit_device "$mac" "$name" "found"
+            ;;
+          *DEL*Device*)
+            mac=$(printf '%s' "$line" | grep -oiE "$MACRE" | head -1)
+            [ -n "$mac" ] && emit_device "$mac" "" "removed"
+            ;;
+        esac
+    done
+    ;;
+
+  stop_live_devices)
+    rm -f "$SCANFLAG"          # 让 live_devices 的喂食循环退出 -> bluetoothctl quit -> 干净结束
+    btctl "scan off"
+    ;;
+
+  trust)
+    MAC="$1"
+    rfkill unblock bluetooth 2>/dev/null
+    # 关键: 配对必须在【同一个 bluetoothctl 会话】里完成 —— 分开多个短命 bluetoothctl 会导致
+    # agent 不持久(注册完即退)+ 设备 "not available"(新实例没扫到)。故单会话内: 注册 agent
+    # (NoInputNoOutput 自动接受配对, 适合手柄无 PIN)、扫描让设备可见、pair(等完成)、trust、connect。
+    {
+      printf 'power on\n'
+      printf 'agent NoInputNoOutput\ndefault-agent\n'
+      printf 'scan on\n';        sleep 5
+      printf 'pair %s\n' "$MAC"; sleep 9
+      printf 'trust %s\n' "$MAC";   sleep 1
+      printf 'connect %s\n' "$MAC"; sleep 4
+      printf 'scan off\nquit\n'
+    } | stdbuf -oL "$BTCTL" >> "$LOGF" 2>&1
+    # 配对/连接成功任一即算成功(ES 据返回码判断)
+    "$BTCTL" info "$MAC" 2>/dev/null | grep -qE 'Paired: yes|Connected: yes'
+    ;;
+
+  list)
+    # 复用 EmuELEC 的 list 语义: 从 /storage/.cache/bluetooth 读已信任设备
+    find /storage/.cache/bluetooth -type f -name info 2>/dev/null | while read -r f; do
+        if grep -qE '^Trusted=true$' "$f"; then
+            n=$(grep -E '^Name=' "$f" | sed 's/^Name=//')
+            a=$(basename "$(dirname "$f")")
+            echo "$a $n"
+        fi
+    done
+    ;;
+
+  remove)     btctl "untrust $1\nremove $1" ;;
+  connect)    btctl "connect $1" ;;
+  disconnect) btctl "disconnect $1" ;;
+
+  *)
+    echo "usage: $0 {enable|disable|live_devices|stop_live_devices|trust <mac>|list|remove <mac>|connect <mac>|disconnect <mac>}" >&2
+    exit 1
+    ;;
+esac
+exit 0
