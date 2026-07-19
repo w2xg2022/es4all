@@ -5250,27 +5250,23 @@ void GuiMenu::openQuitMenu_static(Window *window, bool quickAccessMenu, bool ani
 	{
 		if (SystemConf::getInstance()->getBool("extra_quit_menu.enabled", true))
 		{
-			// detect boot media (eMMC vs SD/USB) and show matching reboot entry
+			// es4all: 探测开机媒体(eMMC vs SD/USB)决定显示「重启到 USB/SD」还是「重启到 eMMC」。
+			// 原实现用 lsblk + findmnt —— EMUELEC(busybox)两个命令都没装, 整段失效,
+			// bootedFromEmmc 恒为默认 true → 无论实际从哪开机都显示「重启到USB/SD」(与实际相反)。
+			// 改用纯 busybox 可用的 /proc/mounts + /sys/block/<disk>/removable:
+			//   优先取 /flash 的设备(EMUELEC/CoreELEC 开机分区; / 在 EMUELEC 是 squashfs loop,
+			//   无法直接判开机媒体), 否则取 /; 若是 loop 设备再回退 /storage。
+			//   剥掉分区号得基础盘(sda1→sda, mmcblk0p1→mmcblk0), 读 removable(0=eMMC,1=SD/USB)。
 			bool bootedFromEmmc = true;
 
-			FILE* pipe = popen("lsblk -no PKNAME \"$(findmnt -no SOURCE /)\" 2>/dev/null", "r");
+			FILE* pipe = popen(
+				R"SH(dev=$(awk '$2=="/flash"{print $1;exit}' /proc/mounts); [ -z "$dev" ] && dev=$(awk '$2=="/"{print $1;exit}' /proc/mounts); case "$dev" in /dev/loop*) dev=$(awk '$2=="/storage"{print $1;exit}' /proc/mounts);; esac; d=$(basename "$dev" 2>/dev/null); case "$d" in mmcblk*) d=${d%p[0-9]*};; *) d=$(echo "$d" | sed 's/[0-9]*$//');; esac; cat "/sys/block/$d/removable" 2>/dev/null)SH", "r");
 			if (pipe != nullptr)
 			{
-				char buf[64] = "";
-				std::string rootDisk = (fgets(buf, sizeof(buf), pipe) != nullptr) ? Utils::String::trim(std::string(buf)) : "";
+				char buf[8] = "";
+				if (fgets(buf, sizeof(buf), pipe) != nullptr)
+					bootedFromEmmc = (Utils::String::trim(std::string(buf)) == "0");
 				pclose(pipe);
-
-				if (!rootDisk.empty())
-				{
-					pipe = popen(("cat /sys/block/" + rootDisk + "/removable 2>/dev/null").c_str(), "r");
-					if (pipe != nullptr)
-					{
-						char buf2[8] = "";
-						if (fgets(buf2, sizeof(buf2), pipe) != nullptr)
-							bootedFromEmmc = (Utils::String::trim(std::string(buf2)) == "0");
-						pclose(pipe);
-					}
-				}
 			}
 
 			if (bootedFromEmmc)
