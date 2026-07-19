@@ -809,7 +809,7 @@ void GuiMenu::openExternalMounts(Window* mWindow, std::string configName)
 	GuiSettings* externalMounts = new GuiSettings(mWindow, _("EXTERNAL MOUNT OPTIONS").c_str());
     std::string a;
     
-		auto emuelec_external_device_def = std::make_shared< OptionListComponent<std::string> >(mWindow, "EXTERNAL DEVICE", false);
+		auto emuelec_external_device_def = std::make_shared< OptionListComponent<std::string> >(mWindow, _("EXTERNAL DEVICE"), false);
 		std::vector<std::string> extdevoptions;
 		extdevoptions.push_back("auto");
 		  for(std::stringstream ss(Utils::Platform::getShOutput(R"(find /var/media/ -type d -maxdepth 1 -mindepth 1 -name EEROMS -prune -o -exec basename {} \; | sed "s/$/,/g")")); getline(ss, a, ','); ) {
