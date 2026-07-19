@@ -4366,3 +4366,6 @@ msgstr "ES 日志级别"
 
 msgid "Log verbosity of EmulationStation itself (es_log.txt); not games."
 msgstr "EmulationStation 前端自身的日志详细度(es_log.txt)，与游戏无关。"
+
+msgid "Please reboot to finish updating."
+msgstr "请重开机以完成更新。"

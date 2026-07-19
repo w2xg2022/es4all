@@ -73,7 +73,13 @@ public:
 			GuiUpdate::state = GuiUpdateState::State::UPDATE_READY;
 
 			mWndNotification->updateTitle(_U("\uF019 ") + _("UPDATE IS READY"));
+#ifdef ES4ALL_SELF_UPDATE
+			// es4all: \u81EA\u6211\u66F4\u65B0\u8D70\u6574\u673A\u91CD\u5F00\u673A\u624D\u751F\u6548(\u5F00\u673A\u670D\u52A1/\u94A9\u5B50 bind-mount \u65B0\u6863), \u975E\u4EC5\u91CD\u542F ES,
+			// \u6545\u7528\u660E\u786E\u63AA\u8F9E, \u907F\u514D\u7528\u6237\u8BEF\u4EE5\u4E3A\u53EA\u662F\u91CD\u542F\u524D\u7AEF\u3002
+			mWndNotification->updateText(_("Please reboot to finish updating."));
+#else
 			mWndNotification->updateText(_("REBOOT TO APPLY"));
+#endif
 
 			std::this_thread::yield();
 			std::this_thread::sleep_for(std::chrono::hours(12));
