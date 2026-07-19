@@ -413,12 +413,15 @@ void InputConfig::AssignActionButtons()
 	BUTTON_BACK = invertButtons ? BBUTTON : ABUTTON;
 #endif
 
-// es4all: ROCKNIX 与 EmuELEC 同惯例——默认(InvertButtons=false)确认键=逻辑 a
-// (即用户在手柄配置里映射为 A/南面的那颗)。否则落到上面 #else 分支会把确认键
-// 绑到逻辑 b，Xbox 手柄上就变成"要按 B 才确认"。
+// es4all: ROCKNIX 与 EmuELEC —— 确认键【始终】= 逻辑 a(印刷 A)、返回键【始终】= 逻辑 b(印刷 B),
+// 与布局无关。理由: 输入配置里用户把印刷 A 映射到逻辑 a、印刷 B 映射到逻辑 b(位置提示已由
+// GuiDetectLayout 按佈局校正), 故 GUI_INPUT_CONFIG_LIST 的 swapPos 只换显示位置、不换逻辑绑定。
+// 于是: 任天堂式(A在东)按印刷 A(东)确认、Xbox 式(A在南)按印刷 A(南)确认 —— 一致直觉。
+// 原 `invert ? BBUTTON : ABUTTON` 会让任天堂式(invert=true)确认键变成逻辑 b(印刷 B), 即
+// "按 B 才确认"(实测 bug); Xbox(invert=false)本就 a、不受本次改动影响, 零回归。
 #if defined(_ENABLEEMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)
-	BUTTON_OK = invertButtons ? BBUTTON : ABUTTON;
-	BUTTON_BACK = invertButtons ? ABUTTON : BBUTTON;
+	BUTTON_OK = ABUTTON;
+	BUTTON_BACK = BBUTTON;
 #endif
 
 }
