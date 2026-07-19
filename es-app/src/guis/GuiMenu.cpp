@@ -532,7 +532,10 @@ void GuiMenu::openEmuELECSettings()
 
 #ifdef _ENABLEEMUELEC
 		auto ra_logging_enabled = std::make_shared<SwitchComponent>(mWindow);
-		bool raLogging = SystemConf::getInstance()->get("global.retroarchLogging") != "0";
+		// es4all: 默认关闭(原为 != "0" 即未设时默认开)。仅显式设为 "1" 才开。
+		// 注: 消费端 emuelecRunEmu.sh 在该键为空时也默认开日志, 故如需实机默认关, 还要在发行版
+		// glue 里 seed global.retroarchLogging=0(记入 memory 待办)。
+		bool raLogging = SystemConf::getInstance()->get("global.retroarchLogging") == "1";
 		ra_logging_enabled->setState(raLogging);
 		s->addWithLabel(_("RETROARCH LOGGING"), ra_logging_enabled);
 		s->addSaveFunc([ra_logging_enabled] {

@@ -321,6 +321,17 @@ namespace Es4allUpdate
 			system(sh.c_str());
 		}
 
+		// 3b) locale -> 可写 user 目录(三平台共用)。ES 的 setLocale 优先读 user 目录 locale/lang,
+		//     这样翻译才随版本更新(唯读平台上 /usr 的 locale 无法改)。zip 内 locale/lang/<lang>/...
+		{
+			std::string userLocaleDir = Paths::getUserEmulationStationPath() + "/locale";
+			std::string sh;
+			sh += "if [ -d '" + extractDir + "/locale' ]; then ";
+			sh += "rm -rf '" + userLocaleDir + ".new'; cp -a '" + extractDir + "/locale' '" + userLocaleDir + ".new'; ";
+			sh += "rm -rf '" + userLocaleDir + "'; mv '" + userLocaleDir + ".new' '" + userLocaleDir + "'; fi";
+			system(sh.c_str());
+		}
+
 		// 4) binary 落地(按平台)。
 #if defined(ES4ALL_TARGET_ARMBIAN)
 		// 可写 rootfs: 就地 rename 覆盖。rename 可替换正在运行的可执行文件(避开 ETXTBSY),

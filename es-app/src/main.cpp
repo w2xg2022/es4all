@@ -327,11 +327,18 @@ int setLocale(char * argv1)
 #if WIN32
 	std::locale::global(std::locale("en-US"));
 #else
+	// es4all: 优先读可写的 user 目录 locale(~/.emulationstation/locale/lang, 运行期解析到
+	// /storage/.config/emulationstation/locale/lang) —— 唯读平台(ROCKNIX/EMUELEC)上 binary 在
+	// /usr/bin、locale 只读, 自我更新无法更新翻译。改从 user 目录读, 让 apply()/部署能一并更新
+	// locale, 翻译随版本生效。不存在则退回原有 exe 旁 / CWD / /usr/share/locale。
+	std::string userLocalePath = Paths::getUserEmulationStationPath() + "/locale/lang";
 	std::string mLocalePath = Paths::getEmulationStationPath() + "/locale/lang";
 
 	std::string savedLanguage = SystemConf::getInstance()->get("system.language");
 
-	if (Utils::FileSystem::exists(mLocalePath))
+	if (Utils::FileSystem::exists(userLocalePath))
+		EsLocale::init(savedLanguage, userLocalePath);
+	else if (Utils::FileSystem::exists(mLocalePath))
 		EsLocale::init(savedLanguage, mLocalePath);
 	else if (Utils::FileSystem::exists("./locale/lang"))
 		EsLocale::init(savedLanguage, "./locale/lang");
