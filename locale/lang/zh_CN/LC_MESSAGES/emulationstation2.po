@@ -4360,3 +4360,9 @@ msgstr "保守"
 
 msgid "Display EmulationStation's own framerate. Does not affect games."
 msgstr "显示 EmulationStation 自身的帧率。不影响游戏。"
+
+msgid "ES LOG LEVEL"
+msgstr "ES 日志级别"
+
+msgid "Log verbosity of EmulationStation itself (es_log.txt); not games."
+msgstr "EmulationStation 前端自身的日志详细度(es_log.txt)，与游戏无关。"

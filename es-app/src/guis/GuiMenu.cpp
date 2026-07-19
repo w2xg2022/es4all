@@ -1671,7 +1671,10 @@ void GuiMenu::openDeveloperSettings()
 	});
 
 	// log level
-	auto logLevel = std::make_shared< OptionListComponent<std::string> >(mWindow, _("LOG LEVEL"), false);
+	// es4all: 改名 ES LOG LEVEL(原 LOG LEVEL) —— 与平台设置的「RETROARCH日志」区分:
+	// 本项是 ES 前端【自身】日志(Settings LogLevel -> es_log.txt), 不是游戏/RA 日志。
+	// (ROCKNIX 平台设置另有 system.loglevel 的 LOG LEVEL, 是不同键, 不受此改名影响。)
+	auto logLevel = std::make_shared< OptionListComponent<std::string> >(mWindow, _("ES LOG LEVEL"), false);
 	std::vector<std::string> modes;
 	modes.push_back("default");
 #ifdef _ENABLEEMUELEC 
@@ -1690,7 +1693,7 @@ void GuiMenu::openDeveloperSettings()
 	for (auto it = modes.cbegin(); it != modes.cend(); it++)
 		logLevel->add(_(it->c_str()), *it, level == *it);
 
-	s->addWithLabel(_("LOG LEVEL"), logLevel);
+	s->addWithDescription(_("ES LOG LEVEL"), _("Log verbosity of EmulationStation itself (es_log.txt); not games."), logLevel);
 	s->addSaveFunc([this, logLevel]
 	{
 		if (Settings::getInstance()->setString("LogLevel", logLevel->getSelected() == "default" ? "" : logLevel->getSelected()))
