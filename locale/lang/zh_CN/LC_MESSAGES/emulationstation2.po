@@ -4357,3 +4357,6 @@ msgstr "智能调度"
 
 msgid "CONSERVATIVE"
 msgstr "保守"
+
+msgid "Display EmulationStation's own framerate. Does not affect games."
+msgstr "显示 EmulationStation 自身的帧率。不影响游戏。"
