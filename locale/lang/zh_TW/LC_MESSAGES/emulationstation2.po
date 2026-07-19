@@ -3265,10 +3265,10 @@ msgid "REALLY RESTART EMULATIONSTATION?"
 msgstr "確定要重新啟動EmulationStation嗎？"
 
 msgid "REBOOT TO USB/SD"
-msgstr "重新啟動至USB/SD"
+msgstr "重新啟動至USB/TF"
 
 msgid "REALLY REBOOT TO USB/SD?"
-msgstr "確定要重新啟動至USB/SD嗎？"
+msgstr "確定要重新啟動至USB/TF嗎？"
 
 msgid "REBOOT TO EMMC"
 msgstr "重新啟動至EMMC"
