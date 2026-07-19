@@ -4333,3 +4333,9 @@ msgstr "正在更新 ES4All"
 
 msgid "Show the RetroArch splash screen when a game starts."
 msgstr "遊戲啟動時顯示 RetroArch 啟動畫面。"
+
+msgid "EXTRACTING"
+msgstr "正在解壓"
+
+msgid "INSTALLING"
+msgstr "正在安裝"

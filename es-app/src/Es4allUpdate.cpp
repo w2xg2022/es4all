@@ -261,20 +261,8 @@ namespace Es4allUpdate
 			    realBin.compare(realBin.size() - delSuffix.size(), delSuffix.size(), delSuffix) == 0)
 				realBin = realBin.substr(0, realBin.size() - delSuffix.size());
 		}
-		// ES 实际读取的 resources = ~/.emulationstation/resources, 运行期解析到可写目录, 直接覆盖。
+		// ES 实际读取的 resources/locale = ~/.emulationstation/{resources,locale}, 运行期解析到可写目录。
 		std::string userResDir = Paths::getUserEmulationStationPath() + "/resources";
-
-		// 判断这次是"首次安装"还是"滚动更新"(唯读平台专用, 决定重启 ES 够不够用还是要整机重开机)。
-		// mount --bind 绑定的是当时的 inode; 若 realBin 此前已是 bind-mount 目标, 说明是滚动更新
-		// ——稍后 mv 新文件进 /storage 只换 inode, 旧挂载仍指旧档, 只重启 ES 进程看不到新版本。
-#if defined(ES4ALL_TARGET_ROCKNIX) || defined(ES4ALL_TARGET_EMUELEC)
-		{
-			std::string chk = "grep -q ' " + realBin + " ' /proc/mounts";
-			gNeedsFullReboot = (system(chk.c_str()) == 0);
-		}
-#else
-		gNeedsFullReboot = false;
-#endif
 
 		// 可写暂存基地: 唯读平台用 /storage, ARMBIAN 用可写的 home。
 #if defined(ES4ALL_TARGET_ARMBIAN)
@@ -311,50 +299,54 @@ namespace Es4allUpdate
 		if (!Utils::FileSystem::exists(newBin))
 			return std::make_pair(std::string("更新包内未找到 emulationstation"), 1);
 
-		// 3) resources -> 可写 user 目录(三平台共用, 原子替换)。
+		// 3) 落地。⚠️关键: 绝不在运行中的 ES 上破坏性替换它正在读取的 live 目录(resources/locale)。
+		//    否则 ES 下一次载入资源/翻译就找不到 -> 崩溃黑屏(实机 .165 点更新即挂的根因: 旧代码
+		//    在此 rm -rf 了运行中的 resources 目录)。改为: 全部暂存到 /storage 独立位置, 由开机钩子/
+		//    服务在 ES 启动前(ES 已停)才 bind-mount 盖上; 唯读平台因此强制整机重开机。
 		report(_("INSTALLING"), -1);
-		{
-			std::string sh;
-			sh += "if [ -d '" + extractDir + "/resources' ]; then ";
-			sh += "rm -rf '" + userResDir + ".new'; cp -a '" + extractDir + "/resources' '" + userResDir + ".new'; ";
-			sh += "rm -rf '" + userResDir + "'; mv '" + userResDir + ".new' '" + userResDir + "'; fi";
-			system(sh.c_str());
-		}
 
-		// 3b) locale -> 可写 user 目录(三平台共用)。ES 的 setLocale 优先读 user 目录 locale/lang,
-		//     这样翻译才随版本更新(唯读平台上 /usr 的 locale 无法改)。zip 内 locale/lang/<lang>/...
-		{
-			std::string userLocaleDir = Paths::getUserEmulationStationPath() + "/locale";
-			std::string sh;
-			sh += "if [ -d '" + extractDir + "/locale' ]; then ";
-			sh += "rm -rf '" + userLocaleDir + ".new'; cp -a '" + extractDir + "/locale' '" + userLocaleDir + ".new'; ";
-			sh += "rm -rf '" + userLocaleDir + "'; mv '" + userLocaleDir + ".new' '" + userLocaleDir + "'; fi";
-			system(sh.c_str());
-		}
+		std::string userLocaleDir = Paths::getUserEmulationStationPath() + "/locale";
 
-		// 4) binary 落地(按平台)。
 #if defined(ES4ALL_TARGET_ARMBIAN)
-		// 可写 rootfs: 就地 rename 覆盖。rename 可替换正在运行的可执行文件(避开 ETXTBSY),
-		// 旧 inode 供当前进程续用, 重启后 exec 到新档。
+		// armbian(用户要求暂略, 未测): 可写 rootfs。binary 就地 rename(避开 ETXTBSY); resources/
+		// locale 就地 cp 覆盖(不 rm live 目录, 仅覆盖文件, 降低运行中 ES 崩溃风险)。重启 ES 即可。
 		{
 			std::string sh;
 			sh += "set -e; ";
-			sh += "cp -f '" + newBin + "' '" + realBin + ".new'; chmod 0755 '" + realBin + ".new'; ";
-			sh += "mv -f '" + realBin + ".new' '" + realBin + "'";
+			sh += "cp -f '" + newBin + "' '" + realBin + ".new'; chmod 0755 '" + realBin + ".new'; mv -f '" + realBin + ".new' '" + realBin + "'; ";
+			sh += "[ -d '" + extractDir + "/resources' ] && cp -a '" + extractDir + "/resources/.' '" + userResDir + "/' 2>/dev/null; ";
+			sh += "[ -d '" + extractDir + "/locale' ] && cp -a '" + extractDir + "/locale/.' '" + userLocaleDir + "/' 2>/dev/null; ";
+			sh += "true";
 			if (system(sh.c_str()) != 0)
 				return std::make_pair(std::string("覆盖程序失败"), 1);
 		}
+		gNeedsFullReboot = false;
 #else
-		// 只读 rootfs(ROCKNIX/EMUELEC): 新 binary 写 /storage(原子替换, 即使正被 bind-mount 也安全)。
+		// ROCKNIX/EMUELEC: 唯读 rootfs。binary/resources/locale 全部暂存到 /storage 独立位置,
+		// 绝不碰 live 目录。开机钩子/服务在 ES 启动前 bind-mount 盖上。
 		std::string stBin = "/storage/es4all-emulationstation";
+		std::string stRes = "/storage/es4all-resources";
+		std::string stLoc = "/storage/es4all-locale";
 		{
 			std::string sh;
 			sh += "set -e; ";
-			sh += "cp -f '" + newBin + "' '" + stBin + ".new'; chmod 0755 '" + stBin + ".new'; ";
-			sh += "mv -f '" + stBin + ".new' '" + stBin + "'";
+			sh += "cp -f '" + newBin + "' '" + stBin + ".new'; chmod 0755 '" + stBin + ".new'; mv -f '" + stBin + ".new' '" + stBin + "'; ";
+			sh += "if [ -d '" + extractDir + "/resources' ]; then rm -rf '" + stRes + ".new'; cp -a '" + extractDir + "/resources' '" + stRes + ".new'; rm -rf '" + stRes + "'; mv '" + stRes + ".new' '" + stRes + "'; fi; ";
+			sh += "if [ -d '" + extractDir + "/locale' ]; then rm -rf '" + stLoc + ".new'; cp -a '" + extractDir + "/locale' '" + stLoc + ".new'; rm -rf '" + stLoc + "'; mv '" + stLoc + ".new' '" + stLoc + "'; fi";
 			if (system(sh.c_str()) != 0)
 				return std::make_pair(std::string("写入 /storage 失败"), 1);
 		}
+		// 唯读平台的 resources/locale 替换只能在 ES 停止时(开机钩子里)做 -> 必须整机重开机。
+		gNeedsFullReboot = true;
+
+		// 三个 bind-mount(binary + resources + locale)命令。paths 无空格故不加引号(便于嵌入
+		// systemd ExecStart 的单引号内); grep 模式用双引号。bind-mount 非破坏性, 原目录藏在挂载
+		// 点下, 删除钩子/服务即回退。
+		std::string mountCmds =
+			"grep -q \" " + realBin + " \" /proc/mounts || mount --bind " + stBin + " " + realBin + "; "
+			"[ -d " + stRes + " ] && { grep -q \" " + userResDir + " \" /proc/mounts || mount --bind " + stRes + " " + userResDir + "; }; "
+			"[ -d " + stLoc + " ] && { grep -q \" " + userLocaleDir + " \" /proc/mounts || mount --bind " + stLoc + " " + userLocaleDir + "; }; "
+			"true";
 
 #if defined(ES4ALL_TARGET_ROCKNIX)
 		// 持久化: autostart 钩子(ROCKNIX 的 /usr/bin/autostart 在 ES 前同步执行)。
@@ -367,40 +359,32 @@ namespace Es4allUpdate
 			return std::make_pair(std::string("无法写入 autostart 钩子"), 1);
 		hook << "#!/bin/sh\n";
 		hook << "# es4all 自我更新覆盖钩子(自动生成)。删除本文件即回退到镜像自带 ES。\n";
-		hook << "BIN=" << stBin << "\n";
-		hook << "grep -q ' " << realBin << " ' /proc/mounts || mount --bind \"$BIN\" '" << realBin << "'\n";
+		hook << mountCmds << "\n";
 		hook << "exit 0\n";
 		hook.close();
 		chmod(hookPath.c_str(), 0755);
 #else // EMUELEC
 		// 持久化: systemd oneshot 服务, Before=emustation.service, 时序由核心保证。
-		// EmuELEC 的 systemctl enable 会把 .wants 链接写进可写的 /storage/.config/system.d/,
-		// 不碰只读 /etc。(不用 custom_start.sh: emuelec_autostart.sh 里是 `custom_start.sh before &`
-		// 背景执行, 与 ES 竞态不可靠。)
+		// EmuELEC 的 systemctl enable 会把 .wants 链接写进可写的 /storage/.config/system.d/, 不碰只读 /etc。
 		Utils::FileSystem::createDirectory("/storage/.config/system.d");
 		std::string unitPath = "/storage/.config/system.d/es4all-selfmount.service";
 		std::ofstream unit(unitPath);
 		if (!unit.good())
 			return std::make_pair(std::string("无法写入 systemd 服务"), 1);
 		unit << "[Unit]\n";
-		unit << "Description=es4all: overlay updated ES binary before EmulationStation\n";
+		unit << "Description=es4all: overlay updated ES (binary/resources/locale) before EmulationStation\n";
 		unit << "ConditionPathExists=" << stBin << "\n";
 		unit << "Before=emustation.service\n";
 		unit << "RequiresMountsFor=/storage\n\n";
 		unit << "[Service]\n";
 		unit << "Type=oneshot\n";
 		unit << "RemainAfterExit=yes\n";
-		unit << "ExecStart=/bin/sh -c 'grep -q \" " << realBin << " \" /proc/mounts || mount --bind " << stBin << " " << realBin << "'\n\n";
+		unit << "ExecStart=/bin/sh -c '" << mountCmds << "'\n\n";
 		unit << "[Install]\n";
 		unit << "WantedBy=emustation.service\n";
 		unit.close();
 		system("systemctl daemon-reload; systemctl enable es4all-selfmount.service");
 #endif
-
-		// 立即 bind-mount 一次: "重启 ES"(quitES RESTART, 只 re-exec 不重开机)也能马上用上新 binary;
-		// 持久化(钩子/服务)负责整机重开机后。ES 以 root 运行, 可挂载。
-		std::string mnt = "grep -q ' " + realBin + " ' /proc/mounts || mount --bind '" + stBin + "' '" + realBin + "'";
-		system(mnt.c_str());
 #endif
 
 		// 清理下载临时区。
