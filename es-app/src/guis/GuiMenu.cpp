@@ -585,6 +585,20 @@ void GuiMenu::openEmuELECSettings()
 
 #endif // ES4ALL_CAP_EMUELEC_PLATFORM (BOOT VIDEO)
 
+	// es4all: ENABLE RA SPLASH(RetroArch 游戏启动画面, ee_splash.enabled)由原第 3 层的
+	// 「启动画面设置」(createConfigureSplash)子菜单提到本第 2 层直接可见 —— 它是最常用的
+	// 单一开关, 埋在三层里不合理。为 EmuELEC 专属(ee_splash.enabled 在 ES 内无读取者, 由
+	// EmuELEC 侧套用), 故 CAP 门控。
+#if defined(ES4ALL_CAP_EMUELEC_PLATFORM)
+	auto ra_splash_enabled_top = std::make_shared<SwitchComponent>(mWindow);
+	ra_splash_enabled_top->setState(SystemConf::getInstance()->get("ee_splash.enabled") == "1");
+	s->addWithDescription(_("ENABLE RA SPLASH"), _("Show the RetroArch splash screen when a game starts."), ra_splash_enabled_top);
+	s->addSaveFunc([ra_splash_enabled_top] {
+		if (SystemConf::getInstance()->set("ee_splash.enabled", ra_splash_enabled_top->getState() ? "1" : "0"))
+			SystemConf::getInstance()->saveSystemConf();
+	});
+#endif
+
 	// es4all: SPLASH SETTINGS —— 【跨平台，不可门控】。
 	// 经查证其主体是 ES 自己实作的功能(本专案在 armbian 版上开发的):
 	//   ENABLE LOADING SPLASH SCREEN → Settings "SplashScreen"
@@ -606,28 +620,9 @@ void GuiMenu::openEmuELECSettings()
 	// 名称与「手柄设置」严重误导，且为 EmuELEC 专属。手柄相关设定统一在
 	// 一级菜单的「手柄和蓝牙设置」(GuiControllersSettings)。
 
-		auto emuelec_retroarch_menu_def = std::make_shared< OptionListComponent<std::string> >(mWindow, _("RETROARCH MENU"), false);
-		std::vector<std::string> ramenuoptions;
-		ramenuoptions.push_back("auto");
-		ramenuoptions.push_back("ozone");
-		ramenuoptions.push_back("xmb");
-		ramenuoptions.push_back("rgui");
-		
-		auto ramenuoptionsS = SystemConf::getInstance()->get("global.retroarch.menu_driver");
-		if (ramenuoptionsS.empty())
-		ramenuoptionsS = "auto";
-		
-		for (auto it = ramenuoptions.cbegin(); it != ramenuoptions.cend(); it++)
-		emuelec_retroarch_menu_def->add(*it, *it, ramenuoptionsS == *it);
-		
-		s->addWithLabel(_("RETROARCH MENU"), emuelec_retroarch_menu_def);
-		s->addSaveFunc([emuelec_retroarch_menu_def] {
-			if (emuelec_retroarch_menu_def->changed()) {
-				std::string selectedretroarch_menu = emuelec_retroarch_menu_def->getSelected();
-				SystemConf::getInstance()->set("global.retroarch.menu_driver", selectedretroarch_menu);
-				SystemConf::getInstance()->saveSystemConf();
-			}
-		});
+	// es4all: RETROARCH MENU(菜单样式, global.retroarch.menu_driver)已从平台设置移除 ——
+	// 与「前端开发人员选项」里的 RETROARCH MENU DRIVER 是同一个键、重复。保留开发者选项那份
+	// (面向进阶用户, 一般用户不易误触), 平台设置不再出现。
 
 if (UIModeController::getInstance()->isUIModeFull())
 	{
@@ -645,22 +640,8 @@ void GuiMenu::createConfigureSplash(Window* mWindow, int menuIndex)
 
 	s->setUpdateType(ComponentListFlags::UPDATE_ALWAYS);
 
-	// es4all: ENABLE RA SPLASH 由平台设置父层移入此处 —— 它与本子菜单同属 splash 一类
-	// (本项 ee_splash.enabled = RetroArch 启动画面; 以下各项为 ES 的载入/退出动画)。
-	// es4all: ENABLE RA SPLASH 为 EmuELEC 专属 —— ee_splash.enabled 在 ES 内无读取者,
-	// 由 EmuELEC 侧套用。本子菜单其余各项(SplashScreen / SplashScreenExit /
-	// AlternateSplashScreen / ee_splash_exit_duration)则是 ES 自己实作的跨平台功能。
-	// 注: 本子菜单的 ENABLE LOADING SPLASH SCREEN 变更时会 delete s 并重建整个菜单,
-	// 届时未落盘的 addSaveFunc 会丢失, 故此项采「变更即存」。
-#if defined(ES4ALL_CAP_EMUELEC_PLATFORM)
-	auto ra_splash_enabled = std::make_shared<SwitchComponent>(mWindow);
-	ra_splash_enabled->setState(SystemConf::getInstance()->get("ee_splash.enabled") == "1");
-	s->addWithDescription(_("ENABLE RA SPLASH"), _("Show the RetroArch splash screen when a game starts."), ra_splash_enabled);
-	ra_splash_enabled->setOnChangedCallback([ra_splash_enabled] {
-		SystemConf::getInstance()->set("ee_splash.enabled", ra_splash_enabled->getState() ? "1" : "0");
-		SystemConf::getInstance()->saveSystemConf();
-	});
-#endif
+	// es4all: ENABLE RA SPLASH(ee_splash.enabled)已移至上一层「平台设置」直接可见(最常用的
+	// 单一开关不应埋在第 3 层)。本子菜单只保留 ES 自己的载入/退出动画各项。
 
 		auto enable_splashscreen = std::make_shared<SwitchComponent>(mWindow);
 	enable_splashscreen->setState(Settings::getInstance()->getBool("SplashScreen"));
@@ -5000,15 +4981,9 @@ void GuiMenu::openPlatformSettings()
 
 	s->addGroup(_("RETROARCH"));
 
-	// RetroArch 菜单风格 —— ROCKNIX setsettings.sh 读 retroarch.menu_driver
-	auto menu_driver = std::make_shared< OptionListComponent<std::string> >(mWindow, _("RETROARCH MENU"), false);
-	std::string curDriver = SystemConf::getInstance()->get("global.retroarch.menu_driver");
-	menu_driver->addRange({ { _("AUTO"), "" }, { "XMB", "xmb" }, { "OZONE", "ozone" }, { "RGUI", "rgui" }, { "GLUI", "glui" } }, curDriver);
-	s->addWithLabel(_("RETROARCH MENU"), menu_driver);
-	s->addSaveFunc([menu_driver] {
-		if (menu_driver->changed() && SystemConf::getInstance()->set("global.retroarch.menu_driver", menu_driver->getSelected()))
-			SystemConf::getInstance()->saveSystemConf();
-	});
+	// es4all: RETROARCH MENU(菜单样式, global.retroarch.menu_driver)已从平台设置移除 ——
+	// 与「前端开发人员选项」里的 RETROARCH MENU DRIVER 同键重复。保留开发者那份(面向进阶
+	// 用户, 一般用户不易误触); 键不变, ROCKNIX setsettings.sh 照常读 retroarch.menu_driver。
 
 	// es4all: ENABLE RA BEZELS 已移除 —— 与 游戏设置 → DEFAULT GLOBAL SETTINGS 的同名项
 	// 重复(同一个 global.bezel 键)。保留游戏设置那个三档版(AUTO/ON/OFF)，因为:

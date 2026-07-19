@@ -2517,7 +2517,7 @@ msgid "COMPLETE QUIT MENU"
 msgstr "完成後退出選單"
 
 msgid "RETROARCH MENU DRIVER"
-msgstr "RETROARCH 選單驅動程式"
+msgstr "RetroArch選單樣式"
 
 msgid "SWITCH CONFIRM & CANCEL BUTTONS IN EMULATIONSTATION"
 msgstr "在 EMULATIONSTATION 中調換確認鍵與取消鍵"
@@ -4312,3 +4312,12 @@ msgstr "把內部與外接的 ROM 疊加在一起。"
 
 msgid "Storage changes are applied at boot. Reboot now?"
 msgstr "儲存變更將在開機時套用。現在重啟？"
+
+msgid "BOOT VIDEO"
+msgstr "開機影片"
+
+msgid "Play a video at boot: a fixed one, or a random pick."
+msgstr "開機時播放一段影片：固定一段，或隨機挑選。"
+
+msgid "FIXED"
+msgstr "固定"
