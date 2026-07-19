@@ -61,6 +61,7 @@
 #include "Gamelist.h"
 #include "TextToSpeech.h"
 #include "Paths.h"
+#include "resources/ResourceManager.h"
 #include <set> 
 
 #if WIN32
@@ -513,28 +514,42 @@ void GuiMenu::openEmuELECSettings()
 #endif
 
 #if defined(ES4ALL_CAP_EMUELEC_PLATFORM)
-	// es4all: AUDIO OUTPUT —— 按机型白名单(plan B)只列该盒子【实际有实体孔】的输出。后端复用
-	// emuelec-utils setauddev: 写 ee_audio_device 并把 /storage/.config/asound.conf 的默认 PCM 改成
-	// pcm "hw:<card,device>"。这是原隐藏 AUDIO DEVICE 同一套后端, 只是换友善标签且按机型过滤。
+	// es4all: AUDIO OUTPUT —— 按机型只列该盒【实际有实体孔】的音源输出。后端复用 emuelec-utils
+	// setauddev: 写 ee_audio_device 并把 /storage/.config/asound.conf 默认 PCM 改成 hw:<card,device>。
 	//
 	// 为什么要机型白名单(不纯动态): card,device 各机型编号不同, 且 ALSA 列出某 PCM ≠ 盒子有那个
-	// 实体孔(Amlogic SoC 都支持 SPDIF/模拟, 但廉价盒常没接线)。故用实机 aplay -l + 逐一实听确认后,
-	// 按机型硬编该盒真正有的输出, 避免用户选了没声的选项。
+	// 实体孔(Amlogic SoC 都支持 SPDIF/模拟, 但廉价盒常没接线)。故需实机 aplay -l + 逐一实听确认。
+	// 映射表放 resources/audio_outputs.cfg(数据文件, 非代码): 加机型只改一行、随 OTA 下发, 见文件头。
 	{
 		std::string model = Utils::String::trim(Utils::Platform::getShOutput(
 			"cat /proc/device-tree/model 2>/dev/null | tr -d '\\000'"));
 
-		// {显示标签(msgid), card,device}。HDMI/AV 保留原文; OPTICAL 有翻译(光纤/光纖)。
+		// es4all: 机型->音源映射改由 resources/audio_outputs.cfg 提供(不再硬编代码)。
+		// 加机型只改该文件、不用重编 ES; 该文件在 resources 里随自我更新 OTA 下发。格式见文件头。
+		// {显示标签(msgid), card,device}。HDMI/AV 保留原文; OPTICAL 有翻译。
 		std::vector<std::pair<std::string, std::string>> outs;
-		if (model.find("E900V22C") != std::string::npos)
+		std::string cfgPath = ResourceManager::getInstance()->getResourcePath(":/audio_outputs.cfg");
+		if (!model.empty() && Utils::FileSystem::exists(cfgPath))
 		{
-			// Skyworth E900V22C(S905L3A/G12A) 实测(2026-07-19, aplay -l + 逐一实听):
-			//   HDMI = hw:0,2 (SPDIF-dummy -> HDMITX); AV = hw:0,1 (TDM-B-T9015 内置模拟 DAC)。
-			// 该盒【无光纤(SPDIF)实体孔】, 故不列 OPTICAL(hw:0,0 是外部 SPDIF-B 但无接口)。
-			outs.push_back({ "HDMI", "0,2" });
-			outs.push_back({ "AV",   "0,1" });
+			for (const std::string& raw : Utils::String::split(Utils::FileSystem::readAllText(cfgPath), '\n', true))
+			{
+				std::string line = Utils::String::trim(raw);
+				if (line.empty() || line[0] == '#')
+					continue;
+				auto toks = Utils::String::splitAny(line, " \t", true);
+				// 第一个 token 是型号子串; 子串命中 /proc/device-tree/model 即用本行(取第一个命中)。
+				if (toks.empty() || model.find(toks[0]) == std::string::npos)
+					continue;
+				for (size_t i = 1; i < toks.size(); i++)
+				{
+					size_t c = toks[i].find(':');   // 每项 label:card,device
+					if (c != std::string::npos)
+						outs.push_back({ toks[i].substr(0, c), toks[i].substr(c + 1) });
+				}
+				break;
+			}
 		}
-		// 其他机型: 待各自实测后按上面格式补白名单。未知机型不列本项(保持系统默认/auto)。
+		// 不在表内的机型: outs 为空 -> 下面 if 不成立 -> 不显示本选单(保持系统出厂默认音源, 最安全)。
 
 		if (!outs.empty())
 		{
