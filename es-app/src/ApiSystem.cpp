@@ -1777,10 +1777,13 @@ void ApiSystem::setLEDEnabled(bool enabled)
 
 std::vector<std::string> ApiSystem::getWifiNetworks(bool scan)
 {
+	// es4all: 扫描(scanlist)用 timeout 包住 —— 底层 `connmanctl scan wifi` 在某些机型(实测
+	// E900V22C 的 uwe5631 wifi)会卡住 30s+ 不返回, 而扫描是在 UI 线程同步调用 → 整个 ES 冻死。
+	// 加 8s 上限: 扫不到就返回空, 至少 UI 不会长时间无响应。list(读缓存)不阻塞、不用包。
 #if defined(ES4ALL_PATHS_ROCKNIX)
-	return executeEnumerationScript(scan ? "wifictl scanlist" : "wifictl list");
+	return executeEnumerationScript(scan ? "timeout 8 wifictl scanlist" : "wifictl list");
 #else
-	return executeEnumerationScript(scan ? "batocera-wifi scanlist" : "batocera-wifi list");
+	return executeEnumerationScript(scan ? "timeout 8 batocera-wifi scanlist" : "batocera-wifi list");
 #endif
 }
 
