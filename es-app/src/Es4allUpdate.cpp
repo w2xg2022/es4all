@@ -208,14 +208,19 @@ namespace Es4allUpdate
 	}
 
 	// -------------------------------------------------------------------------
-	// 套用更新。ROCKNIX 上 ES 烤进只读 squashfs(/usr/bin/emulationstation), 无法就地覆盖,
-	// 故走 brick-safe 覆盖法: 新文件写进可写的 /storage, 再装一个 autostart 钩子在 ES 启动前
-	// bind-mount 盖到只读路径上。删除该钩子即回退到镜像自带 ES(不会变砖)。
+	// 套用更新。按平台走各自最可靠的持久化(实机核对 .179 ROCKNIX / .165 EmuELEC)：
+	//   ARMBIAN — rootfs 是可写 ext4, binary 就地 rename 覆盖(避开 ETXTBSY), 无需 hook。
+	//   ROCKNIX — rootfs 只读 squashfs, binary 写 /storage + autostart 钩子(pre-ES, 同步执行)
+	//             开机 bind-mount 盖到 /usr/bin/emulationstation。
+	//   EMUELEC — rootfs 只读 squashfs, binary 写 /storage + systemd oneshot 服务(Before=ES,
+	//             时序由核心保证; 不用 custom_start.sh——它被 emuelec_autostart.sh 背景执行会与 ES 竞态)。
+	// resources 三平台都在可写的 ~/.emulationstation/resources(运行期解析), 直接覆盖即可, 无需 hook。
+	// 回退: ARMBIAN 无自动回退(就地覆盖); ROCKNIX 删 autostart 钩子; EMUELEC `systemctl disable`。
 	// -------------------------------------------------------------------------
 	std::pair<std::string, int> apply(const Es4allRelease& rel,
 	                                  const std::function<void(const std::string)>& func)
 	{
-#if !defined(ES4ALL_TARGET_ROCKNIX)
+#if !defined(ES4ALL_TARGET_ARMBIAN) && !defined(ES4ALL_TARGET_ROCKNIX) && !defined(ES4ALL_TARGET_EMUELEC)
 		return std::make_pair(std::string("当前平台暂不支持自我更新"), 1);
 #else
 		if (!rel.valid || rel.assetUrl.empty())
@@ -230,19 +235,24 @@ namespace Es4allUpdate
 			}
 		};
 
-		// 运行中的 binary 真实路径(bind-mount / 符号链接都解开)。
+		// 运行中的 binary 真实路径(即安装位置, 唯读平台上是 bind-mount 目标路径)。
 		char exeBuf[4096] = {0};
 		ssize_t n = readlink("/proc/self/exe", exeBuf, sizeof(exeBuf) - 1);
 		if (n <= 0)
 			return std::make_pair(std::string("无法定位当前程序路径"), 1);
 		std::string realBin(exeBuf, n);
-		// ES 在 ROCKNIX 实际读取的 resources 目录 = ~/.emulationstation/resources, 运行期解析到
-		// /storage/.config/emulationstation/resources(ext4 可写)。直接覆盖即可, 无需 bind-mount。
-		// (binary 与 locale 在只读 squashfs, binary 走 bind-mount; locale 仅翻译, 本版不更新。)
+		// ES 实际读取的 resources = ~/.emulationstation/resources, 运行期解析到可写目录, 直接覆盖。
 		std::string userResDir = Paths::getUserEmulationStationPath() + "/resources";
 
-		// 1) 下载 zip 到可写临时区。
-		std::string tmpDir = "/storage/.es4all-update";
+		// 可写暂存基地: 唯读平台用 /storage, ARMBIAN 用可写的 home。
+#if defined(ES4ALL_TARGET_ARMBIAN)
+		std::string storeBase = Paths::getUserEmulationStationPath();
+#else
+		std::string storeBase = "/storage";
+#endif
+
+		// 1) 下载 zip。
+		std::string tmpDir = storeBase + "/.es4all-update";
 		Utils::FileSystem::createDirectory(tmpDir);
 		std::string zipPath = tmpDir + "/es4all-update.zip";
 		Utils::FileSystem::removeFile(zipPath);
@@ -269,49 +279,88 @@ namespace Es4allUpdate
 		if (!Utils::FileSystem::exists(newBin))
 			return std::make_pair(std::string("更新包内未找到 emulationstation"), 1);
 
-		// 3) 落地。binary 写进可写 /storage 并 bind-mount 盖到只读 /usr/bin/emulationstation;
-		//    resources 直接覆盖可写的 user 目录。二者都用 shell 做原子替换(busybox cp -a/mv 保权限)。
+		// 3) resources -> 可写 user 目录(三平台共用, 原子替换)。
 		report(_("INSTALLING"), -1);
+		{
+			std::string sh;
+			sh += "if [ -d '" + extractDir + "/resources' ]; then ";
+			sh += "rm -rf '" + userResDir + ".new'; cp -a '" + extractDir + "/resources' '" + userResDir + ".new'; ";
+			sh += "rm -rf '" + userResDir + "'; mv '" + userResDir + ".new' '" + userResDir + "'; fi";
+			system(sh.c_str());
+		}
 
+		// 4) binary 落地(按平台)。
+#if defined(ES4ALL_TARGET_ARMBIAN)
+		// 可写 rootfs: 就地 rename 覆盖。rename 可替换正在运行的可执行文件(避开 ETXTBSY),
+		// 旧 inode 供当前进程续用, 重启后 exec 到新档。
+		{
+			std::string sh;
+			sh += "set -e; ";
+			sh += "cp -f '" + newBin + "' '" + realBin + ".new'; chmod 0755 '" + realBin + ".new'; ";
+			sh += "mv -f '" + realBin + ".new' '" + realBin + "'";
+			if (system(sh.c_str()) != 0)
+				return std::make_pair(std::string("覆盖程序失败"), 1);
+		}
+#else
+		// 只读 rootfs(ROCKNIX/EMUELEC): 新 binary 写 /storage(原子替换, 即使正被 bind-mount 也安全)。
 		std::string stBin = "/storage/es4all-emulationstation";
+		{
+			std::string sh;
+			sh += "set -e; ";
+			sh += "cp -f '" + newBin + "' '" + stBin + ".new'; chmod 0755 '" + stBin + ".new'; ";
+			sh += "mv -f '" + stBin + ".new' '" + stBin + "'";
+			if (system(sh.c_str()) != 0)
+				return std::make_pair(std::string("写入 /storage 失败"), 1);
+		}
 
-		std::string sh;
-		sh += "set -e; ";
-		// binary -> /storage(原子替换)
-		sh += "cp -f '" + newBin + "' '" + stBin + ".new'; chmod 0755 '" + stBin + ".new'; ";
-		sh += "mv -f '" + stBin + ".new' '" + stBin + "'; ";
-		// resources -> 可写 user 目录(存在才处理, 原子替换)
-		sh += "if [ -d '" + extractDir + "/resources' ]; then ";
-		sh += "rm -rf '" + userResDir + ".new'; cp -a '" + extractDir + "/resources' '" + userResDir + ".new'; ";
-		sh += "rm -rf '" + userResDir + "'; mv '" + userResDir + ".new' '" + userResDir + "'; fi; ";
-
-		if (system(sh.c_str()) != 0)
-			return std::make_pair(std::string("写入更新文件失败"), 1);
-
-		// autostart 钩子: 整机重开机后, 在 ES 启动前把 /storage 的新 binary 盖回只读安装路径。
-		// 删除本钩子即回退到镜像自带 ES(不会变砖)。
+#if defined(ES4ALL_TARGET_ROCKNIX)
+		// 持久化: autostart 钩子(ROCKNIX 的 /usr/bin/autostart 在 ES 前同步执行)。
 		std::string hookDir = "/storage/.config/autostart";
 		Utils::FileSystem::createDirectory("/storage/.config");
 		Utils::FileSystem::createDirectory(hookDir);
 		std::string hookPath = hookDir + "/003-es4all-selfupdate";
-
 		std::ofstream hook(hookPath);
 		if (!hook.good())
 			return std::make_pair(std::string("无法写入 autostart 钩子"), 1);
 		hook << "#!/bin/sh\n";
 		hook << "# es4all 自我更新覆盖钩子(自动生成)。删除本文件即回退到镜像自带 ES。\n";
 		hook << "BIN=" << stBin << "\n";
-		hook << "[ -f \"$BIN\" ] && ! mountpoint -q '" << realBin << "' && mount --bind \"$BIN\" '" << realBin << "'\n";
+		hook << "grep -q ' " << realBin << " ' /proc/mounts || mount --bind \"$BIN\" '" << realBin << "'\n";
 		hook << "exit 0\n";
 		hook.close();
 		chmod(hookPath.c_str(), 0755);
+#else // EMUELEC
+		// 持久化: systemd oneshot 服务, Before=emustation.service, 时序由核心保证。
+		// EmuELEC 的 systemctl enable 会把 .wants 链接写进可写的 /storage/.config/system.d/,
+		// 不碰只读 /etc。(不用 custom_start.sh: emuelec_autostart.sh 里是 `custom_start.sh before &`
+		// 背景执行, 与 ES 竞态不可靠。)
+		Utils::FileSystem::createDirectory("/storage/.config/system.d");
+		std::string unitPath = "/storage/.config/system.d/es4all-selfmount.service";
+		std::ofstream unit(unitPath);
+		if (!unit.good())
+			return std::make_pair(std::string("无法写入 systemd 服务"), 1);
+		unit << "[Unit]\n";
+		unit << "Description=es4all: overlay updated ES binary before EmulationStation\n";
+		unit << "ConditionPathExists=" << stBin << "\n";
+		unit << "Before=emustation.service\n";
+		unit << "RequiresMountsFor=/storage\n\n";
+		unit << "[Service]\n";
+		unit << "Type=oneshot\n";
+		unit << "RemainAfterExit=yes\n";
+		unit << "ExecStart=/bin/sh -c 'grep -q \" " << realBin << " \" /proc/mounts || mount --bind " << stBin << " " << realBin << "'\n\n";
+		unit << "[Install]\n";
+		unit << "WantedBy=emustation.service\n";
+		unit.close();
+		system("systemctl daemon-reload; systemctl enable es4all-selfmount.service");
+#endif
 
-		// 立即 bind-mount 一次: 这样"重启 ES"(quitES RESTART, 只 re-exec 不重开机)也能马上用上
-		// 新 binary; autostart 钩子负责整机重开机后的持久化。ES 在 ROCKNIX 以 root 运行, 可挂载。
-		std::string mnt = "mountpoint -q '" + realBin + "' || mount --bind '" + stBin + "' '" + realBin + "'";
+		// 立即 bind-mount 一次: "重启 ES"(quitES RESTART, 只 re-exec 不重开机)也能马上用上新 binary;
+		// 持久化(钩子/服务)负责整机重开机后。ES 以 root 运行, 可挂载。
+		std::string mnt = "grep -q ' " + realBin + " ' /proc/mounts || mount --bind '" + stBin + "' '" + realBin + "'";
 		system(mnt.c_str());
+#endif
 
-		// 清理下载临时区(保留 /storage/es4all-emulationstation 与钩子)。
+		// 清理下载临时区。
 		Utils::FileSystem::deleteDirectoryFiles(tmpDir, true);
 
 		LOG(LogInfo) << "Es4allUpdate: 更新已就绪, 重启后生效 -> " << rel.version;
