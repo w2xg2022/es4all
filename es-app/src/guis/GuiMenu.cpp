@@ -513,36 +513,45 @@ void GuiMenu::openEmuELECSettings()
 #endif
 
 #if defined(ES4ALL_CAP_EMUELEC_PLATFORM)
-	// es4all: AUDIO OUTPUT —— HDMI / AV / 光纤(SPDIF) 三向切换。复用 emuelec-utils setauddev 机制:
-	// 写 ee_audio_device 并调 `emuelec-utils setauddev <card,device>`, 后者把 /storage/.config/
-	// asound.conf 的默认 PCM 改成 pcm "hw:<card,device>"。这是原隐藏 AUDIO DEVICE 同一套后端,
-	// 只是把隐晦的 0,0/1,1/... 换成 3 个友善标签。
+	// es4all: AUDIO OUTPUT —— 按机型白名单(plan B)只列该盒子【实际有实体孔】的输出。后端复用
+	// emuelec-utils setauddev: 写 ee_audio_device 并把 /storage/.config/asound.conf 的默认 PCM 改成
+	// pcm "hw:<card,device>"。这是原隐藏 AUDIO DEVICE 同一套后端, 只是换友善标签且按机型过滤。
 	//
-	// ⚠️⚠️ 下面三个 card,device 是【占位值】, 机型相关, 必须在实机(E900V22C .165)确认后再填:
-	//   1) 开机后 `aplay -l` 列出所有播放设备;
-	//   2) 逐一 setauddev 测试, 听哪个物理孔出声, 确定 HDMI / AV(T9015模拟) / 光纤(SPDIF) 各是哪个;
-	//   3) 把下面 kHdmiDev/kAvDev/kSpdifDev 改成实测值。
-	// (Amlogic 上 HDMI 通常是默认 hw:0,0; AV=T9015 内置 DAC; 光纤=SPDIF, 但编号各机型不同。)
+	// 为什么要机型白名单(不纯动态): card,device 各机型编号不同, 且 ALSA 列出某 PCM ≠ 盒子有那个
+	// 实体孔(Amlogic SoC 都支持 SPDIF/模拟, 但廉价盒常没接线)。故用实机 aplay -l + 逐一实听确认后,
+	// 按机型硬编该盒真正有的输出, 避免用户选了没声的选项。
 	{
-		auto audioout = std::make_shared< OptionListComponent<std::string> >(mWindow, _("AUDIO OUTPUT"), false);
-		const std::string kHdmiDev  = "0,0";   // TODO 实机验证: HDMI
-		const std::string kAvDev    = "1,1";   // TODO 实机验证: AV / 模拟(T9015)
-		const std::string kSpdifDev = "0,1";   // TODO 实机验证: 光纤 / SPDIF
+		std::string model = Utils::String::trim(Utils::Platform::getShOutput(
+			"cat /proc/device-tree/model 2>/dev/null | tr -d '\\000'"));
 
-		std::string cur = SystemConf::getInstance()->get("ee_audio_device");
-		// setauddev 把 auto 当 0,0; 若当前是 auto 且 HDMI 占位=0,0, 视为 HDMI 已选。
-		if (cur.empty() || cur == "auto")
-			cur = kHdmiDev;
+		// {显示标签(msgid), card,device}。HDMI/AV 保留原文; OPTICAL 有翻译(光纤/光纖)。
+		std::vector<std::pair<std::string, std::string>> outs;
+		if (model.find("E900V22C") != std::string::npos)
+		{
+			// Skyworth E900V22C(S905L3A/G12A) 实测(2026-07-19, aplay -l + 逐一实听):
+			//   HDMI = hw:0,2 (SPDIF-dummy -> HDMITX); AV = hw:0,1 (TDM-B-T9015 内置模拟 DAC)。
+			// 该盒【无光纤(SPDIF)实体孔】, 故不列 OPTICAL(hw:0,0 是外部 SPDIF-B 但无接口)。
+			outs.push_back({ "HDMI", "0,2" });
+			outs.push_back({ "AV",   "0,1" });
+		}
+		// 其他机型: 待各自实测后按上面格式补白名单。未知机型不列本项(保持系统默认/auto)。
 
-		audioout->add(_("HDMI"),    kHdmiDev,  cur == kHdmiDev);
-		audioout->add(_("AV"),      kAvDev,    cur == kAvDev);
-		audioout->add(_("OPTICAL"), kSpdifDev, cur == kSpdifDev);
-		s->addWithDescription(_("AUDIO OUTPUT"), _("Changes will need an EmulationStation restart."), audioout);
-		audioout->setSelectedChangedCallback([audioout](std::string dev) {
-			if (SystemConf::getInstance()->set("ee_audio_device", dev))
-				SystemConf::getInstance()->saveSystemConf();
-			Utils::Platform::ProcessStartInfo("/usr/bin/emuelec-utils setauddev " + dev).run();
-		});
+		if (!outs.empty())
+		{
+			auto audioout = std::make_shared< OptionListComponent<std::string> >(mWindow, _("AUDIO OUTPUT"), false);
+			std::string cur = SystemConf::getInstance()->get("ee_audio_device");
+			if (cur.empty() || cur == "auto")
+				cur = outs.front().second;   // 未设时按白名单首项(HDMI)显示为已选
+
+			for (auto& o : outs)
+				audioout->add(_(o.first.c_str()), o.second, cur == o.second);
+			s->addWithDescription(_("AUDIO OUTPUT"), _("Changes will need an EmulationStation restart."), audioout);
+			audioout->setSelectedChangedCallback([audioout](std::string dev) {
+				if (SystemConf::getInstance()->set("ee_audio_device", dev))
+					SystemConf::getInstance()->saveSystemConf();
+				Utils::Platform::ProcessStartInfo("/usr/bin/emuelec-utils setauddev " + dev).run();
+			});
+		}
 	}
 #endif
 
