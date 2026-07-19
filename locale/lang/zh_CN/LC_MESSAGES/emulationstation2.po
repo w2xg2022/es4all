@@ -3560,7 +3560,7 @@ msgid ""
 "DO YOU WANT TO UPDATE TO VERSION %s?"
 msgstr ""
 "当前版本 %s\n"
-"是否更新到版本 %s?（非官方汉化版升级将导致汉化失效）"
+"是否更新到版本 %s?"
 
 #, c-format
 msgid ""
@@ -4321,3 +4321,6 @@ msgstr "开机时播放一段影片：固定一段，或随机挑选。"
 
 msgid "FIXED"
 msgstr "固定"
+
+msgid "UPDATING ES4All"
+msgstr "正在更新 ES4All"

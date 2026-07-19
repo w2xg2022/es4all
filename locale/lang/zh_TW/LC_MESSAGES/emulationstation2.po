@@ -4321,3 +4321,6 @@ msgstr "開機時播放一段影片：固定一段，或隨機挑選。"
 
 msgid "FIXED"
 msgstr "固定"
+
+msgid "UPDATING ES4All"
+msgstr "正在更新 ES4All"

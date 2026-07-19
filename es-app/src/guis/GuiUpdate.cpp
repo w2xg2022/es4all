@@ -20,7 +20,12 @@ public:
 
 		mWndNotification = mWindow->createAsyncNotificationComponent();
 
-#ifdef _ENABLEEMUELEC
+// es4all: all three targets build with -DENABLE_EMUELEC=1, so the old code always showed
+// "UPDATING EMUELEC". But self-update updates the ES4All frontend, not the EmuELEC system,
+// so that name is misleading. Prefer ES4ALL_SELF_UPDATE to show "UPDATING ES4ALL".
+#ifdef ES4ALL_SELF_UPDATE
+		mWndNotification->updateTitle(_U("\uF019 ") + _("UPDATING ES4All"));
+#elif defined(_ENABLEEMUELEC)
 		mWndNotification->updateTitle(_U("\uF019 ") + _("UPDATING EMUELEC"));
 #else
 		auto label = Utils::String::format(_("UPDATING %s").c_str(), ApiSystem::getInstance()->getApplicationName().c_str());
