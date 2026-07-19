@@ -149,7 +149,12 @@ jobs:
     runs-on: ubuntu-24.04-arm
     needs: build
     container:
-      image: arm64v8/debian:trixie
+      # es4all: EmuELEC 4.8 的 userland 是 glibc 2.36 / libstdc++ GLIBCXX_3.4.30 / CXXABI_1.3.13。
+      # 用 trixie(glibc 2.38, GLIBCXX_3.4.32) 编出来的 binary 到 EmuELEC 上会因
+      # "GLIBC_2.38 not found / GLIBCXX_3.4.32 not found" 起不来。改用 bookworm(glibc 2.36,
+      # GLIBCXX_3.4.30, CXXABI_1.3.13)——与 EmuELEC 4.8 完全对齐, 编出的 binary 可直接运行。
+      # (armbian/rocknix 目标的 userland glibc 更新[2.38/2.41], trixie 编的照常兼容, 无需改。)
+      image: arm64v8/debian:bookworm
     steps:
       - name: Install build dependencies
         run: |

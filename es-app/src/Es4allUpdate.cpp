@@ -236,9 +236,10 @@ namespace Es4allUpdate
 		if (n <= 0)
 			return std::make_pair(std::string("无法定位当前程序路径"), 1);
 		std::string realBin(exeBuf, n);
-		std::string realDir = Utils::FileSystem::getParent(realBin);
-		std::string resDir = realDir + "/resources";
-		std::string locDir = realDir + "/locale";
+		// ES 在 ROCKNIX 实际读取的 resources 目录 = ~/.emulationstation/resources, 运行期解析到
+		// /storage/.config/emulationstation/resources(ext4 可写)。直接覆盖即可, 无需 bind-mount。
+		// (binary 与 locale 在只读 squashfs, binary 走 bind-mount; locale 仅翻译, 本版不更新。)
+		std::string userResDir = Paths::getUserEmulationStationPath() + "/resources";
 
 		// 1) 下载 zip 到可写临时区。
 		std::string tmpDir = "/storage/.es4all-update";
@@ -268,32 +269,27 @@ namespace Es4allUpdate
 		if (!Utils::FileSystem::exists(newBin))
 			return std::make_pair(std::string("更新包内未找到 emulationstation"), 1);
 
-		// 3) 把新文件搬进 /storage(原子替换), 再写 autostart bind-mount 钩子。
+		// 3) 落地。binary 写进可写 /storage 并 bind-mount 盖到只读 /usr/bin/emulationstation;
+		//    resources 直接覆盖可写的 user 目录。二者都用 shell 做原子替换(busybox cp -a/mv 保权限)。
 		report(_("INSTALLING"), -1);
 
 		std::string stBin = "/storage/es4all-emulationstation";
-		std::string stRes = "/storage/es4all-resources";
-		std::string stLoc = "/storage/es4all-locale";
 
-		// 用 shell 完成递归拷贝/原子替换(busybox cp -a / mv 可靠且保权限)。
 		std::string sh;
 		sh += "set -e; ";
-		// binary
+		// binary -> /storage(原子替换)
 		sh += "cp -f '" + newBin + "' '" + stBin + ".new'; chmod 0755 '" + stBin + ".new'; ";
 		sh += "mv -f '" + stBin + ".new' '" + stBin + "'; ";
-		// resources(存在才处理)
+		// resources -> 可写 user 目录(存在才处理, 原子替换)
 		sh += "if [ -d '" + extractDir + "/resources' ]; then ";
-		sh += "rm -rf '" + stRes + ".new'; cp -a '" + extractDir + "/resources' '" + stRes + ".new'; ";
-		sh += "rm -rf '" + stRes + "'; mv '" + stRes + ".new' '" + stRes + "'; fi; ";
-		// locale(存在才处理)
-		sh += "if [ -d '" + extractDir + "/locale' ]; then ";
-		sh += "rm -rf '" + stLoc + ".new'; cp -a '" + extractDir + "/locale' '" + stLoc + ".new'; ";
-		sh += "rm -rf '" + stLoc + "'; mv '" + stLoc + ".new' '" + stLoc + "'; fi; ";
+		sh += "rm -rf '" + userResDir + ".new'; cp -a '" + extractDir + "/resources' '" + userResDir + ".new'; ";
+		sh += "rm -rf '" + userResDir + "'; mv '" + userResDir + ".new' '" + userResDir + "'; fi; ";
 
 		if (system(sh.c_str()) != 0)
-			return std::make_pair(std::string("写入 /storage 失败"), 1);
+			return std::make_pair(std::string("写入更新文件失败"), 1);
 
-		// autostart 钩子: ES 启动前把 /storage 里的新文件盖到只读安装路径上。
+		// autostart 钩子: 整机重开机后, 在 ES 启动前把 /storage 的新 binary 盖回只读安装路径。
+		// 删除本钩子即回退到镜像自带 ES(不会变砖)。
 		std::string hookDir = "/storage/.config/autostart";
 		Utils::FileSystem::createDirectory("/storage/.config");
 		Utils::FileSystem::createDirectory(hookDir);
@@ -305,25 +301,17 @@ namespace Es4allUpdate
 		hook << "#!/bin/sh\n";
 		hook << "# es4all 自我更新覆盖钩子(自动生成)。删除本文件即回退到镜像自带 ES。\n";
 		hook << "BIN=" << stBin << "\n";
-		hook << "RES=" << stRes << "\n";
-		hook << "LOC=" << stLoc << "\n";
 		hook << "[ -f \"$BIN\" ] && ! mountpoint -q '" << realBin << "' && mount --bind \"$BIN\" '" << realBin << "'\n";
-		hook << "[ -d \"$RES\" ] && [ -d '" << resDir << "' ] && ! mountpoint -q '" << resDir << "' && mount --bind \"$RES\" '" << resDir << "'\n";
-		hook << "[ -d \"$LOC\" ] && [ -d '" << locDir << "' ] && ! mountpoint -q '" << locDir << "' && mount --bind \"$LOC\" '" << locDir << "'\n";
 		hook << "exit 0\n";
 		hook.close();
 		chmod(hookPath.c_str(), 0755);
 
-		// 立即 bind-mount 一次: 这样"重启 ES"(quitES RESTART, 只 re-exec 不重开机)也能马上
-		// 用上新版; 而 autostart 钩子负责整机重开机后的持久化。ES 在 ROCKNIX 以 root 运行, 可挂载。
-		std::string mnt;
-		mnt += "mountpoint -q '" + realBin + "' || mount --bind '" + stBin + "' '" + realBin + "'; ";
-		mnt += "[ -d '" + stRes + "' ] && [ -d '" + resDir + "' ] && { mountpoint -q '" + resDir + "' || mount --bind '" + stRes + "' '" + resDir + "'; }; ";
-		mnt += "[ -d '" + stLoc + "' ] && [ -d '" + locDir + "' ] && { mountpoint -q '" + locDir + "' || mount --bind '" + stLoc + "' '" + locDir + "'; }; ";
-		mnt += "true";
+		// 立即 bind-mount 一次: 这样"重启 ES"(quitES RESTART, 只 re-exec 不重开机)也能马上用上
+		// 新 binary; autostart 钩子负责整机重开机后的持久化。ES 在 ROCKNIX 以 root 运行, 可挂载。
+		std::string mnt = "mountpoint -q '" + realBin + "' || mount --bind '" + stBin + "' '" + realBin + "'";
 		system(mnt.c_str());
 
-		// 清理下载临时区(保留 /storage/es4all-* 与钩子)。
+		// 清理下载临时区(保留 /storage/es4all-emulationstation 与钩子)。
 		Utils::FileSystem::deleteDirectoryFiles(tmpDir, true);
 
 		LOG(LogInfo) << "Es4allUpdate: 更新已就绪, 重启后生效 -> " << rel.version;
