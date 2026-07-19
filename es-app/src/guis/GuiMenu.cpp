@@ -40,6 +40,7 @@
 
 #include <LibretroRatio.h>
 #include "guis/GuiUpdate.h"
+#include "Es4allUpdate.h"
 #include "guis/GuiInstallStart.h"
 #include "guis/GuiTextEditPopupKeyboard.h"
 #include "guis/GuiBackupStart.h"
@@ -2106,7 +2107,16 @@ void GuiMenu::openUpdatesSettings()
 		updateGui->addEntry(GuiUpdate::state == GuiUpdateState::State::UPDATE_READY ? _("APPLY UPDATE") : _("START UPDATE"), true, [this]
 		{
 			if (GuiUpdate::state == GuiUpdateState::State::UPDATE_READY)
-				Utils::Platform::quitES(Utils::Platform::QuitMode::RESTART);
+			{
+#ifdef ES4ALL_SELF_UPDATE
+				// es4all: 滚动更新(同版本号 1.1pre 覆盖已挂载过的旧版)靠 bind-mount 换新 inode,
+				// 只重启 ES 进程看不到新版本, 必须整机重开机重新走一次挂载钩子/服务。
+				if (Es4allUpdate::needsFullReboot())
+					Utils::Platform::quitES(Utils::Platform::QuitMode::REBOOT);
+				else
+#endif
+					Utils::Platform::quitES(Utils::Platform::QuitMode::RESTART);
+			}
 			else if (GuiUpdate::state == GuiUpdateState::State::UPDATER_RUNNING)
 				mWindow->pushGui(new GuiMsgBox(mWindow, _("UPDATER IS ALREADY RUNNING")));
 			else

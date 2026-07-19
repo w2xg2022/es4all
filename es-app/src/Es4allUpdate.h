@@ -48,6 +48,13 @@ namespace Es4allUpdate
 	// 返回 {讯息, 退出码}: 退出码 0 = 成功(重启后生效), 非 0 = 失败。
 	std::pair<std::string, int> apply(const Es4allRelease& rel,
 	                                  const std::function<void(const std::string)>& func = nullptr);
+
+	// 上一次 apply() 成功后, 是否需要"整机重开机"才能生效(而非仅重启 ES 进程)。
+	// 唯读 rootfs 平台(ROCKNIX/EMUELEC)靠 bind-mount 覆盖 binary: mount --bind 绑定的是当时的
+	// inode, 若安装路径此前已被绑定过(即"滚动更新"——同版本号 1.1pre 又出新 build), 新文件写入
+	// /storage 后旧挂载仍指向旧 inode, 只重启 ES 进程不会换成新档, 必须整机重开机(重新走一次
+	// 挂载钩子/服务, 才会绑定到新 inode)。首次安装(此前未挂载)或 ARMBIAN(就地覆盖)则不需要。
+	bool needsFullReboot();
 }
 
 #endif // ES_APP_ES4ALL_UPDATE_H

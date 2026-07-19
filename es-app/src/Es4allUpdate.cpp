@@ -92,8 +92,18 @@ namespace
 	}
 }
 
+namespace
+{
+	bool gNeedsFullReboot = false;
+}
+
 namespace Es4allUpdate
 {
+	bool needsFullReboot()
+	{
+		return gNeedsFullReboot;
+	}
+
 	std::string getInstalledVersion()
 	{
 		return PROGRAM_VERSION_STRING;
@@ -243,6 +253,18 @@ namespace Es4allUpdate
 		std::string realBin(exeBuf, n);
 		// ES 实际读取的 resources = ~/.emulationstation/resources, 运行期解析到可写目录, 直接覆盖。
 		std::string userResDir = Paths::getUserEmulationStationPath() + "/resources";
+
+		// 判断这次是"首次安装"还是"滚动更新"(唯读平台专用, 决定重启 ES 够不够用还是要整机重开机)。
+		// mount --bind 绑定的是当时的 inode; 若 realBin 此前已是 bind-mount 目标, 说明是滚动更新
+		// ——稍后 mv 新文件进 /storage 只换 inode, 旧挂载仍指旧档, 只重启 ES 进程看不到新版本。
+#if defined(ES4ALL_TARGET_ROCKNIX) || defined(ES4ALL_TARGET_EMUELEC)
+		{
+			std::string chk = "grep -q ' " + realBin + " ' /proc/mounts";
+			gNeedsFullReboot = (system(chk.c_str()) == 0);
+		}
+#else
+		gNeedsFullReboot = false;
+#endif
 
 		// 可写暂存基地: 唯读平台用 /storage, ARMBIAN 用可写的 home。
 #if defined(ES4ALL_TARGET_ARMBIAN)
