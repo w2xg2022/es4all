@@ -35,7 +35,7 @@ jobs:
         run: |
           mkdir -p build
           cd build
-          cmake .. -DGLES=OFF -DGLES2=ON -DCEC=OFF -DENABLE_EMUELEC=1 -DDISABLE_KODI=1
+          cmake .. -DGLES=OFF -DGLES2=ON -DCEC=OFF -DENABLE_EMUELEC=1 -DDISABLE_KODI=1 -DES4ALL_BUILD_SHA=${{ github.sha }}
 
       - name: Build
         run: cmake --build build -j"$(nproc)"
@@ -78,6 +78,9 @@ jobs:
             每个 zip 内含 emulationstation(主程序) + resources + locale，解压后覆盖到设备对应目录即可，无需重新编译，重启 EmulationStation 生效。
             版本号含 "pre" 为预览版(开发中)。
 
+            <!-- es4all 自我更新用: 本次构建指纹, 请勿手动修改 -->
+            es4all-build-sha: ${{ github.sha }}
+
   build-rocknix:
     runs-on: ubuntu-24.04-arm
     needs: build
@@ -107,7 +110,7 @@ jobs:
           # es4all: 与 dist/rocknix/package.mk 对齐
           cmake .. -DGLES=OFF -DGLES2=ON -DES4ALL_TARGET=rocknix -DENABLE_EMUELEC=1 \
                    -DROCKNIX=1 -DDISABLE_KODI=1 -DENABLE_FILEMANAGER=0 -DCEC=0 \
-                   -DENABLE_PULSE=1 -DUSE_SYSTEM_PUGIXML=1
+                   -DENABLE_PULSE=1 -DUSE_SYSTEM_PUGIXML=1 -DES4ALL_BUILD_SHA=${{ github.sha }}
 
       - name: Build
         run: cmake --build build -j"$(nproc)"
@@ -170,7 +173,7 @@ jobs:
           cd build
           # es4all: 与 dist/emuelec/package.mk 对齐(该档未带 CEC，故 CEC 保持 CMake 预设 ON)
           cmake .. -DGLES=OFF -DGLES2=ON -DES4ALL_TARGET=emuelec -DENABLE_EMUELEC=1 \
-                   -DDISABLE_KODI=1 -DENABLE_FILEMANAGER=1 -DENABLE_TTS=1
+                   -DDISABLE_KODI=1 -DENABLE_FILEMANAGER=1 -DENABLE_TTS=1 -DES4ALL_BUILD_SHA=${{ github.sha }}
 
       - name: Build
         run: cmake --build build -j"$(nproc)"

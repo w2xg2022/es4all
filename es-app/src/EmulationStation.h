@@ -11,6 +11,12 @@
 
 #define PROGRAM_BUILT_STRING __DATE__ " - " __TIME__
 
+// es4all: 构建指纹(CI 注入的 git commit SHA)。见 CMakeLists.txt。
+// 本地手动编译或未定义时为空字串；自我更新据此退化为纯版本号比较。
+#ifndef ES4ALL_BUILD_SHA
+#define ES4ALL_BUILD_SHA ""
+#endif
+
 #define RESOURCE_VERSION_STRING "42,0,0\0"
 #define RESOURCE_VERSION PROGRAM_VERSION_MAJOR,PROGRAM_VERSION_MINOR,PROGRAM_VERSION_MAINTENANCE
 

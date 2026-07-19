@@ -13,6 +13,7 @@
 #include "utils/StringUtil.h"
 #include "utils/ThreadPool.h"
 #include "RetroAchievements.h"
+#include "Es4allUpdate.h"
 #include "utils/ZipFile.h"
 #include "Paths.h"
 #include "utils/VectorEx.h"
@@ -171,6 +172,13 @@ bool ApiSystem::isFreeSpaceLimit()
 std::string ApiSystem::getVersion(bool extra)
 {
 	LOG(LogDebug) << "ApiSystem::getVersion";
+#ifdef ES4ALL_SELF_UPDATE
+	// es4all: 版本号以编进 binary 的 PROGRAM_VERSION_STRING 为准(自我更新据此比对),
+	// 不走 batocera-version / version.info。extra(改机检测)一律返回 none。
+	if (extra)
+		return "none";
+	return Es4allUpdate::getInstalledVersion();
+#endif
 #ifdef _ENABLEEMUELEC
 	std::ifstream ifs("/usr/config/EE_VERSION");
 #else
@@ -256,7 +264,17 @@ std::pair<std::string, int> ApiSystem::updateSystem(const std::function<void(con
 {
 	LOG(LogDebug) << "ApiSystem::updateSystem";
 
-#ifdef _ENABLEEMUELEC	
+#ifdef ES4ALL_SELF_UPDATE
+	// es4all: 走 GitHub Releases OTA, 替代不存在的 batocera-upgrade / emuelec-upgrade。
+	{
+		Es4allRelease rel;
+		if (!Es4allUpdate::findLatestApplicable(rel))
+			return std::make_pair(std::string("无可用更新"), 1);
+		return Es4allUpdate::apply(rel, func);
+	}
+#endif
+
+#ifdef _ENABLEEMUELEC
 	std::string updatecommand = "emuelec-upgrade";
 #else
 	std::string updatecommand = "batocera-upgrade";
@@ -418,6 +436,19 @@ bool ApiSystem::ping()
 bool ApiSystem::canUpdate(std::vector<std::string>& output) 
 {
 	LOG(LogDebug) << "ApiSystem::canUpdate";
+
+#ifdef ES4ALL_SELF_UPDATE
+	// es4all: 查询 GitHub Releases 判断是否有更新; 有则把目标版本号回填 output(供 UI 显示)。
+	{
+		Es4allRelease rel;
+		if (Es4allUpdate::findLatestApplicable(rel))
+		{
+			output.push_back(rel.version);
+			return true;
+		}
+		return false;
+	}
+#endif
 
 	FILE *pipe = popen("batocera-config canupdate", "r");
 	if (pipe == NULL)

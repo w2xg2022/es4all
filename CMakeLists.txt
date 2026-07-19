@@ -79,6 +79,7 @@ MESSAGE("-- es4all build target : ${ES4ALL_TARGET}")
 string(TOUPPER "${ES4ALL_TARGET}" _ES4ALL_TARGET_UC)
 add_definitions(-DES4ALL_TARGET_${_ES4ALL_TARGET_UC}=1)   # ES4ALL_TARGET_ARMBIAN / _ROCKNIX / _EMUELEC
 add_definitions(-DES4ALL_INIT_SYSTEMD=1)                  # 三边共用：systemd D-Bus 重启等
+add_definitions(-DES4ALL_SELF_UPDATE=1)                   # 三边共用：es4all ES 自我更新(GitHub releases OTA)
 
 if(ES4ALL_TARGET STREQUAL "armbian")
   add_definitions(-DES4ALL_PATHS_ARMBIAN=1)
@@ -96,6 +97,15 @@ elseif(ES4ALL_TARGET STREQUAL "emuelec")
   # 这些在 armbian/rocknix 上「显示得出来但按了没用」，故以能力旗标关闭。
   # 未来若为其它 target 补上后端实作(如 AUDIO DEVICE、EXTERNAL MOUNT)，再把对应项升为共用。
   add_definitions(-DES4ALL_CAP_EMUELEC_PLATFORM=1)
+endif()
+
+# es4all: 构建指纹。版本字串在 dev 期间固定为 "1.1pre" 不变，光靠版本号无法区分
+# 「同一个 1.1pre 的不同次构建」。这里把 CI 传进来的 git commit SHA 编进 binary，
+# 自我更新时用它跟 Release 里记录的 SHA 比对，实现同版本号的滚动升级。
+# 本地手动编译时 ES4ALL_BUILD_SHA 为空，getBuildSha() 返回空字串、更新器据此退化为纯版本号比较。
+if(DEFINED ES4ALL_BUILD_SHA AND NOT ES4ALL_BUILD_SHA STREQUAL "")
+  add_definitions(-DES4ALL_BUILD_SHA="${ES4ALL_BUILD_SHA}")
+  MESSAGE("-- es4all build sha    : ${ES4ALL_BUILD_SHA}")
 endif()
 
 project(emulationstation-all)
