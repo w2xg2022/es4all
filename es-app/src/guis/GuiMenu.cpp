@@ -473,12 +473,14 @@ void GuiMenu::openEmuELECSettings()
 	// es4all: BUTTON LED COLOR(bl_rgb) / STATUS LED(gf_statusled) 已删除 ——
 	// 两者包在 #ifdef _ENABLEGAMEFORCE 内，而 CI 三个 job 与 rocknix/emuelec 的 package.mk
 	// 均未定义 ENABLE_GAMEFORCE，属彻底死码；且为 GameForce 掌机专属硬件功能。
-	// es4all: AUDIO DEVICE 为 EmuELEC 专属 —— 选项写死 ALSA card,device 组合(切 HDMI/AV 输出)，
-	// 套用靠 /usr/bin/emuelec-utils setauddev，armbian/rocknix 无此工具 → 选了不会有任何反应
-	// (且 ee_audio_device 这个键在 ES 内除本菜单外无人读取)。
-	// 系统设置 → AUDIO OUTPUT (audio.device + ApiSystem::setAudioOutputDevice) 才是有抽象层的正牌入口。
-	// 未来若为其它 target 补上后端实作，可比照 EXTERNAL MOUNT 升为共用。
-#if defined(ES4ALL_CAP_EMUELEC_PLATFORM) && !defined(_ENABLEGAMEFORCE) && !defined(ODROIDGOA)
+	// es4all: AUDIO DEVICE 已从菜单隐藏(用户要求)。原因: 选项是写死的 ALSA card,device
+	// (auto/0,0/0,1/1,0/1,1/0,2/1,2), 语义隐晦无法友善化 —— 连 aplay -l 给的都是
+	// SPDIF-B-dummy / TDM-B-T9015 之类的隐晦名, 且各机型编号不同、HDMI 音频根本不在列表里。
+	// 系统设置 → AUDIO OUTPUT 才是有抽象层的正牌入口, 但它 gate 在 batocera-audio(EMUELEC
+	// 无此命令 → 该项在 EMUELEC 也不显示)。即隐藏本项后 EMUELEC 暂无音频切换入口; 若需要,
+	// 后续应给 EMUELEC 补 batocera-audio 垫片让 AUDIO OUTPUT 生效, 而非留着这个隐晦项。
+	// 代码保留(#if 0), 供日后加友善标签或补垫片时复用。
+#if 0 && defined(ES4ALL_CAP_EMUELEC_PLATFORM) && !defined(_ENABLEGAMEFORCE) && !defined(ODROIDGOA)
 		// es4all: 标题用 _() 才会翻译(原为裸字符串, 弹窗标题一直显示英文 AUDIO DEVICE)。
 		auto emuelec_audiodev_def = std::make_shared< OptionListComponent<std::string> >(mWindow, _("AUDIO DEVICE"), false);
 		std::vector<std::string> Audiodevices;
@@ -5275,6 +5277,11 @@ void GuiMenu::openQuitMenu_static(Window *window, bool quickAccessMenu, bool ani
 					window->pushGui(new GuiMsgBox(window, _("REALLY REBOOT TO USB/SD?"), _("YES"),
 						[] {
 						Scripting::fireEvent("quit", "usb");
+						// es4all: 实际切到外接(USB/SD)开机。Amlogic/EMUELEC u-boot bootcmd:
+						// bootfromnand=0 时依序试 SD→USB→eMMC(外接优先)。原本只 systemctl reboot
+						// 不改 env、fireEvent quit 又无处理器, 于是重启回原媒体(动作无效)。
+						// 带 command -v 守卫: 无 fw_setenv 的平台(非 Amlogic)自动退回普通重启。
+						Utils::Platform::ProcessStartInfo("command -v fw_setenv >/dev/null 2>&1 && fw_setenv bootfromnand 0").run();
 						Utils::Platform::ProcessStartInfo("sync").run();
 						Utils::Platform::ProcessStartInfo("systemctl reboot").run();
 						Utils::Platform::quitES(Utils::Platform::QuitMode::QUIT);
@@ -5287,6 +5294,10 @@ void GuiMenu::openQuitMenu_static(Window *window, bool quickAccessMenu, bool ani
 					window->pushGui(new GuiMsgBox(window, _("REALLY REBOOT TO EMMC?"), _("YES"),
 						[] {
 						Scripting::fireEvent("quit", "emmc");
+						// es4all: 实际切到内建 eMMC 开机。用 EMUELEC/CoreELEC 自带 rebootfromnand
+						// (设 bootfromnand=1, 并处理 whereToBootFrom / FireTV 特例)。它本身除 FireTV
+						// 外不重启, 故随后 systemctl reboot。带 command -v 守卫, 非 Amlogic 平台退回普通重启。
+						Utils::Platform::ProcessStartInfo("command -v rebootfromnand >/dev/null 2>&1 && rebootfromnand").run();
 						Utils::Platform::ProcessStartInfo("sync").run();
 						Utils::Platform::ProcessStartInfo("systemctl reboot").run();
 						Utils::Platform::quitES(Utils::Platform::QuitMode::QUIT);
