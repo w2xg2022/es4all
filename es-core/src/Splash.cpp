@@ -14,6 +14,17 @@ Splash::Splash(Window* window, const std::string image, bool fullScreenBackGroun
 	mActiveProgressbar(window)	
 {
 	mBackgroundColor = 0x000000FF;
+
+#ifdef ES4ALL_TARGET_EMUELEC
+	// es4all: EmuELEC 的 splash 是透明去背的向量图，副标 EMULATIONSTATION 用 #231F20(近黑)，
+	// 画在预设黑底上几乎看不见(原厂就有这个问题)。改成白底后：①副标在白底上清楚可读；
+	// ②图透明时看不到 80%x60% 卡片的边界，视觉上就是整片白的全屏 splash。
+	// 只作用于开机/退出的全屏 splash；游戏启动过场(fullScreenBackGround=false，背景是游戏图)
+	// 维持黑底，否则游戏图周围会出现白框。
+	if (fullScreenBackGround)
+		mBackgroundColor = 0xFFFFFFFF;
+#endif
+
 	mRoundCorners = 0.01;
 	mPercent = -1;
 
