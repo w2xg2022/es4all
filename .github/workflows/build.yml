@@ -107,10 +107,15 @@ jobs:
         run: |
           mkdir -p build
           cd build
-          # es4all: 与 dist/rocknix/package.mk 对齐
+          # es4all: 与 dist/rocknix/package.mk 对齐，但 ★不传 -DUSE_SYSTEM_PUGIXML=1★。
+          # 原因：package.mk 那个旗标是给 ROCKNIX 建置系统用的(它的 pugixml 是静态的，链进去没事)；
+          # 本 CI 跑在 Debian 容器里，开了这个旗标会去链容器的 libpugixml.so.1 变成【动态依赖】，
+          # 而 ROCKNIX 实机根本没有这个 so(固件烤入的 ES 是静态链 pugixml) →
+          # OTA zip 部署到实机会 `error while loading shared libraries: libpugixml.so.1` 起不来。
+          # 保持默认 OFF 用内建 external/pugixml 静态编入，zip 才自足(armbian/emuelec 两个 job 也是这样)。
           cmake .. -DGLES=OFF -DGLES2=ON -DES4ALL_TARGET=rocknix -DENABLE_EMUELEC=1 \
                    -DROCKNIX=1 -DDISABLE_KODI=1 -DENABLE_FILEMANAGER=0 -DCEC=0 \
-                   -DENABLE_PULSE=1 -DUSE_SYSTEM_PUGIXML=1 -DES4ALL_BUILD_SHA=${{ github.sha }}
+                   -DENABLE_PULSE=1 -DES4ALL_BUILD_SHA=${{ github.sha }}
 
       - name: Build
         run: cmake --build build -j"$(nproc)"
