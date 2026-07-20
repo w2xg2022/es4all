@@ -66,3 +66,11 @@
 ## 四、es4all 侧无需再动
 所有上述 ES 代码/资源改动已在 `w2xg2022/es4all` 的 `v1.1-dev @ 1712b16`，CI 三目标全绿。
 只有蓝牙垫片(dist/emuelec/sources/batocera-bluetooth)是 distro glue，需 EmuELEC 树装进镜像。
+
+---
+
+## 五、resources/audio_outputs.cfg 补充说明
+- 该文件注释已从中文改为纯英文（面向英文使用者/贡献者），**数据行本身未变**：
+  `E900V22C   HDMI:0,2 AV:0,1`，映射逻辑不受影响。
+- 纯文字/注释改动，不涉及代码，无需重编；随 resources 一起烤进镜像/走自我更新 OTA 即可。
+- 加新机型时按文件内英文范本格式加一行即可，不用改注释。
