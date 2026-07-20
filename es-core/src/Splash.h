@@ -18,7 +18,9 @@ class TextureResource;
 #define OLD_SPLASH_LAYOUT true
 #elif defined(ES4ALL_TARGET_EMUELEC)
 #define DEFAULT_SPLASH_IMAGE ":/splash_emuelec.svg"
-#define OLD_SPLASH_LAYOUT true
+// es4all: 原厂 EmuELEC 的 old layout 只把背景图缩到 80%x60%(黑边卡片样式)，
+// 实机测试要求改为真正全屏铺满，改用 Splash.cpp 里 fullScreenBackGround 的新版排版逻辑。
+#define OLD_SPLASH_LAYOUT false
 #elif defined(_ENABLEEMUELEC)
 #define DEFAULT_SPLASH_IMAGE ":/splash_armbian.svg"
 #define OLD_SPLASH_LAYOUT true
