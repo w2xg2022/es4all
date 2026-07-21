@@ -80,6 +80,13 @@ makeinstall_target() {
   cp ${PKG_BUILD}/serial_number_check ${INSTALL}/usr/bin
   chmod 0755 ${INSTALL}/usr/bin/serial_number_check
 
+  # es4all: 音源输出切换(ES 平台设置 → AUDIO OUTPUT 调用它)。ROCKNIX 走 PipeWire，
+  # 不能照抄 EmuELEC 改 asound.conf 的做法，原因见脚本头部说明。
+  # ⚠️ 本文件是参考副本；真正生效的是 w2xg2022/rocknix 的
+  #    projects/ROCKNIX/packages/ui/emulationstation/package.mk —— 那边也要加同样这两行。
+  cp ${PKG_BUILD}/dist/rocknix/sources/es4all-setauddev ${INSTALL}/usr/bin
+  chmod 0755 ${INSTALL}/usr/bin/es4all-setauddev
+
   mkdir -p ${INSTALL}/usr/bin
   #ln -sf /storage/.config/emulationstation/resources ${INSTALL}/usr/bin/resources
   cp -rf ${PKG_BUILD}/emulationstation ${INSTALL}/usr/bin

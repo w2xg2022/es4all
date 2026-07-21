@@ -386,6 +386,39 @@ std::shared_ptr<OptionListComponent<std::string>> GuiMenu::createSplashExitOptio
 	return emuelec_splash_exit_mode;
 }
 
+// es4all: 解析 resources/audio_outputs.cfg -> [(显示标签, "card,device")]，EMUELEC / ROCKNIX 共用。
+// 格式与匹配规则见该文件头；取第一个「型号子串命中 /proc/device-tree/model」的行。
+// 返回空 = 本机型不在表内 -> 调用方不显示 AUDIO OUTPUT 选单(保持出厂默认音源，最安全)。
+static std::vector<std::pair<std::string, std::string>> es4allParseAudioOutputs()
+{
+	std::vector<std::pair<std::string, std::string>> outs;
+
+	std::string model = Utils::String::trim(Utils::Platform::getShOutput(
+		"cat /proc/device-tree/model 2>/dev/null | tr -d '\\000'"));
+
+	std::string cfgPath = ResourceManager::getInstance()->getResourcePath(":/audio_outputs.cfg");
+	if (model.empty() || !Utils::FileSystem::exists(cfgPath))
+		return outs;
+
+	for (const std::string& raw : Utils::String::split(Utils::FileSystem::readAllText(cfgPath), '\n', true))
+	{
+		std::string line = Utils::String::trim(raw);
+		if (line.empty() || line[0] == '#')
+			continue;
+		auto toks = Utils::String::splitAny(line, " \t", true);
+		if (toks.empty() || model.find(toks[0]) == std::string::npos)
+			continue;
+		for (size_t i = 1; i < toks.size(); i++)
+		{
+			size_t c = toks[i].find(':');   // 每项 label:card,device
+			if (c != std::string::npos)
+				outs.push_back({ toks[i].substr(0, c), toks[i].substr(c + 1) });
+		}
+		break;
+	}
+	return outs;
+}
+
 /* < emuelec */
 void GuiMenu::openEmuELECSettings()
 {
@@ -521,35 +554,10 @@ void GuiMenu::openEmuELECSettings()
 	// 实体孔(Amlogic SoC 都支持 SPDIF/模拟, 但廉价盒常没接线)。故需实机 aplay -l + 逐一实听确认。
 	// 映射表放 resources/audio_outputs.cfg(数据文件, 非代码): 加机型只改一行、随 OTA 下发, 见文件头。
 	{
-		std::string model = Utils::String::trim(Utils::Platform::getShOutput(
-			"cat /proc/device-tree/model 2>/dev/null | tr -d '\\000'"));
-
-		// es4all: 机型->音源映射改由 resources/audio_outputs.cfg 提供(不再硬编代码)。
-		// 加机型只改该文件、不用重编 ES; 该文件在 resources 里随自我更新 OTA 下发。格式见文件头。
-		// {显示标签(msgid), card,device}。HDMI/AV 保留原文; OPTICAL 有翻译。
-		std::vector<std::pair<std::string, std::string>> outs;
-		std::string cfgPath = ResourceManager::getInstance()->getResourcePath(":/audio_outputs.cfg");
-		if (!model.empty() && Utils::FileSystem::exists(cfgPath))
-		{
-			for (const std::string& raw : Utils::String::split(Utils::FileSystem::readAllText(cfgPath), '\n', true))
-			{
-				std::string line = Utils::String::trim(raw);
-				if (line.empty() || line[0] == '#')
-					continue;
-				auto toks = Utils::String::splitAny(line, " \t", true);
-				// 第一个 token 是型号子串; 子串命中 /proc/device-tree/model 即用本行(取第一个命中)。
-				if (toks.empty() || model.find(toks[0]) == std::string::npos)
-					continue;
-				for (size_t i = 1; i < toks.size(); i++)
-				{
-					size_t c = toks[i].find(':');   // 每项 label:card,device
-					if (c != std::string::npos)
-						outs.push_back({ toks[i].substr(0, c), toks[i].substr(c + 1) });
-				}
-				break;
-			}
-		}
-		// 不在表内的机型: outs 为空 -> 下面 if 不成立 -> 不显示本选单(保持系统出厂默认音源, 最安全)。
+		// es4all: 机型->音源映射来自 resources/audio_outputs.cfg(数据文件, 非代码)，
+		// 解析逻辑抽成 es4allParseAudioOutputs() 与 ROCKNIX 共用。
+		// 不在表内的机型: outs 为空 -> 下面 if 不成立 -> 不显示本选单(保持出厂默认音源, 最安全)。
+		std::vector<std::pair<std::string, std::string>> outs = es4allParseAudioOutputs();
 
 		if (!outs.empty())
 		{
@@ -5094,6 +5102,35 @@ void GuiMenu::openPlatformSettings()
 	});
 
 	s->addGroup(_("SYSTEM"));
+
+	// 音源输出 —— 与 EMUELEC 共用 resources/audio_outputs.cfg 映射表(见 es4allParseAudioOutputs)，
+	// 但后端不同：EMUELEC 是裸 ALSA(emuelec-utils setauddev 改 asound.conf 默认 PCM)，
+	// ROCKNIX 走 PipeWire(aplay -L 的 default 指向 PipeWire Media Server)，写 asound.conf 无效，
+	// 必须改 PipeWire 默认 sink -> 交给 glue 脚本 es4all-setauddev(按 ALSA card 号解析 sink id，
+	// 因为 wpctl 的数字 id 每次开机会变)。键用 system.audiooutput(开机 glue 重新套用)。
+	//
+	// ⚠️ 机型不在 audio_outputs.cfg 里就不显示本选单。MD1000 未列入 —— 实机验证它只有 HDMI 可用：
+	// 板载 3.5mm 是 AV 孔，但设备树里没有任何模拟 codec 节点(只有 rockchip,rk3568-spdif + spdif-dit
+	// 这个数字 dummy codec)，实听 card1 无声、HDMI 正常。只剩一个可选项的选单没有意义。
+	{
+		std::vector<std::pair<std::string, std::string>> outs = es4allParseAudioOutputs();
+		if (!outs.empty())
+		{
+			auto audioout = std::make_shared< OptionListComponent<std::string> >(mWindow, _("AUDIO OUTPUT"), false);
+			std::string cur = SystemConf::getInstance()->get("system.audiooutput");
+			if (cur.empty() || cur == "auto")
+				cur = outs.front().second;
+
+			for (auto& o : outs)
+				audioout->add(_(o.first.c_str()), o.second, cur == o.second);
+			s->addWithDescription(_("AUDIO OUTPUT"), _("Changes will need an EmulationStation restart."), audioout);
+			audioout->setSelectedChangedCallback([audioout](std::string dev) {
+				if (SystemConf::getInstance()->set("system.audiooutput", dev))
+					SystemConf::getInstance()->saveSystemConf();
+				Utils::Platform::ProcessStartInfo("/usr/bin/es4all-setauddev " + dev).run();
+			});
+		}
+	}
 
 	// CPU 调速器 —— system.cpugovernor
 	auto gov = std::make_shared< OptionListComponent<std::string> >(mWindow, _("CPU GOVERNOR"), false);

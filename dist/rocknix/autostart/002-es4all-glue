@@ -80,6 +80,13 @@ set_kv "${SYS_CFG}" psp.core ppsspp-sa
 set_kv "${SYS_CFG}" dreamcast.emulator flycast
 set_kv "${SYS_CFG}" dreamcast.core flycast-sa
 
+# 5b) 音源输出：重新套用上次选的 PipeWire 默认 sink。
+#     ES 平台设置 → AUDIO OUTPUT 写 system.audiooutput，当下由 es4all-setauddev 立即生效；
+#     但 PipeWire 的默认 sink 不保证跨重开机保留，故开机再套一次。脚本自己会读该键、
+#     等 PipeWire 起来、按 ALSA card 号解析 sink id（wpctl 的数字 id 每次开机都不同）。
+#     未设该键时脚本直接 exit 0，不动系统默认。放背景跑，避免拖慢开机。
+[ -x /usr/bin/es4all-setauddev ] && /usr/bin/es4all-setauddev >/dev/null 2>&1 &
+
 # 6) PSP 独立模拟器手柄（□/△ 与物理位置对齐）
 [ -f "${PSP_CTRL}" ] && [ -f "${GLUE}/controls.ini" ] && cp -f "${GLUE}/controls.ini" "${PSP_CTRL}"
 
