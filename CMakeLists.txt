@@ -100,13 +100,15 @@ elseif(ES4ALL_TARGET STREQUAL "emuelec")
 endif()
 
 # es4all: 构建指纹。版本字串在 dev 期间固定为 "1.1pre" 不变，光靠版本号无法区分
-# 「同一个 1.1pre 的不同次构建」。这里把 CI 传进来的 git commit SHA 编进 binary，
-# 自我更新时用它跟 Release 里记录的 SHA 比对，实现同版本号的滚动升级。
-# 本地手动编译时 ES4ALL_BUILD_SHA 为空，getBuildSha() 返回空字串、更新器据此退化为纯版本号比较。
-if(DEFINED ES4ALL_BUILD_SHA AND NOT ES4ALL_BUILD_SHA STREQUAL "")
-  add_definitions(-DES4ALL_BUILD_SHA="${ES4ALL_BUILD_SHA}")
-  MESSAGE("-- es4all build sha    : ${ES4ALL_BUILD_SHA}")
-endif()
+# 「同一个 1.1pre 的不同次构建」。
+#
+# ★不要再把 commit SHA 编进 binary★(原本有 -DES4ALL_BUILD_SHA，已移除)：
+# CI 一次编三个 target、共用同一个 github.sha，任何一次 push 都让三个指纹一起变 ——
+# 即使改动只在某个 target 的 #if 守卫内、对另两个的产物毫无影响，它们也会被提示「有新版」。
+# 现改用 **binary 的 md5** 当指纹(CI 产生 <zip>.md5 资产，ES 端算 /proc/self/exe 的 md5 比对)，
+# 只有该 target 的产物真的变了才提示。详见 es-app/src/Es4allUpdate.h。
+# 这也要求「相同源码编出相同 binary」，故 EmulationStation.h 的 PROGRAM_BUILT_STRING
+# 不可再用 __DATE__/__TIME__。
 
 project(emulationstation-all)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-include${CMAKE_SOURCE_DIR}/compat.h>)

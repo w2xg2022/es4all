@@ -9,13 +9,13 @@
 #define PROGRAM_VERSION_MAINTENANCE  0
 #define PROGRAM_VERSION_STRING		"1.1pre"
 
-#define PROGRAM_BUILT_STRING __DATE__ " - " __TIME__
-
-// es4all: 构建指纹(CI 注入的 git commit SHA)。见 CMakeLists.txt。
-// 本地手动编译或未定义时为空字串；自我更新据此退化为纯版本号比较。
-#ifndef ES4ALL_BUILD_SHA
-#define ES4ALL_BUILD_SHA ""
-#endif
+// es4all: ★这里刻意不用 __DATE__ / __TIME__★
+//   自我更新改用「binary 的 md5」当构建指纹(见 Es4allUpdate)，前提是**相同源码要编出相同 binary**。
+//   __DATE__/__TIME__ 会让每次编译的产物都不同 -> md5 永远不同 -> 每次建置三个 target 都被判定
+//   「有新版」，即使该 target 的代码一个字都没改(实测: 调整 ROCKNIX 专属选单时 EmuELEC 也被强迫提示)。
+//   已用两次云端建置(同 commit、不同 runner)验证: 移除时间戳与 ES4ALL_BUILD_SHA 后，
+//   产物 md5 完全一致 -> 工具链本身是确定性的，此方案成立。
+#define PROGRAM_BUILT_STRING PROGRAM_VERSION_STRING
 
 #define RESOURCE_VERSION_STRING "42,0,0\0"
 #define RESOURCE_VERSION PROGRAM_VERSION_MAJOR,PROGRAM_VERSION_MINOR,PROGRAM_VERSION_MAINTENANCE

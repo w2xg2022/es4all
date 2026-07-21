@@ -9,8 +9,14 @@
 //
 // 版本序:  1.0 < 1.1pre < 1.1 < 1.2pre < 1.2 ...   (pre = 预览版, 排在同号正式版之前)
 // 构建指纹: 版本字串在 dev 期间固定为 "1.1pre" 不变, 光靠版本号无法区分同版本号的不同次构建。
-//           故 CI 把 git commit SHA 编进 binary(ES4ALL_BUILD_SHA), 并写进 Release 说明。
-//           同版本号 + SHA 不同 => 视为有更新(实现 1.1pre 的滚动升级)。
+//           **指纹 = 该 target binary 的 md5**: 本机算 /proc/self/exe 的 md5, 与 release 里
+//           `<zip名>.md5` 资产的内容比对; 同版本号 + md5 不同 => 有更新(1.1pre 滚动升级)。
+//
+//           为何不再用 commit SHA: CI 一次编三个 target、共用同一个 github.sha, 任何一次 push
+//           都让三个指纹一起变 —— 即使改动只在某个 target 的守卫内、对另两个的产物毫无影响,
+//           它们也会被提示「有新版」。改用产物内容的 md5 后, 只有真的变了才提示。
+//           前提「相同源码编出相同 binary」已移除 __DATE__/__TIME__ 与 -DES4ALL_BUILD_SHA,
+//           并用两次云端建置(同 commit、不同 runner)验证 md5 完全一致。
 //
 // 只在 ES4ALL_SELF_UPDATE 定义时编译(三个 es4all target 都开)。
 
@@ -21,14 +27,16 @@ struct Es4allRelease
 {
 	std::string version;   // 去掉前导 v 的版本号, 如 "1.1pre"
 	std::string tag;       // 原始 tag, 如 "v1.1pre"
-	std::string sha;       // Release 说明里记录的构建指纹(git commit SHA), 可能为空
+	std::string sha;       // 构建指纹: 优先取 .md5 资产内容(本 target binary 的 md5);
+	                       // 旧版 release 无 .md5 时退回 body 里的 commit SHA。可能为空。
 	std::string assetUrl;  // 本 target 对应 zip 的下载地址
+	std::string md5Url;    // 本 target 的 <zip>.md5 下载地址, 可能为空
 	bool valid = false;
 };
 
 namespace Es4allUpdate
 {
-	// 当前安装的版本号 / 构建指纹(编译期烤进 binary)。
+	// 当前安装的版本号 / 构建指纹(指纹为执行期计算的 /proc/self/exe md5)。
 	std::string getInstalledVersion();
 	std::string getInstalledSha();
 

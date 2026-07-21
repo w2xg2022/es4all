@@ -2,7 +2,8 @@
 
 #ifdef ES4ALL_SELF_UPDATE
 
-#include "EmulationStation.h"   // PROGRAM_VERSION_STRING, ES4ALL_BUILD_SHA
+#include "EmulationStation.h"   // PROGRAM_VERSION_STRING
+#include "utils/md5.h"          // 构建指纹改用 binary 的 md5
 #include "ApiSystem.h"          // unzipFile
 #include "HttpReq.h"
 #include "Paths.h"
@@ -15,6 +16,7 @@
 #include <rapidjson/error/en.h>
 
 #include <fstream>
+#include <sstream>
 #include <thread>
 #include <chrono>
 #include <cctype>
@@ -109,9 +111,38 @@ namespace Es4allUpdate
 		return PROGRAM_VERSION_STRING;
 	}
 
+	// es4all: 构建指纹 = **本机 binary 的 md5**(不再是编译期烤进去的 commit SHA)。
+	//
+	// 为什么改：CI 一次编三个 target、共用同一个 commit SHA，所以任何一次 push 都会让三个
+	// target 的指纹一起变 —— 即使改动只在 `#if defined(ES4ALL_TARGET_ROCKNIX)` 守卫内、
+	// 对 EmuELEC 的产物毫无影响，EmuELEC 也会被提示「有新版」(实机遇到过)。
+	// 改用产物内容的 md5 后，只有该 target 的 binary 真的变了才会提示。
+	//
+	// 前提是相同源码要编出相同 binary：已移除 __DATE__/__TIME__(见 EmulationStation.h)与
+	// -DES4ALL_BUILD_SHA，并用两次云端建置验证过 md5 完全一致。
+	//
+	// 读 /proc/self/exe 而不是 argv[0]：ROCKNIX/EMUELEC 上 binary 是 bind-mount 盖上去的，
+	// 且滚动更新后原档可能已被 unlink(readlink 会带 " (deleted)" 后缀)——用 /proc/self/exe
+	// 直接读「正在跑的这份内容」最准，不受路径与 deleted 影响。
 	std::string getInstalledSha()
 	{
-		return ES4ALL_BUILD_SHA;   // 本地手动编译时为空字串
+		static std::string cached;
+		static bool done = false;
+		if (done)
+			return cached;
+		done = true;
+
+		std::ifstream ifs("/proc/self/exe", std::ios::binary);
+		if (!ifs)
+		{
+			LOG(LogWarning) << "Es4allUpdate: 无法读取 /proc/self/exe, 构建指纹留空(退化为纯版本号比较)";
+			return cached;
+		}
+		std::ostringstream oss;
+		oss << ifs.rdbuf();
+		cached = Utils::String::toLower(md5(oss.str()));
+		LOG(LogDebug) << "Es4allUpdate: 本机构建指纹(md5) = " << cached;
+		return cached;
 	}
 
 	int compareVersion(const std::string& a, const std::string& b)
@@ -165,18 +196,21 @@ namespace Es4allUpdate
 				continue;
 
 			// 找本 target 对应的 zip 资产。
-			std::string url;
+			// es4all: 同时抓本 target 的 zip 与其 **.md5**(构建指纹, 见下方 getInstalledSha 说明)。
+			const std::string md5Asset = asset + ".md5";
+			std::string url, md5Url;
 			if (rel.HasMember("assets") && rel["assets"].IsArray())
 			{
 				for (auto& a : rel["assets"].GetArray())
 				{
-					if (a.IsObject() && a.HasMember("name") && a["name"].IsString() &&
-					    asset == a["name"].GetString() &&
-					    a.HasMember("browser_download_url") && a["browser_download_url"].IsString())
-					{
+					if (!a.IsObject() || !a.HasMember("name") || !a["name"].IsString() ||
+					    !a.HasMember("browser_download_url") || !a["browser_download_url"].IsString())
+						continue;
+					const std::string n = a["name"].GetString();
+					if (n == asset)
 						url = a["browser_download_url"].GetString();
-						break;
-					}
+					else if (n == md5Asset)
+						md5Url = a["browser_download_url"].GetString();
 				}
 			}
 			if (url.empty())
@@ -188,6 +222,9 @@ namespace Es4allUpdate
 			if (!cand.version.empty() && (cand.version[0] == 'v' || cand.version[0] == 'V'))
 				cand.version = cand.version.substr(1);
 			cand.assetUrl = url;
+			cand.md5Url = md5Url;
+			// 旧版 release 只有 body 里的 commit SHA(无 .md5 资产)时仍读它, 保持向后兼容;
+			// 新版以 .md5 为准(稍后在选定 best 之后才下载, 避免对每个 release 都发一次请求)。
 			if (rel.HasMember("body") && rel["body"].IsString())
 				cand.sha = parseShaFromBody(rel["body"].GetString());
 			cand.valid = true;
@@ -203,6 +240,24 @@ namespace Es4allUpdate
 
 		if (!best.valid)
 			return false;
+
+		// es4all: 取回本 target 的构建指纹(binary 的 md5)。只对选定的最新 release 发这一次请求。
+		// .md5 档内容是 `md5sum` 格式: "<hex>  <档名>"，只取前段。
+		if (!best.md5Url.empty())
+		{
+			HttpReq md5req(best.md5Url);
+			if (md5req.wait() && md5req.status() == HttpReq::REQ_SUCCESS)
+			{
+				std::string body = Utils::String::trim(md5req.getContent());
+				size_t sp = body.find_first_of(" \t\r\n");
+				if (sp != std::string::npos)
+					body = body.substr(0, sp);
+				if (!body.empty())
+					best.sha = Utils::String::toLower(body);
+			}
+			else
+				LOG(LogWarning) << "Es4allUpdate: 取 .md5 失败, 退回用 release body 的指纹";
+		}
 
 		if (!isNewer(getInstalledVersion(), getInstalledSha(), best.version, best.sha))
 		{

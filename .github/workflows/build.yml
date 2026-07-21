@@ -35,7 +35,7 @@ jobs:
         run: |
           mkdir -p build
           cd build
-          cmake .. -DGLES=OFF -DGLES2=ON -DCEC=OFF -DENABLE_EMUELEC=1 -DDISABLE_KODI=1 -DES4ALL_BUILD_SHA=${{ github.sha }}
+          cmake .. -DGLES=OFF -DGLES2=ON -DCEC=OFF -DENABLE_EMUELEC=1 -DDISABLE_KODI=1
 
       - name: Build
         run: cmake --build build -j"$(nproc)"
@@ -48,6 +48,11 @@ jobs:
           cp -r locale dist/emulationstation/
           cd dist/emulationstation
           zip -r ../emulationstation-armbian-aarch64.zip .
+          cd ..
+          # es4all: 构建指纹 = binary 的 md5(不是 zip 的 —— zip 内含档案时间戳不可重现)。
+          # ES 端算自己 /proc/self/exe 的 md5 与本档比对, 只有该 target 的产物真的变了才提示更新。
+          md5sum emulationstation/emulationstation | awk '{print $1}' > emulationstation-armbian-aarch64.zip.md5
+          cat emulationstation-armbian-aarch64.zip.md5
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -72,7 +77,9 @@ jobs:
           name: es4all v${{ steps.version.outputs.version }}
           prerelease: ${{ contains(steps.version.outputs.version, 'pre') }}
           make_latest: ${{ !contains(steps.version.outputs.version, 'pre') }}
-          files: dist/emulationstation-armbian-aarch64.zip
+          files: |
+            dist/emulationstation-armbian-aarch64.zip
+            dist/emulationstation-armbian-aarch64.zip.md5
           body: |
             es4all 三平台(armbian / rocknix / emuelec)aarch64 构建。
             每个 zip 内含 emulationstation(主程序) + resources + locale，解压后覆盖到设备对应目录即可，无需重新编译，重启 EmulationStation 生效。
@@ -115,7 +122,7 @@ jobs:
           # 保持默认 OFF 用内建 external/pugixml 静态编入，zip 才自足(armbian/emuelec 两个 job 也是这样)。
           cmake .. -DGLES=OFF -DGLES2=ON -DES4ALL_TARGET=rocknix -DENABLE_EMUELEC=1 \
                    -DROCKNIX=1 -DDISABLE_KODI=1 -DENABLE_FILEMANAGER=0 -DCEC=0 \
-                   -DENABLE_PULSE=1 -DES4ALL_BUILD_SHA=${{ github.sha }}
+                   -DENABLE_PULSE=1
 
       - name: Build
         run: cmake --build build -j"$(nproc)"
@@ -128,6 +135,11 @@ jobs:
           cp -r locale dist/emulationstation/
           cd dist/emulationstation
           zip -r ../emulationstation-rocknix-aarch64.zip .
+          cd ..
+          # es4all: 构建指纹 = binary 的 md5(不是 zip 的 —— zip 内含档案时间戳不可重现)。
+          # ES 端算自己 /proc/self/exe 的 md5 与本档比对, 只有该 target 的产物真的变了才提示更新。
+          md5sum emulationstation/emulationstation | awk '{print $1}' > emulationstation-rocknix-aarch64.zip.md5
+          cat emulationstation-rocknix-aarch64.zip.md5
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -148,7 +160,9 @@ jobs:
           tag_name: v${{ steps.version.outputs.version }}
           prerelease: ${{ contains(steps.version.outputs.version, 'pre') }}
           make_latest: ${{ !contains(steps.version.outputs.version, 'pre') }}
-          files: dist/emulationstation-rocknix-aarch64.zip
+          files: |
+            dist/emulationstation-rocknix-aarch64.zip
+            dist/emulationstation-rocknix-aarch64.zip.md5
 
   build-emuelec:
     runs-on: ubuntu-24.04-arm
@@ -183,7 +197,7 @@ jobs:
           cd build
           # es4all: 与 dist/emuelec/package.mk 对齐(该档未带 CEC，故 CEC 保持 CMake 预设 ON)
           cmake .. -DGLES=OFF -DGLES2=ON -DES4ALL_TARGET=emuelec -DENABLE_EMUELEC=1 \
-                   -DDISABLE_KODI=1 -DENABLE_FILEMANAGER=1 -DENABLE_TTS=1 -DES4ALL_BUILD_SHA=${{ github.sha }}
+                   -DDISABLE_KODI=1 -DENABLE_FILEMANAGER=1 -DENABLE_TTS=1
 
       - name: Build
         run: cmake --build build -j"$(nproc)"
@@ -196,6 +210,11 @@ jobs:
           cp -r locale dist/emulationstation/
           cd dist/emulationstation
           zip -r ../emulationstation-emuelec-aarch64.zip .
+          cd ..
+          # es4all: 构建指纹 = binary 的 md5(不是 zip 的 —— zip 内含档案时间戳不可重现)。
+          # ES 端算自己 /proc/self/exe 的 md5 与本档比对, 只有该 target 的产物真的变了才提示更新。
+          md5sum emulationstation/emulationstation | awk '{print $1}' > emulationstation-emuelec-aarch64.zip.md5
+          cat emulationstation-emuelec-aarch64.zip.md5
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -216,4 +235,6 @@ jobs:
           tag_name: v${{ steps.version.outputs.version }}
           prerelease: ${{ contains(steps.version.outputs.version, 'pre') }}
           make_latest: ${{ !contains(steps.version.outputs.version, 'pre') }}
-          files: dist/emulationstation-emuelec-aarch64.zip
+          files: |
+            dist/emulationstation-emuelec-aarch64.zip
+            dist/emulationstation-emuelec-aarch64.zip.md5
