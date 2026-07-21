@@ -10,7 +10,6 @@
 #include "guis/GuiScraperStart.h"
 #include "guis/GuiHashStart.h"
 #include "guis/GuiThemeInstaller.h"
-#include "guis/GuiBezelInstaller.h"
 #include "guis/GuiBatoceraStore.h"
 #include "guis/GuiSettings.h"
 #include "guis/GuiRetroAchievements.h"
@@ -2124,17 +2123,16 @@ void GuiMenu::openUpdatesSettings()
 		});
 	}
 
-	// integration with theBezelProject
-	if (ApiSystem::getInstance()->isScriptingSupported(ApiSystem::DECORATIONS) && ApiSystem::getInstance()->isScriptingSupported(ApiSystem::THEBEZELPROJECT))
-	{
-		updateGui->addEntry(_("THE BEZEL PROJECT"), true, [this]
-		{
-			if (!checkNetwork())
-				return;
-
-			mWindow->pushGui(new GuiBezelInstaller(mWindow));
-		});
-	}
+	// es4all: THE BEZEL PROJECT 入口已移除（用户实测 EMUELEC 版就跑不起来）。
+	// 它不是「解开门就能用」的东西 —— ES 只是驱动外部脚本 batocera-es-thebezelproject
+	// (list / install <sys> / remove <sys>)，没有内建实作：
+	//   - EMUELEC: 自带该脚本所以选单会出现，但实际下载/安装失败 -> 留着只是误导使用者；
+	//   - ROCKNIX: 根本没有该脚本，而且它装出来的目录结构与 ROCKNIX 不相容
+	//     (EmuELEC 脚本装成 bezels/<系统>/<rom>.png+.cfg；ROCKNIX 的 setsettings.sh
+	//      check_decorations 期望 bezels/<套件名>/games/<系统>/<rom>.png+.info)，
+	//     要支援得另写一支 ROCKNIX 版脚本 —— 评估后决定不做。
+	// 边框功能本身仍在：游戏设置 → DEFAULT GLOBAL SETTINGS 的 ENABLE RA BEZELS(global.bezel)，
+	// 使用者自备 bezel 档放 /storage/roms/bezels 即可，不受此处移除影响。
 
 	if (ApiSystem::getInstance()->isScriptingSupported(ApiSystem::UPGRADE))
 	{
@@ -5077,31 +5075,18 @@ void GuiMenu::openPlatformSettings()
 	auto s = new GuiSettings(mWindow, _("PLATFORM SETTINGS"));
 	Window* window = mWindow;
 
-	s->addGroup(_("RETROARCH"));
-
+	// es4all: 本选单**不分组、平铺**，且项目顺序比照 EMUELEC 的 openEmuELECSettings
+	// (AUDIO OUTPUT → CPU GOVERNOR → 日志 → SPLASH SETTINGS → EXTERNAL MOUNT)，
+	// 让两个 target 的使用者看到一致的排列。EMUELEC 那边本来就没有 addGroup。
+	//
 	// es4all: RETROARCH MENU(菜单样式, global.retroarch.menu_driver)已从平台设置移除 ——
 	// 与「前端开发人员选项」里的 RETROARCH MENU DRIVER 同键重复。保留开发者那份(面向进阶
 	// 用户, 一般用户不易误触); 键不变, ROCKNIX setsettings.sh 照常读 retroarch.menu_driver。
-
+	//
 	// es4all: ENABLE RA BEZELS 已移除 —— 与 游戏设置 → DEFAULT GLOBAL SETTINGS 的同名项
 	// 重复(同一个 global.bezel 键)。保留游戏设置那个三档版(AUTO/ON/OFF)，因为:
 	// 1) 位置更合理(全局游戏设定，与 SHOW RETROARCH FPS 同组)；
 	// 2) 此处的布尔 Switch 只写 "1"/"0"，一旦操作会把三档版的 "auto" 值毁掉。
-
-	// 日志等级 —— system.loglevel（ROCKNIX runemu.sh 原生读取:off / verbose / 默认normal，零 shell 改动）
-	auto loglevel = std::make_shared< OptionListComponent<std::string> >(mWindow, _("LOG LEVEL"), false);
-	std::string curLog = SystemConf::getInstance()->get("system.loglevel");
-	// es4all: ROCKNIX 出厂/原生可能写 "none"，runemu.sh 的 case 是 `off|none)` 两者等价；
-	// 不归一化的话 OptionList 匹配不到任何项，会退回显示第一项「默认」，与实际(关闭)不符。
-	if (curLog == "none") curLog = "off";
-	loglevel->addRange({ { _("DEFAULT"), "" }, { _("OFF"), "off" }, { _("VERBOSE"), "verbose" } }, curLog);
-	s->addWithDescription(_("LOG LEVEL"), _("RetroArch/system logging verbosity (verbose = full debug)."), loglevel);
-	s->addSaveFunc([loglevel] {
-		if (loglevel->changed() && SystemConf::getInstance()->set("system.loglevel", loglevel->getSelected()))
-			SystemConf::getInstance()->saveSystemConf();
-	});
-
-	s->addGroup(_("SYSTEM"));
 
 	// 音源输出 —— 与 EMUELEC 共用 resources/audio_outputs.cfg 映射表(见 es4allParseAudioOutputs)，
 	// 但后端不同：EMUELEC 是裸 ALSA(emuelec-utils setauddev 改 asound.conf 默认 PCM)，
@@ -5144,13 +5129,25 @@ void GuiMenu::openPlatformSettings()
 			SystemConf::getInstance()->saveSystemConf();
 	});
 
+	// 日志等级 —— system.loglevel（ROCKNIX runemu.sh 原生读取:off / verbose / 默认normal，零 shell 改动）
+	// 位置对应 EMUELEC 的 RETROARCH LOGGING（同样排在 CPU GOVERNOR 之后）。
+	auto loglevel = std::make_shared< OptionListComponent<std::string> >(mWindow, _("LOG LEVEL"), false);
+	std::string curLog = SystemConf::getInstance()->get("system.loglevel");
+	// es4all: ROCKNIX 出厂/原生可能写 "none"，runemu.sh 的 case 是 `off|none)` 两者等价；
+	// 不归一化的话 OptionList 匹配不到任何项，会退回显示第一项「默认」，与实际(关闭)不符。
+	if (curLog == "none") curLog = "off";
+	loglevel->addRange({ { _("DEFAULT"), "" }, { _("OFF"), "off" }, { _("VERBOSE"), "verbose" } }, curLog);
+	s->addWithDescription(_("LOG LEVEL"), _("RetroArch/system logging verbosity (verbose = full debug)."), loglevel);
+	s->addSaveFunc([loglevel] {
+		if (loglevel->changed() && SystemConf::getInstance()->set("system.loglevel", loglevel->getSelected()))
+			SystemConf::getInstance()->saveSystemConf();
+	});
+
 	// 启动画面（ES 自己的载入/退出过场，不是 RA SPLASH）——
 	// createConfigureSplash 里的 ENABLE LOADING/EXIT SPLASH SCREEN 走的是 ES 的 Settings
 	// ("SplashScreen"/"SplashScreenExit")，与发行版无关，ROCKNIX 直接可用；子菜单内 EmuELEC 专属的
 	// ee_splash* 各项本来就各自门控。显示的图 = splash_rocknix.svg（见 Splash.h）。
 	s->addEntry(_("SPLASH SETTINGS"), true, [this] { createConfigureSplash(mWindow); });
-
-	s->addGroup(_("STORAGE"));
 
 	// 外接挂载 —— 子菜单（走 ROCKNIX 原生 system.automount 机制）
 	s->addEntry(_("EXTERNAL MOUNT OPTIONS"), true, [this, window] { openRocknixExternalMount(window); });
