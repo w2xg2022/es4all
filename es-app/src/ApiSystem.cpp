@@ -592,7 +592,17 @@ bool ApiSystem::launchFileManager(Window *window)
 bool ApiSystem::enableWifi(std::string ssid, std::string key)
 {
 #if defined(ES4ALL_PATHS_ROCKNIX)
-	return executeScript("wifictl enable \"" + ssid + "\" \"" + key + "\"");
+	// es4all: ROCKNIX 的 wifictl 把「开无线电」与「连线」拆成两个动词 ——
+	//   enable  = 只做 rfkill unblock wifi，**不会连线**
+	//   connect = 才真正建立连线(connect_wifi，自己从 system.cfg 读 wifi.ssid/wifi.key)
+	// 原本只呼叫 enable，所以实机上凭证有写进 system.cfg、无线电也解封了，
+	// 但 NetworkManager 里连个 WiFi profile 都没有、wlan0 永远 disconnected
+	// (实机 .179 复现: 界面显示 WIFI 已启用 + SSID/密码都在，但「WIFI IP地址」永远是未连接)。
+	// 故 enable 之后必须再 connect。ssid/key 由 wifictl 自行从 system.cfg 取，
+	// 但仍原样传入以兼容其 "$2/$3 优先" 的取值顺序。
+	if (!executeScript("wifictl enable \"" + ssid + "\" \"" + key + "\""))
+		return false;
+	return executeScript("wifictl connect \"" + ssid + "\" \"" + key + "\"");
 #elif defined(_ENABLEEMUELEC)
 	return executeScript("batocera-config wifi enable \"" + ssid + "\" \"" + key + "\"");
 #else

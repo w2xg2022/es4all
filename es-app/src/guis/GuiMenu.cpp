@@ -746,6 +746,11 @@ void GuiMenu::createConfigureSplash(Window* mWindow, int menuIndex)
 	enable_splashscreen->setOnChangedCallback([s, mWindow, enable_splashscreen]()
 	{
 		Settings::getInstance()->setBool("SplashScreen", enable_splashscreen->getState());
+		// es4all: 本 callback 用 `delete s` 直接摧毁选单再重建，**绕过了 GuiSettings::save()**
+		// —— 而 saveFile() 只在 save() 里被呼叫。切换后若用「START 关闭」一次关掉所有选单
+		// (而不是逐层按返回)，就完全没有机会写档 -> 重开机后设定复原(实机 .179 复现)。
+		// 既然这里主动 delete，就得自己把档写掉。
+		Settings::getInstance()->saveFile();
 		int index = s->getMenu().getList()->getCursorIndex();
 		delete s;
 		createConfigureSplash(mWindow, index);
@@ -772,6 +777,7 @@ void GuiMenu::createConfigureSplash(Window* mWindow, int menuIndex)
 	s->addWithLabel(_("SPLASH LOADING OPTION"), splashLoadingOptionList);
 	splashLoadingOptionList->setSelectedChangedCallback([=](std::string name) {
 		SystemConf::getInstance()->set("ee_splashloading", name);
+		SystemConf::getInstance()->saveSystemConf();   // es4all: 同上，delete 前先写档
 		delete s;
 		createConfigureSplash(mWindow);
 	});
@@ -821,6 +827,7 @@ void GuiMenu::createConfigureSplash(Window* mWindow, int menuIndex)
 	enable_splashscreen_exit->setOnChangedCallback([s, mWindow, enable_splashscreen_exit]()
 	{
 		Settings::getInstance()->setBool("SplashScreenExit", enable_splashscreen_exit->getState());
+		Settings::getInstance()->saveFile();          // es4all: 同上，delete 前先写档
 		int index = s->getMenu().getList()->getCursorIndex();
 		delete s;
 		createConfigureSplash(mWindow, index);
@@ -844,6 +851,7 @@ void GuiMenu::createConfigureSplash(Window* mWindow, int menuIndex)
 	s->addWithLabel(_("SPLASH EXIT OPTION"), splashExitOptionList);
 	splashExitOptionList->setSelectedChangedCallback([=](std::string name) {
 		SystemConf::getInstance()->set("ee_splashexit", name);
+		SystemConf::getInstance()->saveSystemConf();   // es4all: 同上，delete 前先写档
 		int index = s->getMenu().getList()->getCursorIndex();
 		delete s;
 		createConfigureSplash(mWindow, index);
