@@ -1762,16 +1762,16 @@ msgid "Model"
 msgstr "型号"
 
 msgid "Cpu model"
-msgstr "CPU 型号"
+msgstr "CPU型号"
 
 msgid "Cpu number"
-msgstr "CPU 核心数量"
+msgstr "CPU核心数量"
 
 msgid "Cpu max frequency"
-msgstr "CPU 最大频率"
+msgstr "CPU最大频率"
 
 msgid "Cpu feature"
-msgstr "CPU 特性"
+msgstr "CPU特性"
 
 msgid "Available Memory"
 msgstr "可用内存"
@@ -4290,13 +4290,13 @@ msgid "Swaps X/Y RetroPad bindings during gameplay (position-aligned for PlaySta
 msgstr "游戏进行中互换X/Y的RetroPad按键绑定（位置对齐，符合PlayStation/PSP等几何符号布局的手感）"
 
 msgid "CPU GOVERNOR"
-msgstr "CPU 调速器"
+msgstr "CPU调速器"
 
 msgid "CPU frequency scaling policy."
-msgstr "CPU 频率调节策略。"
+msgstr "CPU频率调节策略。"
 
 msgid "RetroArch/system logging verbosity (verbose = full debug)."
-msgstr "RetroArch/系统日志详细程度（verbose = 完整调试）。"
+msgstr "RetroArch/系统日志详细程度（选「详细」＝完整调试）。"
 
 msgid "AUTOMOUNT EXTERNAL"
 msgstr "自动挂载外接盘"
@@ -4338,7 +4338,7 @@ msgid "UPDATING ES4All"
 msgstr "正在更新 ES4All"
 
 msgid "Show the RetroArch splash screen when a game starts."
-msgstr "游戏启动时显示 RetroArch 启动画面。"
+msgstr "游戏启动时显示 RetroArch启动画面。"
 
 msgid "EXTRACTING"
 msgstr "正在解压"

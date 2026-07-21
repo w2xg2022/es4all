@@ -1763,16 +1763,16 @@ msgid "Model"
 msgstr "型號"
 
 msgid "Cpu model"
-msgstr "CPU 型號"
+msgstr "CPU型號"
 
 msgid "Cpu number"
-msgstr "CPU 核心數"
+msgstr "CPU核心數"
 
 msgid "Cpu max frequency"
-msgstr "CPU 最高頻率"
+msgstr "CPU最高頻率"
 
 msgid "Cpu feature"
-msgstr "CPU 功能"
+msgstr "CPU功能"
 
 msgid "Available Memory"
 msgstr "可用記憶體"
@@ -1799,7 +1799,7 @@ msgid "Data Partition Available Space"
 msgstr "資料分割區可用空間"
 
 msgid "Network IP Address"
-msgstr "網路 IP 位址"
+msgstr "網路 IP位址"
 
 msgid "UEFI Boot"
 msgstr "UEFI 開機"
@@ -3208,7 +3208,7 @@ msgid "ENABLE VIDEO PREVIEW AUDIO"
 msgstr "啟動影片音訊"
 
 msgid "IP ADDRESS"
-msgstr "IP 位址"
+msgstr "IP位址"
 
 msgid "CONNECTED"
 msgstr "已連線"
@@ -3220,22 +3220,22 @@ msgid "HOSTNAME"
 msgstr "主機名稱"
 
 msgid "ENABLE WIFI"
-msgstr "啟用 WIFI 無線網絡"
+msgstr "啟用 WIFI無線網絡"
 
 msgid "WIFI SSID"
-msgstr "WIFI 連線名稱"
+msgstr "WIFI連線名稱"
 
 msgid "WIFI KEY"
-msgstr "WIFI 連線金鑰"
+msgstr "WIFI連線金鑰"
 
 msgid "WIFI IP ADDRESS"
-msgstr "WIFI IP 位址"
+msgstr "WIFI IP位址"
 
 msgid "WIFI ENABLED"
-msgstr "已啟用 WIFI 無線網路"
+msgstr "已啟用 WIFI無線網路"
 
 msgid "WIFI CONFIGURATION ERROR"
-msgstr "WIFI 無線網路設定錯誤"
+msgstr "WIFI無線網路設定錯誤"
 
 msgid "QUICK ACCESS"
 msgstr "快速存取"
@@ -4290,13 +4290,13 @@ msgid "Swaps X/Y RetroPad bindings during gameplay (position-aligned for PlaySta
 msgstr "遊戲進行中互換X/Y的RetroPad按鍵綁定（位置對齊，符合PlayStation/PSP等幾何符號佈局的手感）"
 
 msgid "CPU GOVERNOR"
-msgstr "CPU 調速器"
+msgstr "CPU調速器"
 
 msgid "CPU frequency scaling policy."
-msgstr "CPU 頻率調節策略。"
+msgstr "CPU頻率調節策略。"
 
 msgid "RetroArch/system logging verbosity (verbose = full debug)."
-msgstr "RetroArch/系統日誌詳細程度（verbose = 完整除錯）。"
+msgstr "RetroArch/系統日誌詳細程度（選「詳細」＝完整除錯）。"
 
 msgid "AUTOMOUNT EXTERNAL"
 msgstr "自動掛載外接盤"
@@ -4338,7 +4338,7 @@ msgid "UPDATING ES4All"
 msgstr "正在更新 ES4All"
 
 msgid "Show the RetroArch splash screen when a game starts."
-msgstr "遊戲啟動時顯示 RetroArch 啟動畫面。"
+msgstr "遊戲啟動時顯示 RetroArch啟動畫面。"
 
 msgid "EXTRACTING"
 msgstr "正在解壓"
