@@ -111,19 +111,29 @@ namespace Es4allUpdate
 		return PROGRAM_VERSION_STRING;
 	}
 
-	// es4all: 构建指纹 = **本机 binary 的 md5**(不再是编译期烤进去的 commit SHA)。
+	// es4all: 构建指纹档的位置(可写的使用者目录, 三个 target 都指得到)。
+	std::string installedFingerprintPath()
+	{
+		return Paths::getUserEmulationStationPath() + "/es4all-installed.md5";
+	}
+
+	// es4all: 构建指纹 = **整包内容的 md5**(binary + resources + locale), 由 CI 算好放在
+	// release 的 `<zip>.md5` 资产里; 本机则读「上次安装时记下的那个值」。
 	//
-	// 为什么改：CI 一次编三个 target、共用同一个 commit SHA，所以任何一次 push 都会让三个
-	// target 的指纹一起变 —— 即使改动只在 `#if defined(ES4ALL_TARGET_ROCKNIX)` 守卫内、
-	// 对 EmuELEC 的产物毫无影响，EmuELEC 也会被提示「有新版」(实机遇到过)。
-	// 改用产物内容的 md5 后，只有该 target 的 binary 真的变了才会提示。
+	// 为什么不用编译期烤进 binary 的 commit SHA:
+	//   CI 一次编三个 target、共用同一个 github.sha, 任何一次 push 都让三个指纹一起变 ——
+	//   即使改动只在 `#if defined(ES4ALL_TARGET_ROCKNIX)` 守卫内、对 EmuELEC 的产物毫无影响,
+	//   EmuELEC 也会被提示「有新版」(实机遇到过)。
 	//
-	// 前提是相同源码要编出相同 binary：已移除 __DATE__/__TIME__(见 EmulationStation.h)与
-	// -DES4ALL_BUILD_SHA，并用两次云端建置验证过 md5 完全一致。
+	// 为什么不是「算本机 binary 的 md5」(本方案的前一版):
+	//   zip 里有三份东西 —— binary / resources / locale。只算 binary 的话,
+	//   **纯翻译或纯资源的更新永远推不出去**(改 .po 只影响 locale/*.mo, binary 一个位元组都不变
+	//   -> 指纹不变 -> 装置不会被提示 -> 使用者永远拿不到新翻译)。故指纹必须涵盖整包。
+	//   而整包内容无法在装置上可靠地重算(resources 会被 glue/主题改动、路径各 target 不同),
+	//   所以改成「安装时把 CI 算好的值记到旁档」。
 	//
-	// 读 /proc/self/exe 而不是 argv[0]：ROCKNIX/EMUELEC 上 binary 是 bind-mount 盖上去的，
-	// 且滚动更新后原档可能已被 unlink(readlink 会带 " (deleted)" 后缀)——用 /proc/self/exe
-	// 直接读「正在跑的这份内容」最准，不受路径与 deleted 影响。
+	// 旁档不存在时(例如固件烤入的版本、还没走过一次 OTA)回传空字串 ->
+	// isNewer() 里 `candSha != installedSha` 成立 -> 会被提示一次更新, 装完就对齐了。
 	std::string getInstalledSha()
 	{
 		static std::string cached;
@@ -132,16 +142,16 @@ namespace Es4allUpdate
 			return cached;
 		done = true;
 
-		std::ifstream ifs("/proc/self/exe", std::ios::binary);
+		std::ifstream ifs(installedFingerprintPath());
 		if (!ifs)
 		{
-			LOG(LogWarning) << "Es4allUpdate: 无法读取 /proc/self/exe, 构建指纹留空(退化为纯版本号比较)";
+			LOG(LogDebug) << "Es4allUpdate: 无构建指纹档(尚未经 OTA 安装过), 首次检查会提示更新";
 			return cached;
 		}
-		std::ostringstream oss;
-		oss << ifs.rdbuf();
-		cached = Utils::String::toLower(md5(oss.str()));
-		LOG(LogDebug) << "Es4allUpdate: 本机构建指纹(md5) = " << cached;
+		std::string line;
+		std::getline(ifs, line);
+		cached = Utils::String::toLower(Utils::String::trim(line));
+		LOG(LogDebug) << "Es4allUpdate: 已安装构建指纹 = " << cached;
 		return cached;
 	}
 
@@ -444,6 +454,21 @@ namespace Es4allUpdate
 
 		// 清理下载临时区。
 		Utils::FileSystem::deleteDirectoryFiles(tmpDir, true);
+
+		// es4all: 记下本次安装的构建指纹, 下次检查更新时用它比对(见 getInstalledSha 说明)。
+		if (!rel.sha.empty())
+		{
+			const std::string f = installedFingerprintPath();
+			std::ofstream ofs(f, std::ios::trunc);
+			if (ofs)
+			{
+				ofs << rel.sha << "\n";
+				ofs.close();
+				LOG(LogInfo) << "Es4allUpdate: 已记录构建指纹 " << rel.sha << " -> " << f;
+			}
+			else
+				LOG(LogWarning) << "Es4allUpdate: 无法写入构建指纹档 " << f << "(下次会再被提示一次更新)";
+		}
 
 		LOG(LogInfo) << "Es4allUpdate: 更新已就绪, 重启后生效 -> " << rel.version;
 		report(_("UPDATE IS READY"), -1);
