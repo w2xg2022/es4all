@@ -45,6 +45,7 @@ jobs:
           mkdir -p dist/emulationstation
           cp emulationstation dist/emulationstation/emulationstation
           cp -r resources dist/emulationstation/
+          date -u +%Y%m%d%H%M%S > dist/emulationstation/resources/build-info.txt
           cp -r locale dist/emulationstation/
           cd dist/emulationstation
           zip -r ../emulationstation-armbian-aarch64.zip .
@@ -53,7 +54,7 @@ jobs:
           # 不用 zip 本身的 md5: zip 内含档案时间戳, 每次打包都不同、不可重现。
           # 不只算 binary: 纯翻译/纯资源的更新不会动到 binary, 只算它的话那类更新永远推不出去。
           # 排序后逐档 md5 再总合, 档名也纳入(可侦测改名/增删)。
-          ( cd emulationstation && find . -type f | LC_ALL=C sort | xargs md5sum | md5sum | awk '{print $1}' )  > emulationstation-armbian-aarch64.zip.md5
+          ( cd emulationstation && find . -type f -not -name build-info.txt | LC_ALL=C sort | xargs md5sum | md5sum | awk '{print $1}' )  > emulationstation-armbian-aarch64.zip.md5
           cat emulationstation-armbian-aarch64.zip.md5
 
       - name: Upload artifacts
@@ -134,6 +135,7 @@ jobs:
           mkdir -p dist/emulationstation
           cp emulationstation dist/emulationstation/emulationstation
           cp -r resources dist/emulationstation/
+          date -u +%Y%m%d%H%M%S > dist/emulationstation/resources/build-info.txt
           cp -r locale dist/emulationstation/
           cd dist/emulationstation
           zip -r ../emulationstation-rocknix-aarch64.zip .
@@ -142,7 +144,7 @@ jobs:
           # 不用 zip 本身的 md5: zip 内含档案时间戳, 每次打包都不同、不可重现。
           # 不只算 binary: 纯翻译/纯资源的更新不会动到 binary, 只算它的话那类更新永远推不出去。
           # 排序后逐档 md5 再总合, 档名也纳入(可侦测改名/增删)。
-          ( cd emulationstation && find . -type f | LC_ALL=C sort | xargs md5sum | md5sum | awk '{print $1}' )  > emulationstation-rocknix-aarch64.zip.md5
+          ( cd emulationstation && find . -type f -not -name build-info.txt | LC_ALL=C sort | xargs md5sum | md5sum | awk '{print $1}' )  > emulationstation-rocknix-aarch64.zip.md5
           cat emulationstation-rocknix-aarch64.zip.md5
 
       - name: Upload artifacts
@@ -211,6 +213,7 @@ jobs:
           mkdir -p dist/emulationstation
           cp emulationstation dist/emulationstation/emulationstation
           cp -r resources dist/emulationstation/
+          date -u +%Y%m%d%H%M%S > dist/emulationstation/resources/build-info.txt
           cp -r locale dist/emulationstation/
           cd dist/emulationstation
           zip -r ../emulationstation-emuelec-aarch64.zip .
@@ -219,7 +222,7 @@ jobs:
           # 不用 zip 本身的 md5: zip 内含档案时间戳, 每次打包都不同、不可重现。
           # 不只算 binary: 纯翻译/纯资源的更新不会动到 binary, 只算它的话那类更新永远推不出去。
           # 排序后逐档 md5 再总合, 档名也纳入(可侦测改名/增删)。
-          ( cd emulationstation && find . -type f | LC_ALL=C sort | xargs md5sum | md5sum | awk '{print $1}' )  > emulationstation-emuelec-aarch64.zip.md5
+          ( cd emulationstation && find . -type f -not -name build-info.txt | LC_ALL=C sort | xargs md5sum | md5sum | awk '{print $1}' )  > emulationstation-emuelec-aarch64.zip.md5
           cat emulationstation-emuelec-aarch64.zip.md5
 
       - name: Upload artifacts

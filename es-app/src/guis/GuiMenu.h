@@ -82,6 +82,7 @@ private:
         // es4all: ROCKNIX 专属 PLATFORM SETTINGS(独立于 emuelec 的 openEmuELECSettings)
         void openPlatformSettings();
         void openRocknixExternalMount(Window* win);
+        void openRocknixSplashSettings(Window* win);   // createConfigureSplash 的精简替身(见 .cpp)
 #endif
         void openQuitMenu();
         void openSystemInformations();

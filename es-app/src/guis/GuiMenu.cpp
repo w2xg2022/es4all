@@ -61,11 +61,30 @@
 #include "TextToSpeech.h"
 #include "Paths.h"
 #include "resources/ResourceManager.h"
-#include <set> 
+#include <set>
 
 #if WIN32
 #include "Win32ApiSystem.h"
 #endif
+
+// es4all: 页脚显示的「建置时间」，来源是 CI 写进 resources/build-info.txt 的一行 UTC 时间。
+// ★为什么用独立档、不用编进 binary 的 __DATE__/__TIME__★：
+//   自我更新的构建指纹要求「相同源码编出相同 binary」(见 EmulationStation.h / Es4allUpdate)，
+//   __DATE__/__TIME__ 会让每次编译的 binary 都不同 -> md5 不可重现 -> 隔离方案破功。
+//   改用独立档：CI 把时间写进 resources/build-info.txt，随 resources 一起部署；ES 读它显示。
+//   而 CI 算整包指纹时**排除 build-info.txt**，所以时间戳变化既不影响 binary、也不误触发更新。
+// 无此档(旧固件/本地编译)时回空字串，页脚就只显示版本号。static 缓存只读一次。
+static std::string es4allBuildInfo()
+{
+	static std::string info;
+	static bool done = false;
+	if (done) return info;
+	done = true;
+	std::string p = ResourceManager::getInstance()->getResourcePath(":/build-info.txt");
+	if (Utils::FileSystem::exists(p))
+		info = Utils::String::trim(Utils::FileSystem::readAllText(p));
+	return info;
+}
 
 #define fake_gettext_fade _("fade")
 #define fake_gettext_fastfade _("fast fade")
@@ -384,10 +403,20 @@ std::shared_ptr<OptionListComponent<std::string>> GuiMenu::createSplashExitOptio
 
 	return emuelec_splash_exit_mode;
 }
+#endif // 结束外层 `#ifdef _ENABLEEMUELEC`(338 行起)—— 把下面的 es4allParseAudioOutputs 移出去
 
 // es4all: 解析 resources/audio_outputs.cfg -> [(显示标签, "card,device")]，EMUELEC / ROCKNIX 共用。
 // 格式与匹配规则见该文件头；取第一个「型号子串命中 /proc/device-tree/model」的行。
 // 返回空 = 本机型不在表内 -> 调用方不显示 AUDIO OUTPUT 选单(保持出厂默认音源，最安全)。
+//
+// ★守卫是 _ENABLEEMUELEC || ES4ALL_TARGET_ROCKNIX★：
+//   本函数被 ROCKNIX 专属的 openPlatformSettings()(该函数在 #if defined(ES4ALL_TARGET_ROCKNIX))
+//   调用。原本它落在外层那个大 `#ifdef _ENABLEEMUELEC` 块里，而 **rocknix repo 的固件
+//   package.mk 没有 -DENABLE_EMUELEC=1**(只有 -DES4ALL_TARGET=rocknix -DROCKNIX=1)，
+//   固件建置时本函数整个不存在 -> ROCKNIX 分支调用它必然编不过。
+//   (es4all CI 的 rocknix job 多带了 -DENABLE_EMUELEC=1，把这个 bug 遮住了、CI 绿灯 ≠ 固件能编。)
+//   与 GuiFileBrowser::AUDIO(11e8bc9)、splash 白底(2f0b611)是同一类「定义漏在守卫内」的 bug。
+#if defined(_ENABLEEMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)
 static std::vector<std::pair<std::string, std::string>> es4allParseAudioOutputs()
 {
 	std::vector<std::pair<std::string, std::string>> outs;
@@ -417,7 +446,9 @@ static std::vector<std::pair<std::string, std::string>> es4allParseAudioOutputs(
 	}
 	return outs;
 }
+#endif
 
+#ifdef _ENABLEEMUELEC   // es4all: 重开外层守卫，下面 openEmuELECSettings 等仍是纯 EmuELEC
 /* < emuelec */
 void GuiMenu::openEmuELECSettings()
 {
@@ -906,17 +937,21 @@ void GuiMenu::openExternalMounts(Window* mWindow, std::string configName)
 		auto emuelec_external_device_def = std::make_shared< OptionListComponent<std::string> >(mWindow, _("EXTERNAL DEVICE"), false);
 		std::vector<std::string> extdevoptions;
 		extdevoptions.push_back("auto");
-		  for(std::stringstream ss(Utils::Platform::getShOutput(R"(find /var/media/ -type d -maxdepth 1 -mindepth 1 -name EEROMS -prune -o -exec basename {} \; | sed "s/$/,/g")")); getline(ss, a, ','); ) {
+		// es4all: ★排除系统盘自己的分区★ —— 原本只 prune 掉 EEROMS，但系统盘的其他分区
+		// (EMUELEC=开机分区、STORAGE、CE_FLASH、CE_STORAGE)若也被挂到 /var/media/ 就会列出来，
+		// 使用者误选当 ROM 盘就变 0 个游戏(实机遇到过)。这些 LABEL 一并 prune 掉。
+		  for(std::stringstream ss(Utils::Platform::getShOutput(R"(find /var/media/ -mindepth 1 -maxdepth 1 -type d \( -iname EEROMS -o -iname EMUELEC -o -iname STORAGE -o -iname CE_FLASH -o -iname CE_STORAGE \) -prune -o -type d -exec basename {} \; | sed "s/$/,/g")")); getline(ss, a, ','); ) {
             extdevoptions.push_back(a);
 	    }
 		// use script to get entries
-        
+
 		auto extdevoptionsS = SystemConf::getInstance()->get("global.externalmount");
 		if (extdevoptionsS.empty())
 		extdevoptionsS = "auto";
-		
+
+		// es4all: 显示时把 "auto" 过 _() 中文化(其余是磁盘 LABEL/装置名，无法翻译)；值保持不变。
 		for (auto it = extdevoptions.cbegin(); it != extdevoptions.cend(); it++)
-		emuelec_external_device_def->add(*it, *it, extdevoptionsS == *it);
+		emuelec_external_device_def->add((*it == "auto") ? _("AUTO") : *it, *it, extdevoptionsS == *it);
 		
         externalMounts->addWithDescription(_("EXTERNAL DEVICE"), _("Select the mounted drive to be used for ROMS."), emuelec_external_device_def);
     
@@ -1181,7 +1216,13 @@ void GuiMenu::addVersionInfo()
 #else
 			std::string es4allTarget = "Armbian";
 #endif
-			label = "ES4All (" + es4allTarget + ") V" + std::string(PROGRAM_VERSION_STRING) + ", IP: " + Utils::Platform::queryIPAddress();
+			// es4all: 版本号后接建置时间戳，格式 V<版本>_<YYYYMMDDHHMMSS>(如 V1.1pre_20260722031422)，
+			// 方便调试阶段确认装的是哪一次建置。时间戳来自 resources/build-info.txt(见 es4allBuildInfo)，
+			// 独立于 binary、不破坏自我更新的 md5 可重现。build-info.txt 内容即那串 14 位数字。
+			std::string bi = es4allBuildInfo();
+			label = "ES4All (" + es4allTarget + ") V" + std::string(PROGRAM_VERSION_STRING)
+			      + (bi.empty() ? "" : "_" + bi)
+			      + ", IP: " + Utils::Platform::queryIPAddress();
 		}
 	}
 		
@@ -5147,15 +5188,41 @@ void GuiMenu::openPlatformSettings()
 	});
 
 	// 启动画面（ES 自己的载入/退出过场，不是 RA SPLASH）——
-	// createConfigureSplash 里的 ENABLE LOADING/EXIT SPLASH SCREEN 走的是 ES 的 Settings
-	// ("SplashScreen"/"SplashScreenExit")，与发行版无关，ROCKNIX 直接可用；子菜单内 EmuELEC 专属的
-	// ee_splash* 各项本来就各自门控。显示的图 = splash_rocknix.svg（见 Splash.h）。
-	s->addEntry(_("SPLASH SETTINGS"), true, [this] { createConfigureSplash(mWindow); });
+	// ★不能调用 createConfigureSplash★：它在 `#ifdef _ENABLEEMUELEC` 里，而 ROCKNIX 固件
+	// build 没定义该宏(rocknix package.mk 只有 -DES4ALL_TARGET=rocknix -DROCKNIX=1)，
+	// 且其函式体依赖 createSplashLoadingOptionList 等一堆 emuelec-only 符号、放宽守卫会连环爆。
+	// 故 ROCKNIX 用自家精简版 openRocknixSplashSettings()，只做 ES 自己的两个开关(纯 Settings)。
+	s->addEntry(_("SPLASH SETTINGS"), true, [this] { openRocknixSplashSettings(mWindow); });
 
 	// 外接挂载 —— 子菜单（走 ROCKNIX 原生 system.automount 机制）
 	s->addEntry(_("EXTERNAL MOUNT OPTIONS"), true, [this, window] { openRocknixExternalMount(window); });
 
 	mWindow->pushGui(s);
+}
+
+// es4all: ROCKNIX 专属的「启动画面设置」—— createConfigureSplash 的精简替身。
+// 只做 ES 自己的两个开关(SplashScreen / SplashScreenExit，纯 Settings、零 emuelec 依赖)，
+// 不碰 ee_splash* 那些发行版专属项(那些在 ROCKNIX 上没有消费端)。
+// 存档语意与其他选单一致：B(返回)=套用存档、START(关闭)=取消不存档(见 GuiSettings::input)。
+void GuiMenu::openRocknixSplashSettings(Window* win)
+{
+	auto s = new GuiSettings(win, _("SPLASH SETTINGS"));
+
+	auto loading = std::make_shared<SwitchComponent>(win);
+	loading->setState(Settings::getInstance()->getBool("SplashScreen"));
+	s->addWithLabel(_("ENABLE LOADING SPLASH SCREEN"), loading);
+	s->addSaveFunc([loading] {
+		Settings::getInstance()->setBool("SplashScreen", loading->getState());
+	});
+
+	auto exitSplash = std::make_shared<SwitchComponent>(win);
+	exitSplash->setState(Settings::getInstance()->getBool("SplashScreenExit"));
+	s->addWithLabel(_("ENABLE EXIT SPLASH SCREEN"), exitSplash);
+	s->addSaveFunc([exitSplash] {
+		Settings::getInstance()->setBool("SplashScreenExit", exitSplash->getState());
+	});
+
+	win->pushGui(s);
 }
 
 void GuiMenu::openRocknixExternalMount(Window* win)
@@ -5176,7 +5243,17 @@ void GuiMenu::openRocknixExternalMount(Window* win)
 	std::string curDev = SystemConf::getInstance()->get("system.gamesdevice");
 	gamesdev->add(_("AUTO"), "", curDev.empty());
 	std::string devLine;
-	std::string devs = Utils::Platform::getShOutput(R"(blkid 2>/dev/null | awk -F: '/ext4|btrfs|vfat|exfat|ntfs/ {print $1}' | grep -E 'mmcblk|sd|nvme' | sort -u)");
+	// es4all: ★排除系统碟自己★ —— 原本 blkid 会把挂载 /storage 的系统盘(及其兄弟分区)也列出来，
+	// 使用者误选就变 0 个游戏(实机遇到过：列出 STORAGE=系统盘、EMUELEC=插着的 EmuELEC 盘开机分区)。
+	// 先从 /proc/mounts 找出 /storage 的来源装置、去掉分区号得基础装置(sda2->sda, mmcblk0p2->mmcblk0)，
+	// 再从枚举里剔掉该基础装置的所有分区。sysbase 取不到时用占位符，避免 grep -v 空 pattern 误删全部。
+	std::string devs = Utils::Platform::getShOutput(R"(
+		sysdev=$(awk '$2=="/storage"{print $1; exit}' /proc/mounts)
+		sysbase=$(echo "$sysdev" | sed -E 's#p?[0-9]+$##')
+		[ -z "$sysbase" ] && sysbase="/dev/__nomatch__"
+		blkid 2>/dev/null | awk -F: '/ext4|btrfs|vfat|exfat|ntfs/ {print $1}' \
+		  | grep -E 'mmcblk|sd|nvme' | grep -vE "^${sysbase}(p?[0-9]|$)" | sort -u
+	)");
 	for (std::stringstream ss(devs); std::getline(ss, devLine); )
 	{
 		while (!devLine.empty() && (devLine.back() == '\r' || devLine.back() == ' ')) devLine.pop_back();
