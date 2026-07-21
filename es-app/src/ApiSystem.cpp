@@ -1929,7 +1929,14 @@ bool ApiSystem::isScriptingSupported(ScriptId script)
 		executables.push_back("batocera-support");
 		break;
 	case ApiSystem::UPGRADE:
-#ifdef _ENABLEEMUELEC
+#ifdef ES4ALL_SELF_UPDATE
+		// es4all: 自我更新走 GitHub Releases OTA(Es4allUpdate)，getVersion/canUpdate/updateSystem
+		// 早已改接该路径、**不依赖** batocera-upgrade / emuelec-upgrade 这两个发行版脚本。
+		// 这道门却漏改、还在探测脚本是否存在 —— EmuELEC 自带 emuelec-upgrade 所以过得了，
+		// 但 ROCKNIX 两个都没有 → 回传 false → 「更新和下载」里整个「软件更新」组被隐藏
+		// (实机 .179 现象: 只剩「主题」一项)。既然不靠外部脚本，这里直接回 true。
+		return true;
+#elif defined(_ENABLEEMUELEC)
 		executables.push_back("emuelec-upgrade");
 #else
 		executables.push_back("batocera-upgrade");
