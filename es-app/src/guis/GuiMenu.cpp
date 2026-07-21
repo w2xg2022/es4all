@@ -5247,13 +5247,15 @@ void GuiMenu::openRocknixExternalMount(Window* win)
 	// 使用者误选就变 0 个游戏(实机遇到过：列出 STORAGE=系统盘、EMUELEC=插着的 EmuELEC 盘开机分区)。
 	// 先从 /proc/mounts 找出 /storage 的来源装置、去掉分区号得基础装置(sda2->sda, mmcblk0p2->mmcblk0)，
 	// 再从枚举里剔掉该基础装置的所有分区。sysbase 取不到时用占位符，避免 grep -v 空 pattern 误删全部。
-	std::string devs = Utils::Platform::getShOutput(R"(
+	// ★分隔符用 R"SH(...)SH" 而非 R"(...)"★：脚本里的 grep 正则含 `)"` 序列
+	// (…(p?[0-9]|$)" )，会被当成 R"(…)" 的结束符导致 raw string 提前结束、编译报语法错。
+	std::string devs = Utils::Platform::getShOutput(R"SH(
 		sysdev=$(awk '$2=="/storage"{print $1; exit}' /proc/mounts)
 		sysbase=$(echo "$sysdev" | sed -E 's#p?[0-9]+$##')
 		[ -z "$sysbase" ] && sysbase="/dev/__nomatch__"
 		blkid 2>/dev/null | awk -F: '/ext4|btrfs|vfat|exfat|ntfs/ {print $1}' \
 		  | grep -E 'mmcblk|sd|nvme' | grep -vE "^${sysbase}(p?[0-9]|$)" | sort -u
-	)");
+	)SH");
 	for (std::stringstream ss(devs); std::getline(ss, devLine); )
 	{
 		while (!devLine.empty() && (devLine.back() == '\r' || devLine.back() == ' ')) devLine.pop_back();
