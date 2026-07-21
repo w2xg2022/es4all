@@ -1855,7 +1855,13 @@ msgid "SHADERS"
 msgstr "著色器"
 
 msgid "INTERNAL"
-msgstr "內部的"
+msgstr "內部儲存"
+
+msgid "EXTERNAL"
+msgstr "外部儲存"
+
+msgid "VERBOSE"
+msgstr "詳細"
 
 msgid "ANY EXTERNAL"
 msgstr "任何外部的"

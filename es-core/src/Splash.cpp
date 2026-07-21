@@ -15,7 +15,7 @@ Splash::Splash(Window* window, const std::string image, bool fullScreenBackGroun
 {
 	mBackgroundColor = 0x000000FF;
 
-#ifdef ES4ALL_TARGET_EMUELEC
+#if defined(ES4ALL_TARGET_EMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)
 	// es4all: EmuELEC 的 splash 图是透明去背的向量图(跟上游原厂一致)，副标 EMULATIONSTATION
 	// 用 #231F20(近黑)，画在预设黑底上几乎看不见——原厂就有这个毛病。改成白底后：
 	//   ①近黑副标在白底上清楚可读；

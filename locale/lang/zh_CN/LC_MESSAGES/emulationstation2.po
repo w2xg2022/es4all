@@ -1856,6 +1856,12 @@ msgstr "着色器"
 msgid "INTERNAL"
 msgstr "内部存储"
 
+msgid "EXTERNAL"
+msgstr "外部存储"
+
+msgid "VERBOSE"
+msgstr "详细"
+
 msgid "ANY EXTERNAL"
 msgstr "外部存储磁盘"
 

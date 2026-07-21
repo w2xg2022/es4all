@@ -23,6 +23,11 @@ class TextureResource;
 // 最终决定跟 armbian/rocknix 走同一套 old layout(80%x60% 黑边卡片、自动安全边界)，
 // 三个 target 观感统一，也不用额外维护 splash SVG 的留白。
 #define OLD_SPLASH_LAYOUT true
+#elif defined(ES4ALL_TARGET_ROCKNIX)
+// es4all: ROCKNIX 也带 -DENABLE_EMUELEC=1，本来会掉进下面的 _ENABLEEMUELEC 分支吃到
+// splash_armbian.svg(Armbian 品牌图)。改为跟 EMUELEC 用同一张图 + 同一套白底处理。
+#define DEFAULT_SPLASH_IMAGE ":/splash_emuelec.svg"
+#define OLD_SPLASH_LAYOUT true
 #elif defined(_ENABLEEMUELEC)
 #define DEFAULT_SPLASH_IMAGE ":/splash_armbian.svg"
 #define OLD_SPLASH_LAYOUT true

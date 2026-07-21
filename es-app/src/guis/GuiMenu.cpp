@@ -5083,6 +5083,9 @@ void GuiMenu::openPlatformSettings()
 	// 日志等级 —— system.loglevel（ROCKNIX runemu.sh 原生读取:off / verbose / 默认normal，零 shell 改动）
 	auto loglevel = std::make_shared< OptionListComponent<std::string> >(mWindow, _("LOG LEVEL"), false);
 	std::string curLog = SystemConf::getInstance()->get("system.loglevel");
+	// es4all: ROCKNIX 出厂/原生可能写 "none"，runemu.sh 的 case 是 `off|none)` 两者等价；
+	// 不归一化的话 OptionList 匹配不到任何项，会退回显示第一项「默认」，与实际(关闭)不符。
+	if (curLog == "none") curLog = "off";
 	loglevel->addRange({ { _("DEFAULT"), "" }, { _("OFF"), "off" }, { _("VERBOSE"), "verbose" } }, curLog);
 	s->addWithDescription(_("LOG LEVEL"), _("RetroArch/system logging verbosity (verbose = full debug)."), loglevel);
 	s->addSaveFunc([loglevel] {
@@ -5095,7 +5098,9 @@ void GuiMenu::openPlatformSettings()
 	// CPU 调速器 —— system.cpugovernor
 	auto gov = std::make_shared< OptionListComponent<std::string> >(mWindow, _("CPU GOVERNOR"), false);
 	std::string curGov = SystemConf::getInstance()->get("system.cpugovernor");
-	gov->addRange({ { _("AUTO"), "" }, { "PERFORMANCE", "performance" }, { "SCHEDUTIL", "schedutil" }, { "ONDEMAND", "ondemand" }, { "POWERSAVE", "powersave" } }, curGov);
+	// es4all: 显示名过 _() 翻译(与 EmuELEC 版 openEmuELECSettings 的做法一致，
+	// ONDEMAND/PERFORMANCE/SCHEDUTIL/POWERSAVE 的 zh_CN/zh_TW 早已存在)；值维持内核 governor 原名。
+	gov->addRange({ { _("AUTO"), "" }, { _("PERFORMANCE"), "performance" }, { _("SCHEDUTIL"), "schedutil" }, { _("ONDEMAND"), "ondemand" }, { _("POWERSAVE"), "powersave" } }, curGov);
 	s->addWithDescription(_("CPU GOVERNOR"), _("CPU frequency scaling policy."), gov);
 	s->addSaveFunc([gov] {
 		if (gov->changed() && SystemConf::getInstance()->set("system.cpugovernor", gov->getSelected()))
