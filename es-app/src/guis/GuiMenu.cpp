@@ -5107,6 +5107,12 @@ void GuiMenu::openPlatformSettings()
 			SystemConf::getInstance()->saveSystemConf();
 	});
 
+	// 启动画面（ES 自己的载入/退出过场，不是 RA SPLASH）——
+	// createConfigureSplash 里的 ENABLE LOADING/EXIT SPLASH SCREEN 走的是 ES 的 Settings
+	// ("SplashScreen"/"SplashScreenExit")，与发行版无关，ROCKNIX 直接可用；子菜单内 EmuELEC 专属的
+	// ee_splash* 各项本来就各自门控。显示的图 = splash_rocknix.svg（见 Splash.h）。
+	s->addEntry(_("SPLASH SETTINGS"), true, [this] { createConfigureSplash(mWindow); });
+
 	s->addGroup(_("STORAGE"));
 
 	// 外接挂载 —— 子菜单（走 ROCKNIX 原生 system.automount 机制）
