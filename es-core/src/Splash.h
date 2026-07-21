@@ -25,8 +25,11 @@ class TextureResource;
 #define OLD_SPLASH_LAYOUT true
 #elif defined(ES4ALL_TARGET_ROCKNIX)
 // es4all: ROCKNIX 也带 -DENABLE_EMUELEC=1，本来会掉进下面的 _ENABLEEMUELEC 分支吃到
-// splash_armbian.svg(Armbian 品牌图)。改为跟 EMUELEC 用同一张图 + 同一套白底处理。
-#define DEFAULT_SPLASH_IMAGE ":/splash_emuelec.svg"
+// splash_armbian.svg(Armbian 品牌图)。改用自家的 splash_rocknix.svg：沿用 EmuELEC 那张的
+// 手柄图形与 EMULATIONSTATION 副标(直接取自 splash_emuelec.svg 的对应 group)，只把中间的
+// 大字样换成同风格的像素字「ROCKNIX」(同一个位置 x241~1097/y408~509、同一组配色
+// #A8A3D0 前三字 + #514688 后四字 + #231F20 立体阴影)。配 Splash.cpp 的白底处理。
+#define DEFAULT_SPLASH_IMAGE ":/splash_rocknix.svg"
 #define OLD_SPLASH_LAYOUT true
 #elif defined(_ENABLEEMUELEC)
 #define DEFAULT_SPLASH_IMAGE ":/splash_armbian.svg"
