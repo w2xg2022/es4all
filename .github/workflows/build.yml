@@ -56,6 +56,9 @@ jobs:
           # 排序后逐档 md5 再总合, 档名也纳入(可侦测改名/增删)。
           ( cd emulationstation && find . -type f -not -name build-info.txt | LC_ALL=C sort | xargs md5sum | md5sum | awk '{print $1}' )  > emulationstation-armbian-aarch64.zip.md5
           cat emulationstation-armbian-aarch64.zip.md5
+          # es4all: 建置时间戳也当独立 release 资产发布, 供 ES 自我更新在「是否更新」提示里显示
+          # 目标建置的时间(区分同版本号 1.1pre 的不同次建置)。内容 = 写进 zip 内 resources 的那串 UTC 时间。
+          cp emulationstation/resources/build-info.txt emulationstation-armbian-aarch64.zip.build-info
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -83,6 +86,7 @@ jobs:
           files: |
             dist/emulationstation-armbian-aarch64.zip
             dist/emulationstation-armbian-aarch64.zip.md5
+            dist/emulationstation-armbian-aarch64.zip.build-info
           body: |
             es4all 三平台(armbian / rocknix / emuelec)aarch64 构建。
             每个 zip 内含 emulationstation(主程序) + resources + locale，解压后覆盖到设备对应目录即可，无需重新编译，重启 EmulationStation 生效。
@@ -143,6 +147,8 @@ jobs:
           # 排序后逐档 md5 再总合, 档名也纳入(可侦测改名/增删)。
           ( cd emulationstation && find . -type f -not -name build-info.txt | LC_ALL=C sort | xargs md5sum | md5sum | awk '{print $1}' )  > emulationstation-rocknix-aarch64.zip.md5
           cat emulationstation-rocknix-aarch64.zip.md5
+          # es4all: 建置时间戳当独立 release 资产(见 armbian job 说明)。
+          cp emulationstation/resources/build-info.txt emulationstation-rocknix-aarch64.zip.build-info
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -166,6 +172,7 @@ jobs:
           files: |
             dist/emulationstation-rocknix-aarch64.zip
             dist/emulationstation-rocknix-aarch64.zip.md5
+            dist/emulationstation-rocknix-aarch64.zip.build-info
 
   build-emuelec:
     runs-on: ubuntu-24.04-arm
@@ -221,6 +228,8 @@ jobs:
           # 排序后逐档 md5 再总合, 档名也纳入(可侦测改名/增删)。
           ( cd emulationstation && find . -type f -not -name build-info.txt | LC_ALL=C sort | xargs md5sum | md5sum | awk '{print $1}' )  > emulationstation-emuelec-aarch64.zip.md5
           cat emulationstation-emuelec-aarch64.zip.md5
+          # es4all: 建置时间戳当独立 release 资产(见 armbian job 说明)。
+          cp emulationstation/resources/build-info.txt emulationstation-emuelec-aarch64.zip.build-info
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -244,3 +253,4 @@ jobs:
           files: |
             dist/emulationstation-emuelec-aarch64.zip
             dist/emulationstation-emuelec-aarch64.zip.md5
+            dist/emulationstation-emuelec-aarch64.zip.build-info

@@ -7,6 +7,7 @@
 #include "ApiSystem.h"          // unzipFile
 #include "HttpReq.h"
 #include "Paths.h"
+#include "resources/ResourceManager.h"  // 读 resources/build-info.txt(与页脚同源)
 #include "Log.h"
 #include "utils/FileSystemUtil.h"
 #include "utils/StringUtil.h"
@@ -111,6 +112,22 @@ namespace Es4allUpdate
 		return PROGRAM_VERSION_STRING;
 	}
 
+	// es4all: 当前建置时间戳, 读 resources/build-info.txt(CI 写入、随 resources 部署), 与页脚同源。
+	// 用于在「是否更新」提示里把当前版与目标版的时间戳都显示出来 —— 开发期版本号固定为 1.1pre,
+	// 光靠版本号分不出新旧, 时间戳才是使用者能一眼判断的依据。旁档不存在时回空字串。
+	std::string getInstalledBuildInfo()
+	{
+		static std::string info;
+		static bool done = false;
+		if (done)
+			return info;
+		done = true;
+		std::string p = ResourceManager::getInstance()->getResourcePath(":/build-info.txt");
+		if (Utils::FileSystem::exists(p))
+			info = Utils::String::trim(Utils::FileSystem::readAllText(p));
+		return info;
+	}
+
 	// es4all: 构建指纹档的位置(可写的使用者目录, 三个 target 都指得到)。
 	std::string installedFingerprintPath()
 	{
@@ -208,7 +225,8 @@ namespace Es4allUpdate
 			// 找本 target 对应的 zip 资产。
 			// es4all: 同时抓本 target 的 zip 与其 **.md5**(构建指纹, 见下方 getInstalledSha 说明)。
 			const std::string md5Asset = asset + ".md5";
-			std::string url, md5Url;
+			const std::string biAsset = asset + ".build-info";
+			std::string url, md5Url, biUrl;
 			if (rel.HasMember("assets") && rel["assets"].IsArray())
 			{
 				for (auto& a : rel["assets"].GetArray())
@@ -221,6 +239,8 @@ namespace Es4allUpdate
 						url = a["browser_download_url"].GetString();
 					else if (n == md5Asset)
 						md5Url = a["browser_download_url"].GetString();
+					else if (n == biAsset)
+						biUrl = a["browser_download_url"].GetString();
 				}
 			}
 			if (url.empty())
@@ -233,6 +253,7 @@ namespace Es4allUpdate
 				cand.version = cand.version.substr(1);
 			cand.assetUrl = url;
 			cand.md5Url = md5Url;
+			cand.buildInfoUrl = biUrl;
 			// 旧版 release 只有 body 里的 commit SHA(无 .md5 资产)时仍读它, 保持向后兼容;
 			// 新版以 .md5 为准(稍后在选定 best 之后才下载, 避免对每个 release 都发一次请求)。
 			if (rel.HasMember("body") && rel["body"].IsString())
@@ -267,6 +288,17 @@ namespace Es4allUpdate
 			}
 			else
 				LOG(LogWarning) << "Es4allUpdate: 取 .md5 失败, 退回用 release body 的指纹";
+		}
+
+		// es4all: 取回目标建置的时间戳(供 UI 显示、区分同版本号的不同次建置)。只对选定的 best 发一次请求;
+		// 旧版 release 无 .build-info 资产时留空、UI 自会略过, 不影响更新流程。
+		if (!best.buildInfoUrl.empty())
+		{
+			HttpReq bireq(best.buildInfoUrl);
+			if (bireq.wait() && bireq.status() == HttpReq::REQ_SUCCESS)
+				best.buildInfo = Utils::String::trim(bireq.getContent());
+			else
+				LOG(LogWarning) << "Es4allUpdate: 取 .build-info 失败(不影响更新, 仅少显示时间戳)";
 		}
 
 		if (!isNewer(getInstalledVersion(), getInstalledSha(), best.version, best.sha))

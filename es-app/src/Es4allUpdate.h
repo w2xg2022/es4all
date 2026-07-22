@@ -31,6 +31,8 @@ struct Es4allRelease
 	                       // 旧版 release 无 .md5 时退回 body 里的 commit SHA。可能为空。
 	std::string assetUrl;  // 本 target 对应 zip 的下载地址
 	std::string md5Url;    // 本 target 的 <zip>.md5 下载地址, 可能为空
+	std::string buildInfo; // 该次建置的 UTC 时间戳(14 位, 如 20260722074210), 供 UI 区分同版本号的不同次建置; 可能为空
+	std::string buildInfoUrl; // 本 target 的 <zip>.build-info 下载地址, 可能为空
 	bool valid = false;
 };
 
@@ -39,6 +41,9 @@ namespace Es4allUpdate
 	// 当前安装的版本号 / 构建指纹(指纹为执行期计算的 /proc/self/exe md5)。
 	std::string getInstalledVersion();
 	std::string getInstalledSha();
+
+	// 当前安装的建置时间戳(读 resources/build-info.txt, 与页脚同源)。可能为空。
+	std::string getInstalledBuildInfo();
 
 	// 版本号比较: 依 1.0 < 1.1pre < 1.1 ... 的序。返回 <0 / 0 / >0。
 	// 只比较版本号本身, 不涉及构建指纹。非法版本号按 (0,0,release) 处理。

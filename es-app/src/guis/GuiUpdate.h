@@ -34,6 +34,7 @@ private:
     bool mLoading;
     int mState;
 	std::string mUpdateVersion;
+	std::string mUpdateBuildInfo;   // es4all: 目标版本的建置时间戳(来自 release 的 .build-info 资产)
 
     std::pair<std::string, int> mResult;
 

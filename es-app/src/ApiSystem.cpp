@@ -473,6 +473,10 @@ bool ApiSystem::canUpdate(std::vector<std::string>& output)
 		if (Es4allUpdate::findLatestApplicable(rel))
 		{
 			output.push_back(rel.version);
+			// es4all: 第二项(仅当有值时)= 目标建置时间戳, 供 GuiUpdate 区分同版本号的不同次建置。
+			// 留空则不 push, 避免角落通知(NetworkThread 逐行拼接 msgtbl)多出一个空行。
+			if (!rel.buildInfo.empty())
+				output.push_back(rel.buildInfo);
 			return true;
 		}
 		return false;
