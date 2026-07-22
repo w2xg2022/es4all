@@ -439,10 +439,15 @@ namespace Es4allUpdate
 		// 三个 bind-mount(binary + resources + locale)命令。paths 无空格故不加引号(便于嵌入
 		// systemd ExecStart 的单引号内); grep 模式用双引号。bind-mount 非破坏性, 原目录藏在挂载
 		// 点下, 删除钩子/服务即回退。
+		// ★关键(实机 .165 定位)★: resources/locale 的挂载点必须先 mkdir -p ——
+		//   `mount --bind 源 目标` 要求【目标目录已存在】。resources 目录 ES 运行期会自建、恰好在,
+		//   但 locale 目录 ES 从不创建(平时读 /usr/share/locale), 于是 locale 的 bind 静默失败 →
+		//   ES 退回读韧体自带的旧 /usr/share/locale → OTA 更新的新翻译永远不生效(新字串显示英文)。
+		//   两个挂载点都补 mkdir -p, 修掉 locale 更新不生效。
 		std::string mountCmds =
 			"grep -q \" " + realBin + " \" /proc/mounts || mount --bind " + stBin + " " + realBin + "; "
-			"[ -d " + stRes + " ] && { grep -q \" " + userResDir + " \" /proc/mounts || mount --bind " + stRes + " " + userResDir + "; }; "
-			"[ -d " + stLoc + " ] && { grep -q \" " + userLocaleDir + " \" /proc/mounts || mount --bind " + stLoc + " " + userLocaleDir + "; }; "
+			"[ -d " + stRes + " ] && { mkdir -p " + userResDir + "; grep -q \" " + userResDir + " \" /proc/mounts || mount --bind " + stRes + " " + userResDir + "; }; "
+			"[ -d " + stLoc + " ] && { mkdir -p " + userLocaleDir + "; grep -q \" " + userLocaleDir + " \" /proc/mounts || mount --bind " + stLoc + " " + userLocaleDir + "; }; "
 			"true";
 
 #if defined(ES4ALL_TARGET_ROCKNIX)
