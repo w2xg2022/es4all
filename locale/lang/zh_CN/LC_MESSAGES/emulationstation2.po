@@ -125,7 +125,7 @@ msgid "Logo"
 msgstr "Logo图标"
 
 msgid "enter path to logo"
-msgstr "输入LOGO路径"
+msgstr "输入 LOGO 路径"
 
 msgid "Box"
 msgstr "盒子"
@@ -473,7 +473,7 @@ msgstr ""
 "仍要启动它吗？"
 
 msgid "Preloading UI"
-msgstr "预加载 UI"
+msgstr "预加载UI"
 
 msgid "Loading gamelists"
 msgstr "正在加载游戏列表"
@@ -898,7 +898,7 @@ msgid "SHOW RETROACHIEVEMENTS ENTRY IN MAIN MENU"
 msgstr "在主菜单中显示成就菜单项"
 
 msgid "View your RetroAchievement stats right from the main menu!"
-msgstr "从主菜单查看您的RetroAchievement统计数据！"
+msgstr "从主菜单查看您的 RetroAchievement 统计数据！"
 
 msgid "GAME INDEXES"
 msgstr "游戏索引"
@@ -1634,10 +1634,10 @@ msgid "MIX V2"
 msgstr "V2 MIX"
 
 msgid "BOX 2D"
-msgstr "2D 盒子"
+msgstr "2D盒子"
 
 msgid "BOX 3D"
-msgstr "3D 盒子"
+msgstr "3D盒子"
 
 msgid "FAN ART"
 msgstr "同人作品"
@@ -1938,7 +1938,7 @@ msgid "VIDEO MODE"
 msgstr "视频模式"
 
 msgid "You are about to set EmuELEC resolution to:"
-msgstr "您即将将EmuELEC分辨率设置为："
+msgstr "您即将将 EmuELEC 分辨率设置为："
 
 msgid "Do you want to proceed ?"
 msgstr "是否要继续？"
@@ -1956,7 +1956,7 @@ msgid "AUDIO DEVICE"
 msgstr "音频设备"
 
 msgid "Changes will need an EmulationStation restart."
-msgstr "更改需要重启EmulationStation。"
+msgstr "更改需要重启 EmulationStation。"
 
 msgid "START AT BOOT"
 msgstr "开机启动项"
@@ -2031,10 +2031,10 @@ msgid "PUT RANDOM MEDIA IN '/storage/roms/splash/random'."
 msgstr "将随机媒体放入'/storage/roms/splash/random'。"
 
 msgid "SETTING DURATION 0 WILL MAKE VIDEOS DEFAULT TO PLAY 3 SECONDS."
-msgstr "将持续时间设为0将使视频默认播放3秒。"
+msgstr "将持续时间设为 0 将使视频默认播放 3 秒。"
 
 msgid "SETTING DURATIONS GREATER THAN 0 WILL ADD TO LOADING/EXIT SPLASH TIMES."
-msgstr "将持续时间设为大于0会增加加载/退出画面的时间。"
+msgstr "将持续时间设为大于 0 会增加加载/退出画面的时间。"
 
 msgid "CONNECT WIIMOTE(S)"
 msgstr "连接Wiimote"
@@ -2057,7 +2057,7 @@ msgid ""
 msgstr ""
 
 msgid "Wiimote successfully connected."
-msgstr "Wiimote连接成功。"
+msgstr "Wiimote 连接成功。"
 
 msgid "Connection failed."
 msgstr "连接失败。"
@@ -2110,7 +2110,7 @@ msgid "EXTERNAL DEVICE"
 msgstr "外部设备"
 
 msgid "Select the mounted drive to be used for ROMS."
-msgstr "选择用于ROM的已挂载驱动器。"
+msgstr "选择用于 ROM 的已挂载驱动器。"
 
 msgid "RETRY TIMES"
 msgstr "重试次数"
@@ -2305,10 +2305,10 @@ msgid "SERVER"
 msgstr "服务器"
 
 msgid "DMDSERVER (for real dmd)"
-msgstr "DMD服务器(用于真正的DMD)"
+msgstr "DMD 服务器(用于真正的 DMD)"
 
 msgid "SIMULATOR (for web dmd)"
-msgstr "模拟器(用于网页DMD)"
+msgstr "模拟器(用于网页 DMD)"
 
 msgid "dmd server"
 msgstr "DMD服务器"
@@ -2374,13 +2374,13 @@ msgid "VIDEO OPTIONS"
 msgstr "视频选项"
 
 msgid "VRAM LIMIT"
-msgstr "限制 VRAM"
+msgstr "限制VRAM"
 
 msgid "SHOW FRAMERATE"
 msgstr "显示帧率"
 
 msgid "Also turns on the emulator's native FPS counter, if available."
-msgstr "如果可用，打开模拟器自带的FPS计数器。"
+msgstr "如果可用，打开模拟器自带的 FPS 计数器。"
 
 msgid "VSYNC"
 msgstr "垂直同步"
@@ -2435,7 +2435,7 @@ msgid "RESET GAMELISTS USAGE DATA"
 msgstr "重置游戏列表使用数据"
 
 msgid "Reset values of GameTime, PlayCount and LastPlayed metadata."
-msgstr "重置GameTime、PlayCount和LastPlayed元数据值。"
+msgstr "重置 GameTime、PlayCount 和 LastPlayed 元数据值。"
 
 msgid "RESET FILE EXTENSIONS"
 msgstr "重置文件扩展名"
@@ -2496,7 +2496,7 @@ msgid "PARSE GAMELISTS ONLY"
 msgstr "仅解析游戏列表"
 
 msgid "Debug tool: Don't check if the ROMs actually exist. Can cause problems!"
-msgstr "调试工具：不检查ROM是否真的存在。可能会导致一些问题！"
+msgstr "调试工具：不检查 ROM 是否真的存在。可能会导致一些问题！"
 
 msgid "SEARCH FOR LOCAL ART"
 msgstr "在磁盘上查找预览图"
@@ -2687,7 +2687,7 @@ msgid "Do you want to proceed?"
 msgstr "是否继续?"
 
 msgid "KODI SETTINGS"
-msgstr "KODI 设置"
+msgstr "KODI设置"
 
 msgid "ENABLE KODI"
 msgstr "启用KODI多媒体中心"
@@ -2699,7 +2699,7 @@ msgid "HARDWARE"
 msgstr "硬件"
 
 msgid "Sets the display's resolution for emulationstation."
-msgstr "为EmulationStation设置显示器分辨率。"
+msgstr "为 EmulationStation 设置显示器分辨率。"
 
 msgid "AUDIO OUTPUT"
 msgstr "音频输出"
@@ -3220,22 +3220,22 @@ msgid "HOSTNAME"
 msgstr "主机名"
 
 msgid "ENABLE WIFI"
-msgstr "启用 WiFi"
+msgstr "启用WiFi"
 
 msgid "WIFI SSID"
-msgstr "WiFi 名称"
+msgstr "WiFi名称"
 
 msgid "WIFI KEY"
-msgstr "WiFi 密码"
+msgstr "WiFi密码"
 
 msgid "WIFI IP ADDRESS"
 msgstr "WiFi IP地址"
 
 msgid "WIFI ENABLED"
-msgstr "WiFi 已启用"
+msgstr "WiFi已启用"
 
 msgid "WIFI CONFIGURATION ERROR"
-msgstr "WiFi 配置错误"
+msgstr "WiFi配置错误"
 
 msgid "QUICK ACCESS"
 msgstr "快速进入"
@@ -3441,7 +3441,7 @@ msgid "FULL BOOT"
 msgstr "完全启动"
 
 msgid "EMULATED WIIMOTES"
-msgstr "WIIMOTES 模拟"
+msgstr "WIIMOTES模拟"
 
 msgid "CHANGE SCREEN LAYOUT"
 msgstr "更改屏幕布局"
@@ -4033,10 +4033,10 @@ msgid "HOLD A BUTTON ON YOUR DEVICE TO CONFIGURE IT."
 msgstr "请按住控制器上的任意按键以继续配置。"
 
 msgid "PRESS ESC TO CANCEL."
-msgstr "按ESC取消。"
+msgstr "按 ESC 取消。"
 
 msgid "PRESS ESC OR A HOTKEY TO CANCEL."
-msgstr "按ESC或热键取消。"
+msgstr "按 ESC 或热键取消。"
 
 msgid "DISCARD CHANGES"
 msgstr "放弃更改"
@@ -4155,35 +4155,35 @@ msgstr "热键"
 
 msgctxt "joystick"
 msgid "BUTTON A / SOUTH"
-msgstr "A 键 / 南"
+msgstr "A键 / 南"
 
 msgctxt "joystick"
 msgid "BUTTON A / EAST"
-msgstr "A 键 / 东"
+msgstr "A键 / 东"
 
 msgctxt "joystick"
 msgid "BUTTON B / EAST"
-msgstr "B 键 / 东"
+msgstr "B键 / 东"
 
 msgctxt "joystick"
 msgid "BUTTON B / SOUTH"
-msgstr "B 键 / 南"
+msgstr "B键 / 南"
 
 msgctxt "joystick"
 msgid "BUTTON X / WEST"
-msgstr "X 键 / 西"
+msgstr "X键 / 西"
 
 msgctxt "joystick"
 msgid "BUTTON X / NORTH"
-msgstr "X 键 / 北"
+msgstr "X键 / 北"
 
 msgctxt "joystick"
 msgid "BUTTON Y / NORTH"
-msgstr "Y 键 / 北"
+msgstr "Y键 / 北"
 
 msgctxt "joystick"
 msgid "BUTTON Y / WEST"
-msgstr "Y 键 / 西"
+msgstr "Y键 / 西"
 
 msgctxt "joystick"
 msgid "HOTKEY ENABLE"
@@ -4272,28 +4272,28 @@ msgid "REBOOT TO USB"
 msgstr "重启到USB"
 
 msgid "Reboot to CoreELEC"
-msgstr "重启到CoreELEC"
+msgstr "重启到 CoreELEC"
 
 msgid "Display the framerate on-screen in RetroArch games."
-msgstr "在RetroArch游戏中于屏幕上显示帧率。"
+msgstr "在 RetroArch 游戏中于屏幕上显示帧率。"
 
 msgid "SWITCH A/B BUTTONS IN GAMES"
 msgstr "游戏内互换A/B按键"
 
 msgid "Swaps A/B RetroPad bindings during gameplay (position-aligned for PlayStation/PSP style symbol layouts)"
-msgstr "游戏进行中互换A/B的RetroPad按键绑定（位置对齐，符合PlayStation/PSP等几何符号布局的手感）"
+msgstr "游戏进行中互换 A/B 的 RetroPad 按键绑定（位置对齐，符合 PlayStation/PSP 等几何符号布局的手感）"
 
 msgid "SWITCH X/Y BUTTONS IN GAMES"
 msgstr "游戏内互换X/Y按键"
 
 msgid "Swaps X/Y RetroPad bindings during gameplay (position-aligned for PlayStation/PSP style symbol layouts)"
-msgstr "游戏进行中互换X/Y的RetroPad按键绑定（位置对齐，符合PlayStation/PSP等几何符号布局的手感）"
+msgstr "游戏进行中互换 X/Y 的 RetroPad 按键绑定（位置对齐，符合 PlayStation/PSP 等几何符号布局的手感）"
 
 msgid "CPU GOVERNOR"
 msgstr "CPU调速器"
 
 msgid "CPU frequency scaling policy."
-msgstr "CPU频率调节策略。"
+msgstr "CPU 频率调节策略。"
 
 msgid "RetroArch/system logging verbosity (verbose = full debug)."
 msgstr "RetroArch/系统日志详细程度（选「详细」＝完整调试）。"
@@ -4335,10 +4335,10 @@ msgid "FIXED"
 msgstr "固定"
 
 msgid "UPDATING ES4All"
-msgstr "正在更新 ES4All"
+msgstr "正在更新ES4All"
 
 msgid "Show the RetroArch splash screen when a game starts."
-msgstr "游戏启动时显示 RetroArch启动画面。"
+msgstr "游戏启动时显示 RetroArch 启动画面。"
 
 msgid "EXTRACTING"
 msgstr "正在解压"
@@ -4368,7 +4368,7 @@ msgid "Display EmulationStation's own framerate. Does not affect games."
 msgstr "显示 EmulationStation 自身的帧率。不影响游戏。"
 
 msgid "ES LOG LEVEL"
-msgstr "ES 日志级别"
+msgstr "ES日志级别"
 
 msgid "Log verbosity of EmulationStation itself (es_log.txt); not games."
 msgstr "EmulationStation 前端自身的日志详细度(es_log.txt)，与游戏无关。"
