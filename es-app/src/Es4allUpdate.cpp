@@ -428,8 +428,15 @@ namespace Es4allUpdate
 			std::string sh;
 			sh += "set -e; ";
 			sh += "cp -f '" + newBin + "' '" + stBin + ".new'; chmod 0755 '" + stBin + ".new'; mv -f '" + stBin + ".new' '" + stBin + "'; ";
-			sh += "if [ -d '" + extractDir + "/resources' ]; then rm -rf '" + stRes + ".new'; cp -a '" + extractDir + "/resources' '" + stRes + ".new'; rm -rf '" + stRes + "'; mv '" + stRes + ".new' '" + stRes + "'; fi; ";
-			sh += "if [ -d '" + extractDir + "/locale' ]; then rm -rf '" + stLoc + ".new'; cp -a '" + extractDir + "/locale' '" + stLoc + ".new'; rm -rf '" + stLoc + "'; mv '" + stLoc + ".new' '" + stLoc + "'; fi";
+			// ★只暂存到 .new, 绝不在此替换 stRes/stLoc 本体★(实机 .165 定位)：
+			//   stRes/stLoc 正是【运行中 ES 的 bind-mount 来源】。旧写法在这里 `rm -rf stRes` ——
+			//   bind-mount 与来源是同一个目录, 删掉内容等于把运行中 ES 的 resources/locale 当场挖空,
+			//   字型档(*.ttf)瞬间消失 -> 已进图集的字形照常显示、**新字形再也载不进来** ->
+			//   界面大量缺字(实测: 「更新已下载完成，是否立即重启以套用？」只剩「更新下载是否用」,
+			//   退出选单整排崩掉), 直到重开机重建挂载才恢复。
+			//   改为: 这里只写 .new, 由开机钩子/服务在 ES 启动前(尚未 bind-mount 时)才做替换。
+			sh += "if [ -d '" + extractDir + "/resources' ]; then rm -rf '" + stRes + ".new'; cp -a '" + extractDir + "/resources' '" + stRes + ".new'; fi; ";
+			sh += "if [ -d '" + extractDir + "/locale' ]; then rm -rf '" + stLoc + ".new'; cp -a '" + extractDir + "/locale' '" + stLoc + ".new'; fi";
 			if (system(sh.c_str()) != 0)
 				return std::make_pair(std::string("写入 /storage 失败"), 1);
 		}
@@ -445,6 +452,11 @@ namespace Es4allUpdate
 		//   ES 退回读韧体自带的旧 /usr/share/locale → OTA 更新的新翻译永远不生效(新字串显示英文)。
 		//   两个挂载点都补 mkdir -p, 修掉 locale 更新不生效。
 		std::string mountCmds =
+			// ★先把 apply() 暂存的 .new 换上本体★: 此刻 ES 尚未启动、也还没 bind-mount,
+			// 才是唯一能安全替换 resources/locale 的时机(apply() 里换会挖空运行中的 ES, 见上方说明)。
+			// 幂等: 没有 .new 就整段跳过; 换完 .new 消失, 重复执行无副作用。
+			"[ -d " + stRes + ".new ] && { rm -rf " + stRes + "; mv " + stRes + ".new " + stRes + "; }; "
+			"[ -d " + stLoc + ".new ] && { rm -rf " + stLoc + "; mv " + stLoc + ".new " + stLoc + "; }; "
 			"grep -q \" " + realBin + " \" /proc/mounts || mount --bind " + stBin + " " + realBin + "; "
 			"[ -d " + stRes + " ] && { mkdir -p " + userResDir + "; grep -q \" " + userResDir + " \" /proc/mounts || mount --bind " + stRes + " " + userResDir + "; }; "
 			"[ -d " + stLoc + " ] && { mkdir -p " + userLocaleDir + "; grep -q \" " + userLocaleDir + " \" /proc/mounts || mount --bind " + stLoc + " " + userLocaleDir + "; }; "
