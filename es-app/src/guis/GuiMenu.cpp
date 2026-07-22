@@ -906,12 +906,8 @@ void GuiMenu::createConfigureSplash(Window* mWindow, int menuIndex)
 			SystemConf::getInstance()->set("ee_splashexit", "2");
 		}
 
-		if (splashLoadingTime->getValue() == 0.f || splashExitTime->getValue() == 0.f) {
-			mWindow->displayNotificationMessage(_U("\uF011  ") + _("SETTING DURATION 0 WILL MAKE VIDEOS DEFAULT TO PLAY 3 SECONDS."));
-		}
-		if (splashLoadingTime->getValue() != 0.f || splashExitTime->getValue() != 0.f) {
-			mWindow->displayNotificationMessage(_U("\uF011  ") + _("SETTING DURATIONS GREATER THAN 0 WILL ADD TO LOADING/EXIT SPLASH TIMES."));
-		}
+		// es4all: \u79FB\u9664\u300C\u8BBE 0 \u4F1A\u64AD 3 \u79D2 / \u8BBE >0 \u4F1A\u53E0\u52A0\u65F6\u957F\u300D\u8FD9\u4E24\u6761\u63D0\u793A \u2014\u2014 \u6BCF\u6B21\u4ECE\u542F\u52A8\u753B\u9762\u8BBE\u7F6E\u8FD4\u56DE
+		// \u90FD\u5FC5\u5F39\u5176\u4E2D\u4E00\u6761(\u503C\u4E0D\u662F 0 \u5C31\u662F\u975E 0), \u5C5E\u4E8E\u566A\u97F3\u3002\u89C4\u5219\u5DF2\u5728\u5404\u65F6\u957F\u9009\u9879\u7684\u8BF4\u660E\u91CC\u4EA4\u4EE3, \u65E0\u9700\u518D\u5F39\u901A\u77E5\u3002
 
 		SystemConf::getInstance()->set("ee_splash_loading_duration", std::to_string((int)round(splashLoadingTime->getValue())));
 		SystemConf::getInstance()->set("ee_splash_exit_duration", std::to_string((int)round(splashExitTime->getValue())));
@@ -935,33 +931,45 @@ void GuiMenu::openExternalMounts(Window* mWindow, std::string configName)
     std::string a;
     
 		auto emuelec_external_device_def = std::make_shared< OptionListComponent<std::string> >(mWindow, _("EXTERNAL DEVICE"), false);
-		std::vector<std::string> extdevoptions;
-		extdevoptions.push_back("auto");
+		// es4all: ★global.externalmount 的真实语义(核对 eemount 源码 drive.c + mount_romfs.sh)★
+		//   - 空字串        → 扫描任意「带标记档(roms/emuelecroms)」的外接碟, 无则用内部 /storage/roms。
+		//                     ★这才是真正的「自动」★: 两个挂载后端(eemount / mount_romfs.sh)都只把【空】当自动。
+		//   - "INTERNAL"    → 哨兵值, 没有任何 /var/media 下的碟叫这名字 → 扫描匹配不到 → 强制用内部
+		//                     /storage/roms(=本机 eMMC 的 ROMS)。用于「插着外接碟也要切回本机」。
+		//   - 具体 LABEL    → 只挂那颗。
+		// 注意: ★绝不能存 "auto" 字串★ —— eemount(本机默认后端)没有 auto 特判, 会去找【名叫 auto 的碟】,
+		//   找不到反而变纯内部, 且与 mount_romfs.sh 行为不一致。历史上的 "auto" 值在此迁移成空字串。
+		const std::string kIntl = "INTERNAL";
+		std::vector<std::string> devLabels;
 		// es4all: ★排除系统盘自己的分区★ —— 原本只 prune 掉 EEROMS，但系统盘的其他分区
 		// (EMUELEC=开机分区、STORAGE、CE_FLASH、CE_STORAGE)若也被挂到 /var/media/ 就会列出来，
 		// 使用者误选当 ROM 盘就变 0 个游戏(实机遇到过)。这些 LABEL 一并 prune 掉。
 		  for(std::stringstream ss(Utils::Platform::getShOutput(R"(find /var/media/ -mindepth 1 -maxdepth 1 -type d \( -iname EEROMS -o -iname EMUELEC -o -iname STORAGE -o -iname CE_FLASH -o -iname CE_STORAGE \) -prune -o -type d -exec basename {} \; | sed "s/$/,/g")")); getline(ss, a, ','); ) {
-            extdevoptions.push_back(a);
+            if (!a.empty()) devLabels.push_back(a);
 	    }
-		// use script to get entries
 
 		auto extdevoptionsS = SystemConf::getInstance()->get("global.externalmount");
-		if (extdevoptionsS.empty())
-		extdevoptionsS = "auto";
+		if (extdevoptionsS == "auto")   // 迁移旧值: "auto" 其实等价于「自动」= 空字串。
+			extdevoptionsS = "";
 
-		// es4all: 显示时把 "auto" 过 _() 中文化(其余是磁盘 LABEL/装置名，无法翻译)；值保持不变。
-		for (auto it = extdevoptions.cbegin(); it != extdevoptions.cend(); it++)
-		emuelec_external_device_def->add((*it == "auto") ? _("AUTO") : *it, *it, extdevoptionsS == *it);
-		
-        externalMounts->addWithDescription(_("EXTERNAL DEVICE"), _("Select the mounted drive to be used for ROMS."), emuelec_external_device_def);
-    
-        emuelec_external_device_def->setSelectedChangedCallback([emuelec_external_device_def](std::string name) {
+		// 自动(空值) + 本机(哨兵) + 各外接碟(LABEL)。前两项显示走 _() 中文化, LABEL 无法翻译。
+		emuelec_external_device_def->add(_("AUTO"), "", extdevoptionsS.empty());
+		emuelec_external_device_def->add(_("INTERNAL STORAGE"), kIntl, extdevoptionsS == kIntl);
+		for (auto it = devLabels.cbegin(); it != devLabels.cend(); it++)
+			emuelec_external_device_def->add(*it, *it, extdevoptionsS == *it);
+
+        externalMounts->addWithDescription(_("EXTERNAL DEVICE"), _("Select where ROMS are read from: AUTO scans external drives, INTERNAL STORAGE forces the built-in storage, or pick a specific drive."), emuelec_external_device_def);
+
+        emuelec_external_device_def->setSelectedChangedCallback([emuelec_external_device_def, kIntl](std::string name) {
        		if (SystemConf::getInstance()->set("global.externalmount", name)) {
-			   if (emuelec_external_device_def->getSelected() != "auto") {
-                    std::string path = ("/var/media/" + emuelec_external_device_def->getSelected() + "/roms/emuelecroms").c_str();
+			   // 只有选「具体外接碟」才需要打标记档(roms/emuelecroms), 让 eemount 认得它可当 ROM 盘。
+			   // 自动(空)与本机(INTERNAL 哨兵)都不打标记。
+			   const std::string sel = emuelec_external_device_def->getSelected();
+			   if (!sel.empty() && sel != kIntl) {
+                    std::string path = ("/var/media/" + sel + "/roms/emuelecroms").c_str();
                         if (!Utils::FileSystem::exists(path)) {
-                            system((std::string("mkdir -p \"/var/media/") + emuelec_external_device_def->getSelected() + std::string("/roms\"")).c_str()); 
-                            system((std::string("touch \"/var/media/") + emuelec_external_device_def->getSelected() + std::string("/roms/emuelecroms\"")).c_str()); 
+                            system((std::string("mkdir -p \"/var/media/") + sel + std::string("/roms\"")).c_str());
+                            system((std::string("touch \"/var/media/") + sel + std::string("/roms/emuelecroms\"")).c_str());
                         }
                 }
             SystemConf::getInstance()->saveSystemConf();
@@ -984,12 +992,19 @@ void GuiMenu::openExternalMounts(Window* mWindow, std::string configName)
                 SystemConf::getInstance()->saveSystemConf();
             });
 
-        externalMounts->addEntry(_("FORCE MOUNT NOW"), true, [mWindow] { 
-            std::string selectedExternalDrive = SystemConf::getInstance()->get("global.externalmount");
-            mWindow->pushGui(new GuiMsgBox(mWindow, (_("WARNING THIS WILL RESTART EMULATIONSTATION!\n\nSystem will try to mount the external drive selected ") + "\""+ selectedExternalDrive + "\"" + _(". Make sure you have all the settings saved before running this.\n\nTRY TO MOUNT EXTERNAL AND RESTART?")).c_str(), _("YES"),
+        externalMounts->addEntry(_("FORCE MOUNT NOW"), true, [mWindow, emuelec_external_device_def, kIntl] {
+            // es4all: 直接读选单当前选中的【值】(空=自动 / INTERNAL=本机 / LABEL=指定碟), 不再读 SystemConf
+            // ——原本读 SystemConf 会因「默认自动没被持久化」而拿到空字串, 警告框显示 ""(实机遇到)。
+            std::string selectedExternalDrive = emuelec_external_device_def->getSelected();
+            // 显示名中文化: 空→自动、INTERNAL→本机、其余→原 LABEL。
+            std::string disp = selectedExternalDrive.empty() ? _("AUTO")
+                             : (selectedExternalDrive == kIntl ? _("INTERNAL STORAGE") : selectedExternalDrive);
+            mWindow->pushGui(new GuiMsgBox(mWindow, (_("WARNING THIS WILL RESTART EMULATIONSTATION!\n\nSystem will try to mount the ROMS source selected ") + "\""+ disp + "\"" + _(". Make sure you have all the settings saved before running this.\n\nMOUNT AND RESTART?")).c_str(), _("YES"),
 				[selectedExternalDrive] {
+				// 把当前选中的值落盘, 确保后端(eemount/mount_romfs.sh)读到的与选单一致。
+				SystemConf::getInstance()->set("global.externalmount", selectedExternalDrive);
 				SystemConf::getInstance()->saveSystemConf();
-                
+
                 auto mountH = SystemConf::getInstance()->get("ee_mount.handler");
                 if (mountH == "eemount" || mountH.empty()) {
                    Utils::Platform::ProcessStartInfo("eemount --esrestart " + selectedExternalDrive).run();

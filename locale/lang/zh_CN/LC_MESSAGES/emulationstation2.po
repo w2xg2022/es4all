@@ -2145,6 +2145,32 @@ msgstr ""
 "\n"
 "要挂载外部设备并重启吗？"
 
+msgid "INTERNAL STORAGE"
+msgstr "内部存储"
+
+msgid ""
+"Select where ROMS are read from: AUTO scans external drives, INTERNAL "
+"STORAGE forces the built-in storage, or pick a specific drive."
+msgstr "选择 ROM 从哪里读取：自动 会扫描外接驱动器，内部存储 强制使用内建存储，也可指定某个驱动器。"
+
+msgid ""
+"WARNING THIS WILL RESTART EMULATIONSTATION!\n"
+"\n"
+"System will try to mount the ROMS source selected "
+msgstr ""
+"警告：这将重启 EMULATIONSTATION！\n"
+"\n"
+"系统将尝试挂载所选的 ROM 来源 "
+
+msgid ""
+". Make sure you have all the settings saved before running this.\n"
+"\n"
+"MOUNT AND RESTART?"
+msgstr ""
+"。请确保运行前已保存所有设置。\n"
+"\n"
+"要挂载并重启吗？"
+
 msgid "INTERNAL RESOLUTION DIMENSIONS"
 msgstr "内部分辨率尺寸"
 
