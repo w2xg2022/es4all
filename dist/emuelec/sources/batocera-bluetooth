@@ -31,6 +31,96 @@ emit_device() {   # mac name status
     printf '<device id="%s" name="%s" status="%s" type="joystick" />\n' "$mac" "$name" "$status"
 }
 
+# ★2026-07-20 修真bug★: es4all 侧「PAIR BLUETOOTH PADS AUTOMATICALLY」(自动配对)
+# 呼叫的是 `batocera-bluetooth trust input`(见 GuiControllersSettings.cpp 的
+# addEntry -> ThreadedBluetooth::start -> ApiSystem::scanNewBluetooth, 实作在
+# ApiSystem.cpp:681 `executeScript("batocera-bluetooth trust input", func)`),
+# 不是 `trust <mac>`。旧版垫片没有这个模式, 落进下面的单MAC分支把字符串"input"
+# 当成MAC去配, 当然配不上, 表现就是"自动配对"按了没反应。
+# 语义: 扫描一段时间, 把扫到的【输入类设备】(键鼠手柄, BlueZ 的 Icon 属性会是
+# input-*)全部自动 pair+trust+connect, 不需要使用者从列表挑。跟单MAC分支同样的
+# 约束: 必须全程在【同一个 bluetoothctl 会话】里做(分开的短命实例会让 agent 不
+# 持久、新扫到的设备对新实例是 not available)。用具名管道(FIFO)撑住一个长驻
+# session 的 stdin, 边监听边即时把新发现的输入设备的 pair/trust/connect 命令
+# 写进同一个 session。
+do_trust_input() {
+    rfkill unblock bluetooth 2>/dev/null
+    local dur="${BT_AUTOPAIR_SECONDS:-25}"
+    local fifo="/tmp/es4all-bt-autopair-fifo"
+    rm -f "$fifo"; mkfifo "$fifo"
+    # ★踩坑★: `exec N>fifo` 打开写端会阻塞到有读端打开为止。必须先在背景启动
+    # 读端(bluetoothctl < fifo), 再打开写端, 否则两边都在等对方先开、直接死锁
+    # (卡满全部 timeout, 无任何进程可见 —— 因为读端那行代码根本没机会被执行到)。
+    stdbuf -oL "$BTCTL" < "$fifo" >> "$LOGF" 2>&1 &
+    local btpid=$!
+    exec 9>"$fifo"   # 保持 fifo 写端常开, session 才不会因为每次写完就 EOF 而退出
+    printf 'power on\nagent NoInputNoOutput\ndefault-agent\nscan on\n' >&9
+
+    local end=$(( $(date +%s) + dur ))
+    # tried = 这次运行内实际动过手(配对或重连)的设备, 用于结尾判断本次是否真的
+    # 成功。已经 Paired+Connected 的(真的没事可做)记进 skipped, 不计入成功判定,
+    # 免得把「早就连着的旧设备」算成这次的功劳、永远回报成功。
+    local tried="" skipped="" any=1 mac info
+    while [ "$(date +%s)" -lt "$end" ] && kill -0 "$btpid" 2>/dev/null; do
+        for mac in $("$BTCTL" devices 2>/dev/null | awk '{print $2}'); do
+            printf '%s' "$mac" | grep -qiE "^$MACRE$" || continue
+            case " $tried " in *" $mac "*) continue ;; esac
+            case " $skipped " in *" $mac "*) continue ;; esac
+            info=$("$BTCTL" info "$mac" 2>/dev/null)
+            # 只处理输入类设备(键盘/鼠标/手柄), BlueZ 用 Icon 属性标注 input-*
+            echo "$info" | grep -qi 'Icon: input-' || { skipped="$skipped $mac"; continue; }
+
+            if echo "$info" | grep -q 'Paired: yes'; then
+                # ★2026-07-20 修真bug★: 已配对的设备【不能直接跳过】。手柄关机/
+                # 超时后常常是 Paired:yes + Trusted:yes 但 Connected:no —— 这时
+                # 使用者按「自动配对」的意图就是"把它接回来"。旧逻辑把所有
+                # Paired:yes 一律 continue, 导致对这种(最常见的)情况完全没反应,
+                # 表面上看就像"自动配对没用/没在扫描"。实机确认 Pro Controller
+                # 正是这个状态。改成: 已配对但未连线 -> 直接 connect; 两者都已
+                # 满足才是真的没事可做。
+                echo "$info" | grep -q 'Connected: yes' && { skipped="$skipped $mac"; continue; }
+                tried="$tried $mac"
+                printf 'connect %s\n' "$mac" >&9; sleep 5
+
+                # ★2026-07-20 实机根因★: Paired:yes 只代表【我们这端】还存着
+                # LinkKey, 不代表对方还认。Switch Pro Controller(以及多数手柄)跟
+                # 别的主机配对过之后, 自己那端就把旧 key 忘了 —— 我们再 connect,
+                # 对方根本不应答, 内核回 `connect failed (status 0x04)`(Page
+                # Timeout) + `br-connection-create-socket`。实机确认: 手柄 RSSI
+                # -34(就在旁边、开着机、在广播), 但 connect 必失败, 卡在这里就是
+                # "自动配对按了没反应"的最后一哩。
+                # 解: connect 失败 -> 判定本地 LinkKey 已失效 -> remove 掉重新
+                # pair(此时手柄需在配对模式, 即按住 SYNC 键)。remove 后设备会从
+                # devices 列表消失, 靠扫描重新发现, 所以从 tried 拿掉让下一轮
+                # 循环当成"没配对过的新设备"走完整 pair 流程。
+                sleep 2
+                if ! "$BTCTL" info "$mac" 2>/dev/null | grep -q 'Connected: yes'; then
+                    printf 'remove %s\n' "$mac" >&9; sleep 3
+                    tried=$(printf '%s' "$tried" | sed "s| *$mac||")
+                fi
+                continue
+            fi
+
+            tried="$tried $mac"
+            printf 'pair %s\n' "$mac" >&9;    sleep 6
+            printf 'trust %s\n' "$mac" >&9;   sleep 1
+            printf 'connect %s\n' "$mac" >&9; sleep 3
+        done
+        sleep 1
+    done
+    printf 'scan off\nquit\n' >&9
+    sleep 1
+    exec 9>&-
+    wait "$btpid" 2>/dev/null
+
+    # 成功判定看 Connected —— 自动配对的目的是"手柄能用", 只是 Paired 但没连上
+    # 对使用者来说等于没成功(手柄仍然不能动), 不该回报成功。
+    for mac in $tried; do
+        "$BTCTL" info "$mac" 2>/dev/null | grep -q 'Connected: yes' && any=0
+    done
+    return $any
+}
+
 ACTION="$1"; shift
 
 case "$ACTION" in
@@ -82,6 +172,10 @@ case "$ACTION" in
     ;;
 
   trust)
+    if [ "$1" = "input" ]; then
+        do_trust_input
+        exit $?
+    fi
     MAC="$1"
     rfkill unblock bluetooth 2>/dev/null
     # 关键: 配对必须在【同一个 bluetoothctl 会话】里完成 —— 分开多个短命 bluetoothctl 会导致
