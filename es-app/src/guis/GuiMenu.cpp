@@ -461,27 +461,41 @@ void GuiMenu::openEmuELECSettings()
 #if defined(ES4ALL_CAP_EMUELEC_PLATFORM) && !defined(_ENABLEGAMEFORCE) && !defined(ODROIDGOA)
 	Window* window = mWindow;
 	std::string a;
-	auto emuelec_video_mode = std::make_shared< OptionListComponent<std::string> >(mWindow, "VIDEO MODE", false);
+	// es4all: 标题过 _() —— 原本传字面 "VIDEO MODE"，选单标签虽有翻译，但**弹出清单的标题**用的是
+	// 这个字串，实机看到的就是没中文化的 "VIDEO MODE"。
+	auto emuelec_video_mode = std::make_shared< OptionListComponent<std::string> >(mWindow, _("VIDEO MODE"), false);
 	// es4all: ★枚举一律从【系统面】抓，不再写死清单★(比照 ROCKNIX 的 VIDEO MODE 用 wlr-randr 列举)。
 	//   原本先 push 11 个写死模式(1080p60hz/720p60hz/480cvbs/...)，再加一条假项
 	//   "-- AUTO-DETECTED RESOLUTIONS --" 当分隔线，后面才接真正侦测到的 —— 结果是:
 	//   ①清单又长又重复；②**列出该电视根本不支援的模式，选下去就没讯号**；
 	//   ③那条分隔线本身是可选中的假项(save func 还得特判它跳过)。
-	//   现在只留系统侦测结果：`emuelec-utils resolutions` 读的正是 Amlogic 的
-	//   `/sys/class/display/cap`(EDID 能力清单)，本来就是系统面来源，只是先前被写死清单淹没了。
 	//   ⚠️ 侦测不到时清单只剩 Custom(见下)——这是刻意的:宁可没得选，也不要给出会黑屏的选项。
+	//
+	// ★不能用 `emuelec-utils resolutions`(实机 .165 定位)★：它读的是 `/sys/class/display/cap`，
+	//   而该节点在这颗核心上**只回类比/CVBS 能力**(480cvbs/576cvbs/pal_m/ntsc_m…)，最后一行还写着
+	//   "check disp_cap sysfs node in hdmitx." —— HDMI 的真实 EDID 清单在
+	//   `/sys/class/amhdmitx/amhdmitx0/disp_cap`。实测该指令只回 4 项(480cvbs,480i60hz,576cvbs,
+	//   640x480p60hz)，**连电视正在用的 1080p60hz 都不在里面**，选单等于没得选。
+	//   改成直接读 disp_cap(HDMI，`*` 是当前模式的标记要去掉) + display/cap 里的 cvbs 项
+	//   (E900V22C 有 AV 孔，CVBS 是真的能用的输出)；同机实测得 23 项，含 1080p60hz / 2160p60hz。
+	//   disp_cap 不存在(非 Amlogic HDMI)时才退回 emuelec-utils，保持相容。
         std::vector<std::string> videomode;
-   for(std::stringstream ss(Utils::Platform::getShOutput(R"(/usr/bin/emuelec-utils resolutions)")); getline(ss, a, ','); ) {
+   for(std::stringstream ss(Utils::Platform::getShOutput(R"SH(L=$( { cat /sys/class/amhdmitx/amhdmitx0/disp_cap 2>/dev/null; grep -i cvbs /sys/class/display/cap 2>/dev/null; } | tr -d '*' | tr -d ' \t' | grep -vE '^$' | awk '!seen[$0]++' ); [ -z "$L" ] && L=$(/usr/bin/emuelec-utils resolutions 2>/dev/null | tr ',' '\n'); echo "$L" | sed 's/$/,/')SH")); getline(ss, a, ','); ) {
         a = Utils::String::trim(a);
         if (!a.empty())
             videomode.push_back(a);
 	}
-	// Custom 保留：它不是一个「模式」，而是逃生口 —— 从 /storage/.config/EE_VIDEO_MODE 或
-	// /flash/EE_VIDEO_MODE 读使用者自订的模式字串写进 /sys/class/display/mode(见下方 save func)，
-	// 用来上 EDID 没报、但萤幕其实吃得下的模式。故不受「只列侦测到的」规则约束。
-		videomode.push_back("Custom");
+		// 侦测到的模式：显示名就是模式字串本身(1080p60hz 之类的技术代号，不翻译)。
 		for (auto it = videomode.cbegin(); it != videomode.cend(); it++) {
 		emuelec_video_mode->add(*it, *it, SystemConf::getInstance()->get("ee_videomode") == *it); }
+
+		// Custom 保留：它不是一个「模式」，而是逃生口 —— 从 /storage/.config/EE_VIDEO_MODE 或
+		// /flash/EE_VIDEO_MODE 读使用者自订的模式字串写进 /sys/class/display/mode(见下方 save func)，
+		// 用来上 EDID 没报、但萤幕其实吃得下的模式。故不受「只列侦测到的」规则约束。
+		// ★显示名过 _() 中文化，但**值必须维持 "Custom"**★ —— save func 与 ee_videomode 都按这个
+		// 字串比对，若把值也翻译掉，自订模式那条分支就再也走不到。
+		emuelec_video_mode->add(_("CUSTOM"), "Custom", SystemConf::getInstance()->get("ee_videomode") == "Custom");
+
 		s->addWithLabel(_("VIDEO MODE"), emuelec_video_mode);
 	   	
 		s->addSaveFunc([this, emuelec_video_mode, window] {
