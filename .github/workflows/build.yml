@@ -123,7 +123,7 @@ jobs:
           # 而 ROCKNIX 实机根本没有这个 so(固件烤入的 ES 是静态链 pugixml) →
           # OTA zip 部署到实机会 `error while loading shared libraries: libpugixml.so.1` 起不来。
           # 保持默认 OFF 用内建 external/pugixml 静态编入，zip 才自足(armbian/emuelec 两个 job 也是这样)。
-          cmake .. -DGLES=OFF -DGLES2=ON -DES4ALL_TARGET=rocknix -DENABLE_EMUELEC=1 \
+          cmake .. -DGLES=OFF -DGLES2=ON -DES4ALL_TARGET=rocknix \
                    -DROCKNIX=1 -DDISABLE_KODI=1 -DENABLE_FILEMANAGER=0 -DCEC=0 \
                    -DENABLE_PULSE=1
 
