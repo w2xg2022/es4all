@@ -2,8 +2,11 @@ name: "Build EmulationStation (es4all aarch64: armbian/rocknix/emuelec)"
 
 on:
   push:
-    # es4all: v1.1-dev 也建置(验证三目标可编)，但只有 main 会发布 Release(见各 job 的 if 守卫)
-    branches: [ main, v1.1-dev ]
+    # es4all: 两条线都建置。分支已改名(2026-07-23)：原 main(1.0 线) → **v1.0-stable**，
+    # 且 **default 分支已改成 v1.1-dev**(开发主线)。
+    # 名字不叫 v1.0 是因为 `v1.0` 已被 tag 占用(GitHub Release「es4all v1.0」绑在该 tag 上)，
+    # branch 与 tag 同名会让 git 报 refname ambiguous。
+    branches: [ v1.0-stable, v1.1-dev ]
   workflow_dispatch:
 
 permissions:

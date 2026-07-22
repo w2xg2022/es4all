@@ -5,7 +5,7 @@
 # 同步 w2xg2022/EmuELEC 主建置采用的版本(evdev布局侦测/AB可换位XY维持标准显示等)。
 PKG_NAME="emuelec-emulationstation"
 PKG_VERSION="c9865b25b2bfccdbec4933b064dc3d2bf20ac933"
-PKG_GIT_CLONE_BRANCH="main"
+PKG_GIT_CLONE_BRANCH="v1.1-dev"
 PKG_REV="1"
 PKG_ARCH="any"
 PKG_LICENSE="GPL"
