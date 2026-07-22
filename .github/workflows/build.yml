@@ -87,9 +87,6 @@ jobs:
             es4all 三平台(armbian / rocknix / emuelec)aarch64 构建。
             每个 zip 内含 emulationstation(主程序) + resources + locale，解压后覆盖到设备对应目录即可，无需重新编译，重启 EmulationStation 生效。
             版本号含 "pre" 为预览版(开发中)。
-            <!-- es4all: 构建指纹已改用各 <zip>.md5 资产(整包 md5)，不再往 body 写 commit sha。
-                 原本这里有 `es4all-build-sha: <sha>`，是旧机制残留 —— 它是 40 位 commit sha，
-                 跟新的 32 位整包 md5 永远不等；一旦 .md5 下载失败就会 fallback 到它、误报有更新。已移除。 -->
 
   build-rocknix:
     runs-on: ubuntu-24.04-arm
