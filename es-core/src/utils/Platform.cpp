@@ -616,7 +616,16 @@ std::string getShOutput(const std::string& mStr)
     while(fgets(buffer, sizeof(buffer), pipe) != NULL)
     {
         file = buffer;
-        result += file.substr(0, file.size() - 1);
+        // ★es4all(实机 .165 定位)★: 只在【真的以换行结尾】时才去掉换行。
+        // 原本无条件 substr(0, size()-1) 砍掉最后一个字元，输出没有尾随换行时会吃掉一个真实字元：
+        //   实例 —— AUDIO OUTPUT 选单永远不显示的真因。/proc/device-tree/model 内容是
+        //   "Skyworth E900V22C\0"(裸字串、无换行)，经 `tr -d '\000'` 后仍无换行 -> 被砍成
+        //   "Skyworth E900V22" -> 与 audio_outputs.cfg 的 "E900V22C" 匹配失败 -> 机型白名单落空。
+        // 另：单行长度超过 buffer(255 字元)时 fgets 会分段返回、段尾同样没有换行，旧写法也会
+        // 每段吃掉一个字元，一并修好。多行输出的拼接行为与原本一致(换行照样剥掉)。
+        if (!file.empty() && file[file.size() - 1] == '\n')
+            file.erase(file.size() - 1);
+        result += file;
     }
 
     pclose(pipe);
