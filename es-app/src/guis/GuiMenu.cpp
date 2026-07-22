@@ -462,22 +462,24 @@ void GuiMenu::openEmuELECSettings()
 	Window* window = mWindow;
 	std::string a;
 	auto emuelec_video_mode = std::make_shared< OptionListComponent<std::string> >(mWindow, "VIDEO MODE", false);
+	// es4all: ★枚举一律从【系统面】抓，不再写死清单★(比照 ROCKNIX 的 VIDEO MODE 用 wlr-randr 列举)。
+	//   原本先 push 11 个写死模式(1080p60hz/720p60hz/480cvbs/...)，再加一条假项
+	//   "-- AUTO-DETECTED RESOLUTIONS --" 当分隔线，后面才接真正侦测到的 —— 结果是:
+	//   ①清单又长又重复；②**列出该电视根本不支援的模式，选下去就没讯号**；
+	//   ③那条分隔线本身是可选中的假项(save func 还得特判它跳过)。
+	//   现在只留系统侦测结果：`emuelec-utils resolutions` 读的正是 Amlogic 的
+	//   `/sys/class/display/cap`(EDID 能力清单)，本来就是系统面来源，只是先前被写死清单淹没了。
+	//   ⚠️ 侦测不到时清单只剩 Custom(见下)——这是刻意的:宁可没得选，也不要给出会黑屏的选项。
         std::vector<std::string> videomode;
-		videomode.push_back("1080p60hz");
-		videomode.push_back("1080i60hz");
-		videomode.push_back("720p60hz");
-		videomode.push_back("720p50hz");
-		videomode.push_back("480p60hz");
-		videomode.push_back("480cvbs");
-		videomode.push_back("576p50hz");
-		videomode.push_back("1080p50hz");
-		videomode.push_back("1080i50hz");
-		videomode.push_back("576cvbs");
-		videomode.push_back("Custom");
-		videomode.push_back("-- AUTO-DETECTED RESOLUTIONS --");
    for(std::stringstream ss(Utils::Platform::getShOutput(R"(/usr/bin/emuelec-utils resolutions)")); getline(ss, a, ','); ) {
-        videomode.push_back(a);
+        a = Utils::String::trim(a);
+        if (!a.empty())
+            videomode.push_back(a);
 	}
+	// Custom 保留：它不是一个「模式」，而是逃生口 —— 从 /storage/.config/EE_VIDEO_MODE 或
+	// /flash/EE_VIDEO_MODE 读使用者自订的模式字串写进 /sys/class/display/mode(见下方 save func)，
+	// 用来上 EDID 没报、但萤幕其实吃得下的模式。故不受「只列侦测到的」规则约束。
+		videomode.push_back("Custom");
 		for (auto it = videomode.cbegin(); it != videomode.cend(); it++) {
 		emuelec_video_mode->add(*it, *it, SystemConf::getInstance()->get("ee_videomode") == *it); }
 		s->addWithLabel(_("VIDEO MODE"), emuelec_video_mode);
@@ -488,7 +490,9 @@ void GuiMenu::openEmuELECSettings()
 	
 		if (emuelec_video_mode->changed()) {
 			std::string selectedVideoMode = emuelec_video_mode->getSelected();
-		if (emuelec_video_mode->getSelected() != "-- AUTO-DETECTED RESOLUTIONS --") { 
+		// es4all: 原本这里还有一层 `!= "-- AUTO-DETECTED RESOLUTIONS --"` 特判(那条假分隔线
+		// 是可选中的假项，得挡掉免得被当成模式套用)。分隔线连同写死清单已一并移除，此特判成死码，故删。
+		{
 			if (emuelec_video_mode->getSelected() != "Custom") {
 			std::string msg = _("You are about to set EmuELEC resolution to:") +"\n" + selectedVideoMode + "\n";
 			msg += _("Do you want to proceed ?");
@@ -670,10 +674,9 @@ void GuiMenu::openEmuELECSettings()
        // es4all: 此处原有一段注释掉的 ENABLE RA BEZELS(布尔版)已删除 ——
        // 该功能由 游戏设置 → DEFAULT GLOBAL SETTINGS 的三档版(AUTO/ON/OFF)统一提供。
 
-       // es4all: ENABLE RA SPLASH 已移入「SPLASH SETTINGS」子菜单(createConfigureSplash)。
-       // 它与该子菜单同属 splash 一类(只是键不同: ee_splash.enabled = RetroArch 启动画面;
-       // 子菜单内为 ES 的载入/退出动画 ee_splashloading/ee_splashexit/...)，
-       // 原本一个在外、一个在内，归类混乱。
+       // es4all: ENABLE RA SPLASH(ee_splash.enabled = RetroArch 启动画面)曾在此处与
+       // 「SPLASH SETTINGS」子菜单之间搬来搬去(子菜单内是 ES 自己的载入/退出动画
+       // ee_splashloading/ee_splashexit/...，两者键不同)，**现已整项移除**(使用者要求)。
 
 	// es4all: BOOT VIDEO 为 EmuELEC 专属 —— ee_bootvideo.enabled / ee_randombootvideo.enabled
 	// 在 ES 内【没有任何读取者】，纯靠 EmuELEC 开机脚本读取，armbian/rocknix 上选了没作用。
@@ -710,19 +713,11 @@ void GuiMenu::openEmuELECSettings()
 
 #endif // ES4ALL_CAP_EMUELEC_PLATFORM (BOOT VIDEO)
 
-	// es4all: ENABLE RA SPLASH(RetroArch 游戏启动画面, ee_splash.enabled)由原第 3 层的
-	// 「启动画面设置」(createConfigureSplash)子菜单提到本第 2 层直接可见 —— 它是最常用的
-	// 单一开关, 埋在三层里不合理。为 EmuELEC 专属(ee_splash.enabled 在 ES 内无读取者, 由
-	// EmuELEC 侧套用), 故 CAP 门控。
-#if defined(ES4ALL_CAP_EMUELEC_PLATFORM)
-	auto ra_splash_enabled_top = std::make_shared<SwitchComponent>(mWindow);
-	ra_splash_enabled_top->setState(SystemConf::getInstance()->get("ee_splash.enabled") == "1");
-	s->addWithDescription(_("ENABLE RA SPLASH"), _("Show the RetroArch splash screen when a game starts."), ra_splash_enabled_top);
-	s->addSaveFunc([ra_splash_enabled_top] {
-		if (SystemConf::getInstance()->set("ee_splash.enabled", ra_splash_enabled_top->getState() ? "1" : "0"))
-			SystemConf::getInstance()->saveSystemConf();
-	});
-#endif
+	// es4all: ★ENABLE RA SPLASH 已移除（使用者要求）★
+	//   曾把它从第 3 层「启动画面设置」提到本层直接可见，现在整项拿掉 —— 平台设置只留真正常用的项。
+	//   键 `ee_splash.enabled` 本身仍然有效(ES 内无读取者，由 EmuELEC 侧套用)，
+	//   要改预设值请在 distro 的 `emuelec.conf` 设(交接单建议预设 0)，或直接编辑该档。
+	//   ROCKNIX 侧本来就没有这一项，移除后两个 target 的平台设置更一致。
 
 	// es4all: SPLASH SETTINGS —— 【跨平台，不可门控】。
 	// 经查证其主体是 ES 自己实作的功能(本专案在 armbian 版上开发的):
@@ -765,8 +760,9 @@ void GuiMenu::createConfigureSplash(Window* mWindow, int menuIndex)
 
 	s->setUpdateType(ComponentListFlags::UPDATE_ALWAYS);
 
-	// es4all: ENABLE RA SPLASH(ee_splash.enabled)已移至上一层「平台设置」直接可见(最常用的
-	// 单一开关不应埋在第 3 层)。本子菜单只保留 ES 自己的载入/退出动画各项。
+	// es4all: ENABLE RA SPLASH(ee_splash.enabled)曾从本子菜单提到上一层「平台设置」，
+	// **现已整项移除**(使用者要求)；键仍有效，要改预设值走 distro 的 emuelec.conf。
+	// 本子菜单只保留 ES 自己的载入/退出动画各项。
 
 		auto enable_splashscreen = std::make_shared<SwitchComponent>(mWindow);
 	enable_splashscreen->setState(Settings::getInstance()->getBool("SplashScreen"));
