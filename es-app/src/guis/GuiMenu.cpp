@@ -5135,7 +5135,7 @@ void GuiMenu::openPlatformSettings()
 	Window* window = mWindow;
 
 	// es4all: 本选单**不分组、平铺**，且项目顺序比照 EMUELEC 的 openEmuELECSettings
-	// (AUDIO OUTPUT → CPU GOVERNOR → 日志 → SPLASH SETTINGS → EXTERNAL MOUNT)，
+	// (VIDEO MODE → AUDIO OUTPUT → CPU GOVERNOR → 日志 → SPLASH SETTINGS → EXTERNAL MOUNT)，
 	// 让两个 target 的使用者看到一致的排列。EMUELEC 那边本来就没有 addGroup。
 	//
 	// es4all: RETROARCH MENU(菜单样式, global.retroarch.menu_driver)已从平台设置移除 ——
@@ -5146,6 +5146,49 @@ void GuiMenu::openPlatformSettings()
 	// 重复(同一个 global.bezel 键)。保留游戏设置那个三档版(AUTO/ON/OFF)，因为:
 	// 1) 位置更合理(全局游戏设定，与 SHOW RETROARCH FPS 同组)；
 	// 2) 此处的布尔 Switch 只写 "1"/"0"，一旦操作会把三档版的 "auto" 值毁掉。
+
+	// 视频模式(分辨率/刷新率) —— 位置比照 EMUELEC 的 VIDEO MODE(同为选单第一项)。
+	// ★后端与 EMUELEC 完全不同★：EMUELEC 是 Amlogic 专属(写 /flash/EE_VIDEO_MODE、选项来自
+	// emuelec-utils resolutions、靠内核 /sys/class/display/mode 切换)；ROCKNIX 走 Wayland(sway)，
+	// 显示输出归合成器管，必须用 wlr-randr 设 output 的 mode，那套 Amlogic 做法在此完全无效。
+	// 列举与套用都交给 glue 脚本 /usr/bin/es4all-setvideomode(见 dist/rocknix/sources/ 该档头)。
+	//
+	// 键用 system.videomode：wlr-randr 只改合成器的执行期状态、**重开机就没了**，
+	// 故与 system.audiooutput 同机制，由 autostart 的 002-es4all-glue 无参呼叫脚本还原。
+	//
+	// 脚本 --list 输出**逗号分隔**(不是换行)：getShOutput 会把换行剥掉拼成一整串，
+	// 仓库既有枚举(emuelec-utils resolutions / 外接碟)都用逗号，这里沿用同一约定。
+	// 取不到任何模式(非 Wayland 环境 / 脚本没装)就不显示本选单，避免给出按了没用的项。
+	{
+		std::vector<std::string> modes;
+		std::string vm;
+		for (std::stringstream ss(Utils::Platform::getShOutput("/usr/bin/es4all-setvideomode --list 2>/dev/null")); getline(ss, vm, ','); )
+		{
+			vm = Utils::String::trim(vm);
+			if (!vm.empty())
+				modes.push_back(vm);
+		}
+
+		if (!modes.empty())
+		{
+			auto videomode = std::make_shared< OptionListComponent<std::string> >(mWindow, _("VIDEO MODE"), false);
+			std::string curMode = SystemConf::getInstance()->get("system.videomode");
+			if (curMode.empty())
+				curMode = "auto";
+
+			// AUTO = 交给合成器选 EDID preferred(等同 ROCKNIX 自带 handle-hdmi-hotplug 的 --preferred)。
+			videomode->add(_("AUTO"), "auto", curMode == "auto");
+			for (auto& m : modes)
+				videomode->add(m, m, curMode == m);
+
+			s->addWithDescription(_("VIDEO MODE"), _("Changes will need an EmulationStation restart."), videomode);
+			videomode->setSelectedChangedCallback([](std::string m) {
+				if (SystemConf::getInstance()->set("system.videomode", m))
+					SystemConf::getInstance()->saveSystemConf();
+				Utils::Platform::ProcessStartInfo("/usr/bin/es4all-setvideomode " + m).run();
+			});
+		}
+	}
 
 	// 音源输出 —— 与 EMUELEC 共用 resources/audio_outputs.cfg 映射表(见 es4allParseAudioOutputs)，
 	// 但后端不同：EMUELEC 是裸 ALSA(emuelec-utils setauddev 改 asound.conf 默认 PCM)，

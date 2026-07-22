@@ -1,0 +1,81 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0
+# es4all ROCKNIX 显示模式(分辨率/刷新率)切换 —— EmuELEC `emuelec-utils resolutions` 的 ROCKNIX 等价物。
+#
+# ★为什么不能照抄 EmuELEC 那套★
+#   EmuELEC 是 **Amlogic 专属**：写 /flash/EE_VIDEO_MODE，靠内核 /sys/class/display/mode 切换，
+#   选项也由 emuelec-utils resolutions 给。ROCKNIX 走 **Wayland(sway)** —— 显示输出归合成器管，
+#   必须用 wlr-randr 设 output 的 mode；写那些 Amlogic 档案在此完全无效。
+#
+# 用法：
+#   es4all-setvideomode --list        列出可用模式(**逗号分隔**，供 ES 选单解析，理由见下)
+#   es4all-setvideomode <WxH@Hz>      套用并由 ES 持久化，例： es4all-setvideomode 1920x1080@60
+#   es4all-setvideomode auto          交给合成器选 preferred(EDID 首选)
+#   es4all-setvideomode               无参 = 读 system.videomode 重新套用(开机 glue 走这条)
+#
+# ★为什么 --list 用逗号而不是换行★
+#   ES 端 Utils::Platform::getShOutput() 会把每段输出的换行剥掉再拼接，多行会黏成一整串；
+#   仓库既有做法(emuelec-utils resolutions / 外接碟枚举)都是逗号分隔，ES 用 getline(ss,a,',') 切。
+#
+# ★为什么必须开机重新套用★
+#   wlr-randr 只改合成器的执行期状态，**重开机就没了**。故与 system.audiooutput 同机制：
+#   值存 system.cfg 的 system.videomode，由 autostart 的 002-es4all-glue 无参呼叫本脚本还原。
+
+. /etc/profile 2>/dev/null
+
+SYS_CFG=/storage/.config/system/configs/system.cfg
+
+command -v wlr-randr >/dev/null 2>&1 || exit 1
+
+# 取输出名：优先 HDMI/DP(电视盒/外接屏)，否则退回第一个输出(掌机内屏 DSI)。
+# 与 ROCKNIX 自带的 handle-hdmi-hotplug 判断方式一致。
+get_output() {
+    _o=$(wlr-randr 2>/dev/null | awk '/^(HDMI-A|DP|DisplayPort)-[0-9]*/ {print $1; exit}')
+    [ -z "${_o}" ] && _o=$(wlr-randr 2>/dev/null | awk 'NR==1{print $1}')
+    echo "${_o}"
+}
+
+MODE="$1"
+
+if [ "${MODE}" = "--list" ]; then
+    OUT=$(get_output)
+    [ -z "${OUT}" ] && exit 1
+    # wlr-randr 的 Modes 区段每行形如：  "  1920x1080 px, 60.000000 Hz (preferred, current)"
+    # 取 WxH 与整数化的 Hz，去重后输出 "WxH@Hz," 串接。
+    wlr-randr --output "${OUT}" 2>/dev/null | awk '
+        /Modes:/ { f=1; next }
+        f && /px,/ {
+            res=$1; hz=$3;
+            sub(/\..*/, "", hz);            # 60.000000 -> 60
+            if (res != "" && hz != "") {
+                key = res "@" hz;
+                if (!seen[key]++) printf "%s,", key;
+            }
+            next
+        }
+        f && !/px,/ { f=0 }                 # Modes 区段结束
+    '
+    echo
+    exit 0
+fi
+
+if [ -z "${MODE}" ]; then
+    # 开机路径：合成器(sway/wlr) 可能还没起来，等一下再放弃(比照 es4all-setauddev 的等待)。
+    i=0
+    while [ $i -lt 15 ]; do
+        wlr-randr >/dev/null 2>&1 && break
+        i=$((i+1)); sleep 1
+    done
+    MODE=$(sed -n 's/^system\.videomode=//p' "${SYS_CFG}" 2>/dev/null | head -1)
+fi
+[ -z "${MODE}" ] && exit 0
+
+OUT=$(get_output)
+[ -z "${OUT}" ] && exit 1
+
+if [ "${MODE}" = "auto" ]; then
+    wlr-randr --output "${OUT}" --preferred --on >/dev/null 2>&1
+else
+    wlr-randr --output "${OUT}" --mode "${MODE}" --on >/dev/null 2>&1
+fi
+exit $?

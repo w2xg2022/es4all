@@ -87,6 +87,13 @@ makeinstall_target() {
   cp ${PKG_BUILD}/dist/rocknix/sources/es4all-setauddev ${INSTALL}/usr/bin
   chmod 0755 ${INSTALL}/usr/bin/es4all-setauddev
 
+  # es4all: 视频模式(分辨率/刷新率)切换(ES 平台设置 → VIDEO MODE 调用它，含 --list 枚举)。
+  # ROCKNIX 走 Wayland(sway)，必须用 wlr-randr 设 output mode；EmuELEC 那套写
+  # /flash/EE_VIDEO_MODE + emuelec-utils resolutions 是 Amlogic 专属、在此无效。
+  # ⚠️ 同上，w2xg2022/rocknix 那份 package.mk 也要加这两行，否则选单枚举不到模式、整项不显示。
+  cp ${PKG_BUILD}/dist/rocknix/sources/es4all-setvideomode ${INSTALL}/usr/bin
+  chmod 0755 ${INSTALL}/usr/bin/es4all-setvideomode
+
   mkdir -p ${INSTALL}/usr/bin
   #ln -sf /storage/.config/emulationstation/resources ${INSTALL}/usr/bin/resources
   cp -rf ${PKG_BUILD}/emulationstation ${INSTALL}/usr/bin

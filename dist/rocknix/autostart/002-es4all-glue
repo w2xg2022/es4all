@@ -87,6 +87,13 @@ set_kv "${SYS_CFG}" dreamcast.core flycast-sa
 #     未设该键时脚本直接 exit 0，不动系统默认。放背景跑，避免拖慢开机。
 [ -x /usr/bin/es4all-setauddev ] && /usr/bin/es4all-setauddev >/dev/null 2>&1 &
 
+# 5c) 视频模式(分辨率/刷新率)：重新套用上次选的 wlr-randr output mode。
+#     ES 平台设置 → VIDEO MODE 写 system.videomode，当下由 es4all-setvideomode 立即生效；
+#     但 wlr-randr 只改合成器的**执行期**状态、重开机就没了，故开机必须再套一次。
+#     脚本自己会读该键、等合成器(sway/wlr)起来、挑 HDMI/DP 输出（掌机内屏退回第一个输出）。
+#     未设该键时脚本直接 exit 0，不动合成器的 preferred 默认。放背景跑，避免拖慢开机。
+[ -x /usr/bin/es4all-setvideomode ] && /usr/bin/es4all-setvideomode >/dev/null 2>&1 &
+
 # 6) PSP 独立模拟器手柄（□/△ 与物理位置对齐）
 [ -f "${PSP_CTRL}" ] && [ -f "${GLUE}/controls.ini" ] && cp -f "${GLUE}/controls.ini" "${PSP_CTRL}"
 
