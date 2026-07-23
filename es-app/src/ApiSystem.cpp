@@ -356,6 +356,32 @@ void ApiSystem::applyEmuelecAudioOutput(const std::string& dev)
 		std::string("amixer -c 0 cset name='Audio hdmi-out mute' ") + (isHdmi ? "off" : "on")
 		+ " >/dev/null 2>&1").run();
 }
+
+void ApiSystem::applyEmuelecVideoMode(const std::string& mode)
+{
+	// "Custom" 不是一个模式，而是「从 EE_VIDEO_MODE 档读自订字串」的逃生口，
+	// 由 distro 的 check_res.sh 处理；这里不碰。
+	if (mode.empty() || mode == "Custom")
+		return;
+
+	// ★实机 .165 定位：「视频模式设了没反应」的真因★
+	//   设定其实一直存对、也读得到(get_ee_setting ee_videomode 回传正确值)，
+	//   问题出在**套用被内核挡掉**：这颗内核把 /sys/class/display/mode 的写入锁住了，dmesg 明写
+	//       warning, echo /sys/class/display/mode is disabled
+	//       enable display/debug to set voutmode.
+	//   必须先 `echo 1 > /sys/class/display/debug` 解锁才吃。
+	//   而 EmuELEC 自己的 setres.sh **没做这一步** —— 它写完读回发现没变，就
+	//   `[[ "${NEW_MODE}" != "${MODE}" ]] && exit 1` 直接放弃(实测手动跑 setres.sh 也是 exit=1)。
+	//   开机链 emuelec_autostart.sh → check_res.sh → setres.sh 因此整条静默失效。
+	//
+	//   这里先开锁、再沿用 setres.sh(不自己写 mode，因为它除了写模式还会依分辨率调整 framebuffer)。
+	//   ⚠️ 必须在建立视窗/renderer **之前**呼叫(check_res.sh 自己也注明
+	//   "this has to be done before starting ES")，否则 ES 会以旧分辨率初始化。
+	//   debug 开着不复位：留着 1 才不会有别的路径又被挡回去，且它本身只是解锁开关。
+	Utils::Platform::ProcessStartInfo(
+		"echo 1 > /sys/class/display/debug 2>/dev/null; "
+		"/usr/bin/setres.sh " + mode + " >/dev/null 2>&1").run();
+}
 #endif
 
 // BusyComponent* ui

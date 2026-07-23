@@ -561,6 +561,13 @@ int err = snd_pcm_open(&pcm_handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
 	// 于是选了 AV 的人重开机后又变成 HDMI/AV 两边同时出声。asound.conf 那半是写在档案里的、本来就持久，
 	// 掉的只有硬件路由这半，所以要在开机时补回来。
 	ApiSystem::getInstance()->applyEmuelecAudioOutput(SystemConf::getInstance()->get("ee_audio_device"));
+
+	// es4all: 同理套用显示模式(分辨率)。★位置很关键：必须在下面 window.init() 之前★ ——
+	// 换分辨率要在 ES 建立视窗/renderer 之前做完，否则 ES 会以旧分辨率初始化。
+	// 开机链原本是 emuelec_autostart.sh → check_res.sh → setres.sh，但那条链在本机内核上**静默失效**
+	// (setres.sh 没先解开 /sys/class/display/debug 就写 mode，被内核挡下后自己 exit 1)，
+	// 表现就是「视频模式设了没反应」。故改由 ES 在此补上，详见 applyEmuelecVideoMode 说明。
+	ApiSystem::getInstance()->applyEmuelecVideoMode(SystemConf::getInstance()->get("ee_videomode"));
 #endif
 
 #if !WIN32

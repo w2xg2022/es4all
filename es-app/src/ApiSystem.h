@@ -170,6 +170,11 @@ public:
     // ★不能只呼叫 emuelec-utils setauddev★：它【只】改 asound.conf 的默认 PCM，不动硬件路由，
     // 结果选了 AV、HDMI 仍在同时出声(实机 .165 确认)。本函式会连 HDMI 输出路径一起开/关。
     void applyEmuelecAudioOutput(const std::string& dev);
+
+    // es4all: 套用 EMUELEC 显示模式(分辨率)。★必须在建立视窗/renderer 之前呼叫★。
+    // 该机内核把 /sys/class/display/mode 的写入锁住了，要先开 /sys/class/display/debug 才吃 ——
+    // EmuELEC 自己的 setres.sh 没做这步，所以「视频模式设了没反应」。详见实作说明。
+    void applyEmuelecVideoMode(const std::string& mode);
 #endif
 
     virtual std::pair<std::string, int> updateSystem(const std::function<void(const std::string)>& func = nullptr);
