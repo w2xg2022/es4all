@@ -418,136 +418,13 @@ void GuiMenu::openEmuELECSettings()
 {
 	auto s = new GuiSettings(mWindow, _("PLATFORM SETTINGS"));
 
-	// es4all: VIDEO MODE 为 EmuELEC 专属 —— 选项写死 Amlogic 电视盒的输出模式
-	// (1080p60hz / 480cvbs / 576cvbs ... 其中 cvbs 是 AV 端子，掌机根本没有)，
-	// 且依赖 /flash/EE_VIDEO_MODE 与 emuelec-utils resolutions，armbian/rocknix 上按了没用。
-	// 注: window / a 只服务本区块，故一并放在门控内，避免 CAP 关闭时产生未使用变量。
-#if defined(ES4ALL_CAP_EMUELEC_PLATFORM) && !defined(_ENABLEGAMEFORCE) && !defined(ODROIDGOA)
-	Window* window = mWindow;
-	std::string a;
-	// es4all: 标题过 _() —— 原本传字面 "VIDEO MODE"，选单标签虽有翻译，但**弹出清单的标题**用的是
-	// 这个字串，实机看到的就是没中文化的 "VIDEO MODE"。
-	auto emuelec_video_mode = std::make_shared< OptionListComponent<std::string> >(mWindow, _("VIDEO MODE"), false);
-	// es4all: ★枚举一律从【系统面】抓，不再写死清单★(比照 ROCKNIX 的 VIDEO MODE 用 wlr-randr 列举)。
-	//   原本先 push 11 个写死模式(1080p60hz/720p60hz/480cvbs/...)，再加一条假项
-	//   "-- AUTO-DETECTED RESOLUTIONS --" 当分隔线，后面才接真正侦测到的 —— 结果是:
-	//   ①清单又长又重复；②**列出该电视根本不支援的模式，选下去就没讯号**；
-	//   ③那条分隔线本身是可选中的假项(save func 还得特判它跳过)。
-	//   ⚠️ 侦测不到时清单只剩 Custom(见下)——这是刻意的:宁可没得选，也不要给出会黑屏的选项。
-	//
-	// ★不能用 `emuelec-utils resolutions`(实机 .165 定位)★：它读的是 `/sys/class/display/cap`，
-	//   而该节点在这颗核心上**只回类比/CVBS 能力**(480cvbs/576cvbs/pal_m/ntsc_m…)，最后一行还写着
-	//   "check disp_cap sysfs node in hdmitx." —— HDMI 的真实 EDID 清单在
-	//   `/sys/class/amhdmitx/amhdmitx0/disp_cap`。实测该指令只回 4 项(480cvbs,480i60hz,576cvbs,
-	//   640x480p60hz)，**连电视正在用的 1080p60hz 都不在里面**，选单等于没得选。
-	//   改成直接读 disp_cap(HDMI，`*` 是当前模式的标记要去掉) + display/cap 里的 cvbs 项
-	//   (E900V22C 有 AV 孔，CVBS 是真的能用的输出)；同机实测得 23 项，含 1080p60hz / 2160p60hz。
-	//   disp_cap 不存在(非 Amlogic HDMI)时才退回 emuelec-utils，保持相容。
-        std::vector<std::string> videomode;
-   for(std::stringstream ss(Utils::Platform::getShOutput(R"SH(L=$( { cat /sys/class/amhdmitx/amhdmitx0/disp_cap 2>/dev/null; grep -i cvbs /sys/class/display/cap 2>/dev/null; } | tr -d '*' | tr -d ' \t' | grep -vE '^$' | awk '!seen[$0]++' ); [ -z "$L" ] && L=$(/usr/bin/emuelec-utils resolutions 2>/dev/null | tr ',' '\n'); echo "$L" | sed 's/$/,/')SH")); getline(ss, a, ','); ) {
-        a = Utils::String::trim(a);
-        if (!a.empty())
-            videomode.push_back(a);
-	}
-		// 侦测到的模式：显示名就是模式字串本身(1080p60hz 之类的技术代号，不翻译)。
-		for (auto it = videomode.cbegin(); it != videomode.cend(); it++) {
-		emuelec_video_mode->add(*it, *it, SystemConf::getInstance()->get("ee_videomode") == *it); }
+	// es4all: ★VIDEO MODE 已移除（1.1 收敛决定）★
+	//   透过采集卡无法可靠验证(卡不重新协商输入时序 -> 黑屏/角落/撕裂, 换一张卡坏法还不同),
+	//   而效益偏低, 故 1.1 正式版三个 target 一律不出这个选项, 列为待办。
+	//   ★后端与开机套用【保留】★: ApiSystem::applyEmuelecVideoMode() 仍会在开机时依
+	//   ee_videomode 套用(含解开内核 display/debug 锁与 PHY 还原, 见该函式), 且防呆
+	//   (试用未确认即还原)也还在 —— 所以既有设定值不会失效, 将来接回选单即可。
 
-		// Custom 保留：它不是一个「模式」，而是逃生口 —— 从 /storage/.config/EE_VIDEO_MODE 或
-		// /flash/EE_VIDEO_MODE 读使用者自订的模式字串写进 /sys/class/display/mode(见下方 save func)，
-		// 用来上 EDID 没报、但萤幕其实吃得下的模式。故不受「只列侦测到的」规则约束。
-		// ★显示名过 _() 中文化，但**值必须维持 "Custom"**★ —— save func 与 ee_videomode 都按这个
-		// 字串比对，若把值也翻译掉，自订模式那条分支就再也走不到。
-		//
-		// ★只在「没别的可选」或「使用者真的建了自订档」时才显示 CUSTOM★(实机 .165 定位)：
-		//   CUSTOM 的实作是去读 /storage/.config/EE_VIDEO_MODE 或 /flash/EE_VIDEO_MODE，
-		//   两者都不存在时只会弹「... not found」错误 —— 对绝大多数机器就是个**点了必报错的死选项**。
-		//   (distro 侧 check_res.sh 对 "Custom" 的语意其实是「维持目前模式、不要改」，与 ES 这段
-		//    读档实作本来就对不上，更没有让它常驻的理由。)
-		//   现在能正常枚举到模式时就不放它；枚举为空(拿不到 disp_cap)才留着当最后手段。
-		bool hasCustomFile = Utils::FileSystem::exists("/storage/.config/EE_VIDEO_MODE")
-		                  || Utils::FileSystem::exists("/flash/EE_VIDEO_MODE");
-		if (videomode.empty() || hasCustomFile)
-			emuelec_video_mode->add(_("CUSTOM"), "Custom", SystemConf::getInstance()->get("ee_videomode") == "Custom");
-
-		s->addWithLabel(_("VIDEO MODE"), emuelec_video_mode);
-	   	
-		s->addSaveFunc([this, emuelec_video_mode, window] {
-		
-		//bool v_need_reboot = false;
-	
-		if (emuelec_video_mode->changed()) {
-			std::string selectedVideoMode = emuelec_video_mode->getSelected();
-		// es4all: 原本这里还有一层 `!= "-- AUTO-DETECTED RESOLUTIONS --"` 特判(那条假分隔线
-		// 是可选中的假项，得挡掉免得被当成模式套用)。分隔线连同写死清单已一并移除，此特判成死码，故删。
-		{
-			if (emuelec_video_mode->getSelected() != "Custom") {
-			// es4all: ★套用需要【整机重开机】，不是重启 ES★(实机 .165 追出来的链路)：
-			//   ES 这里只写 ee_videomode 到 emuelec.conf；真正套用的是开机流程 ——
-			//   `emuelec_autostart.sh` → `check_res.sh` → `setres.sh`，**在 ES 启动之前**设
-			//   /sys/class/display/mode(check_res.sh 自己注明 "has to be done before starting ES")。
-			//   所以影响的是整个系统的 HDMI 输出(ES UI / RA 全都跟着变)，不是只有 RA。
-			//   ⚠️ 原本这里是 fireEvent("quit","restart") + quitES(QUIT) —— 只重启 ES 进程，
-			//   而 check_res.sh 挂在开机流程里、重启 ES 根本不会经过它 => **白重启一次、设定不生效**，
-			//   使用者看到的就是「设了没反应」。改成 REBOOT，确认后直接整机重开机套用。
-			//   (check_res.sh 的优先序: /flash/config.ini 的 vout > EE_VIDEO_MODE 档 > ee_videomode。
-			//    若该机 config.ini 有 vout，ES 这个设定会被它盖过 —— 排查时先看那里。)
-			std::string msg = _("You are about to set EmuELEC resolution to:") +"\n" + selectedVideoMode + "\n";
-			msg += _("The system will reboot now to apply it.") + std::string("\n");
-			msg += _("Do you want to proceed ?");
-
-			window->pushGui(new GuiMsgBox(window, msg,
-				_("YES"), [selectedVideoMode] {
-					// es4all: ★武装「试用」防呆★(另一半在 main.cpp 开机流程，见那边说明)。
-					//   EDID 报得出的模式电视不一定显示得出来(实机 720p60hz 就整片黑)，黑屏后
-					//   使用者看不到画面也就改不回来。故先把【当前实际正在显示】的模式记成
-					//   known-good，重开机试用；没被确认就自动还原。
-					//   ⚠️ known-good 取 /sys/class/display/mode 的实际值，**不是** SystemConf 里的
-					//   ee_videomode —— 后者可能根本没套用成功(内核 debug 锁那个 bug 就是这样)，
-					//   拿它当还原目标等于还原到一个同样不能用的模式。
-					std::string curMode = Utils::String::trim(Utils::Platform::getShOutput(
-						"cat /sys/class/display/mode 2>/dev/null"));
-					if (!curMode.empty())
-						SystemConf::getInstance()->set("ee_videomode_prev", curMode);
-					SystemConf::getInstance()->set("ee_videomode_pending", "1");
-
-					SystemConf::getInstance()->set("ee_videomode", selectedVideoMode);
-					LOG(LogInfo) << "Setting video to " << selectedVideoMode << " (trial armed, known-good=" << curMode << ")";
-					SystemConf::getInstance()->saveSystemConf();
-					Scripting::fireEvent("quit", "reboot");
-					Utils::Platform::quitES(Utils::Platform::QuitMode::REBOOT);
-				}, _("NO"),nullptr));
-		
-		} else { 
-			if(Utils::FileSystem::exists("/storage/.config/EE_VIDEO_MODE")) {
-				Utils::Platform::ProcessStartInfo("echo $(cat /storage/.config/EE_VIDEO_MODE) > /sys/class/display/mode").run();
-				LOG(LogInfo) << "Setting custom video mode from /storage/.config/EE_VIDEO_MODE to " << Utils::Platform::ProcessStartInfo("cat /storage/.config/EE_VIDEO_MODE").run();
-				SystemConf::getInstance()->set("ee_videomode", selectedVideoMode);
-				SystemConf::getInstance()->saveSystemConf();
-				//v_need_reboot = true;
-			} else { 
-				if(Utils::FileSystem::exists("/flash/EE_VIDEO_MODE")) {
-				Utils::Platform::ProcessStartInfo("echo $(cat /flash/EE_VIDEO_MODE) > /sys/class/display/mode").run();
-				LOG(LogInfo) << "Setting custom video mode from /flash/EE_VIDEO_MODE to " << Utils::Platform::ProcessStartInfo("cat /flash/EE_VIDEO_MODE").run();
-				SystemConf::getInstance()->set("ee_videomode", selectedVideoMode);
-				SystemConf::getInstance()->saveSystemConf();
-				//v_need_reboot = true;
-					} else {
-					Utils::Platform::ProcessStartInfo("echo " + SystemConf::getInstance()->get("ee_videomode")+ " > /sys/class/display/mode").run();
-					std::string msg = "/storage/.config/EE_VIDEO_MODE or /flash/EE_VIDEO_MODE not found";
-					window->pushGui(new GuiMsgBox(window, msg,
-				"OK", [selectedVideoMode] {
-					LOG(LogInfo) << "EE_VIDEO_MODE was not found! Setting video mode to " + SystemConf::getInstance()->get("ee_videomode");
-			}));
-					}
-				}
-			}
-		   }	
-			//if (v_need_reboot)
-		 	mWindow->displayNotificationMessage(_U("\uF011  ") + _("A REBOOT OF THE SYSTEM IS REQUIRED TO APPLY THE NEW CONFIGURATION"));
-		 }
-		});
-#endif
 	// es4all: BUTTON LED COLOR(bl_rgb) / STATUS LED(gf_statusled) 已删除 ——
 	// 两者包在 #ifdef _ENABLEGAMEFORCE 内，而 CI 三个 job 与 rocknix/emuelec 的 package.mk
 	// 均未定义 ENABLE_GAMEFORCE，属彻底死码；且为 GameForce 掌机专属硬件功能。
@@ -5155,48 +5032,13 @@ void GuiMenu::openPlatformSettings()
 	// 1) 位置更合理(全局游戏设定，与 SHOW RETROARCH FPS 同组)；
 	// 2) 此处的布尔 Switch 只写 "1"/"0"，一旦操作会把三档版的 "auto" 值毁掉。
 
-	// 视频模式(分辨率/刷新率) —— 位置比照 EMUELEC 的 VIDEO MODE(同为选单第一项)。
-	// ★后端与 EMUELEC 完全不同★：EMUELEC 是 Amlogic 专属(写 /flash/EE_VIDEO_MODE、选项来自
-	// emuelec-utils resolutions、靠内核 /sys/class/display/mode 切换)；ROCKNIX 走 Wayland(sway)，
-	// 显示输出归合成器管，必须用 wlr-randr 设 output 的 mode，那套 Amlogic 做法在此完全无效。
-	// 列举与套用都交给 glue 脚本 /usr/bin/es4all-setvideomode(见 dist/rocknix/sources/ 该档头)。
-	//
-	// 键用 system.videomode：wlr-randr 只改合成器的执行期状态、**重开机就没了**，
-	// 故与 system.audiooutput 同机制，由 autostart 的 002-es4all-glue 无参呼叫脚本还原。
-	//
-	// 脚本 --list 输出**逗号分隔**(不是换行)：getShOutput 会把换行剥掉拼成一整串，
-	// 仓库既有枚举(emuelec-utils resolutions / 外接碟)都用逗号，这里沿用同一约定。
-	// 取不到任何模式(非 Wayland 环境 / 脚本没装)就不显示本选单，避免给出按了没用的项。
-	{
-		std::vector<std::string> modes;
-		std::string vm;
-		for (std::stringstream ss(Utils::Platform::getShOutput("/usr/bin/es4all-setvideomode --list 2>/dev/null")); getline(ss, vm, ','); )
-		{
-			vm = Utils::String::trim(vm);
-			if (!vm.empty())
-				modes.push_back(vm);
-		}
+	// es4all: ★VIDEO MODE 已移除（1.1 收敛决定）★
+	//   透过采集卡无法可靠验证(卡本身不重新协商输入时序, 会黑屏/角落/撕裂), 而效益偏低,
+	//   故 1.1 正式版三个 target 一律不出这个选项, 列为待办。
+	//   后端与开机还原【保留】: ROCKNIX 的 glue 脚本 es4all-setvideomode(wlr-randr)、
+	//   EMUELEC 的 ApiSystem::applyEmuelecVideoMode(解 display/debug 锁 + PHY 还原) 都还在,
+	//   将来要恢复选单，接回来即可。
 
-		if (!modes.empty())
-		{
-			auto videomode = std::make_shared< OptionListComponent<std::string> >(mWindow, _("VIDEO MODE"), false);
-			std::string curMode = SystemConf::getInstance()->get("system.videomode");
-			if (curMode.empty())
-				curMode = "auto";
-
-			// AUTO = 交给合成器选 EDID preferred(等同 ROCKNIX 自带 handle-hdmi-hotplug 的 --preferred)。
-			videomode->add(_("AUTO"), "auto", curMode == "auto");
-			for (auto& m : modes)
-				videomode->add(m, m, curMode == m);
-
-			s->addWithDescription(_("VIDEO MODE"), _("Changes will need an EmulationStation restart."), videomode);
-			videomode->setSelectedChangedCallback([](std::string m) {
-				if (SystemConf::getInstance()->set("system.videomode", m))
-					SystemConf::getInstance()->saveSystemConf();
-				Utils::Platform::ProcessStartInfo("/usr/bin/es4all-setvideomode " + m).run();
-			});
-		}
-	}
 
 	// 音源输出 —— 与 EMUELEC 共用 resources/audio_outputs.cfg 映射表(见 ApiSystem::parseAudioOutputs)，
 	// 但后端不同：EMUELEC 是裸 ALSA(emuelec-utils setauddev 改 asound.conf 默认 PCM)，
@@ -5505,7 +5347,12 @@ void GuiMenu::openQuitMenu_static(Window *window, bool quickAccessMenu, bool ani
 		}
 	}
 	
-#ifdef _ENABLEEMUELEC
+// es4all: ★「重启 EMULATIONSTATION」放宽给 ROCKNIX★(1.1 收敛)。
+//   这一项本身跟发行版无关 —— 只是 fireEvent + quitES(QUIT)，由各家的服务管理器把 ES 拉回来
+//   (EMUELEC=emustation.service、ROCKNIX=essway)，三边都成立。原本却被关在 `_ENABLEEMUELEC`
+//   里，而 ROCKNIX 固件的 package.mk 没有该旗标，导致 ROCKNIX 的退出选单只有「重启/关机/快速关机」，
+//   连重启前端都得整机重开，很不合理(实机 MD1000 确认)。
+#if defined(_ENABLEEMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)
 	s->addEntry(_("RESTART EMULATIONSTATION"), false, [window] {
 		window->pushGui(new GuiMsgBox(window, _("REALLY RESTART EMULATIONSTATION?"), _("YES"),
 			[] {
@@ -5514,7 +5361,9 @@ void GuiMenu::openQuitMenu_static(Window *window, bool quickAccessMenu, bool ani
 			   Utils::Platform::quitES(Utils::Platform::QuitMode::QUIT);
 		}, _("NO"), nullptr));
 	}, "iconRestart");
+#endif
 
+#ifdef _ENABLEEMUELEC
 	bool isFullUI = UIModeController::getInstance()->isUIModeFull();
 	if (isFullUI)
 	{
