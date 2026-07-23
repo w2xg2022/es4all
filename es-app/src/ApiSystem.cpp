@@ -456,7 +456,7 @@ void ApiSystem::applyArmbianAudioOutput(const std::string& dev)
 		"    card " + card + "\n"
 		"}\n";
 
-	std::string rcPath = Utils::FileSystem::getHomePath() + "/.asoundrc";
+	std::string rcPath = Paths::getHomePath() + "/.asoundrc";
 	std::ofstream ofs(rcPath.c_str(), std::ios::trunc);
 	if (!ofs)
 	{
