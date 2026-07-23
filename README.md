@@ -51,3 +51,63 @@ make -j4
 ```
 
 ROCKNIX / EmuELEC 版同上，改 `-DES4ALL_TARGET=rocknix`（或 `emuelec`）即可。
+
+## 分支与发布
+
+| 分支 | 用途 |
+|---|---|
+| `v1.1-stable` | **当前开发线**（default）。1.1 已定版发布，后续修正也先进这里 |
+| `v1.0-stable` | 1.0 维护线 |
+
+Release 由版本字串（`es-app/src/EmulationStation.h` 的 `PROGRAM_VERSION_STRING`）自动推导：
+tag 为 `v<版本>`，含 `pre` 发预览版、不含则发正式版（Latest）。
+维护分支带 `-stable` 后缀是因为 `v1.0` / `v1.1` 已被 tag 占用，同名会让 git 报 refname ambiguous。
+
+> 开发分支改名时，**必须同步四处 `PKG_GIT_CLONE_BRANCH`**（本仓库 `dist/{rocknix,emuelec}/package.mk`
+> 两份参考副本，以及 `w2xg2022/rocknix` 与 EmuELEC 树里的两份真源），否则固件树 clone 不到分支、
+> 编译直接失败。
+
+## 待办（v1.2）
+
+1.1 收敛时刻意砍掉或藏起来的功能，都是**因为后端做不到、留着只会误导使用者**。
+这里记下现况与要补的东西：
+
+### 1. 外部存储：三个 target 统一做成「内外部盘聚合」
+
+| target | 现况 |
+|---|---|
+| `armbian` | **入口已藏**。整组功能是空壳：碟的枚举写死 `find /var/media/`（该目录在 Armbian 上不存在）、挂载后端 `eemount`/`mount_romfs.sh` 也不存在、ROM 根是 `/home/game/ROMs` 而非 `/storage/roms`。更底层的是该机**没有任何自动挂载机制**，插上的 USB 碟连挂都不会挂 |
+| `rocknix` | **入口已藏**。ES 侧四个键都对得上 `automount`，但上游韧体有两个 bug：①`rocknix-automount` 跑得比 USB 枚举早（实测系统碟 +3.9s、外接碟 **+65.4s**），永远扫不到；②之后 udevil 把碟挂到 `/var/media`，而 `find_games` 把「已挂载」当成「不可用」而跳过。另外「合并储存」在 FAT/exFAT/NTFS 碟上必定无效（overlayfs 要求 upperdir 支援 xattr，脚本只认 ext4/btrfs），UI 却显示已开启 |
+| `emuelec` | 可用，但语义是「二选一」（内部 / 外接碟择一），不是聚合 |
+
+目标：三边统一成 ROCKNIX 那种 overlay 叠加（内部 ROM 与外接碟 ROM 合并呈现）。
+韧体侧那两个 bug 归 `w2xg2022/rocknix`；ARMBIAN 的挂载层归 `es4all-1key`。
+
+### 2. 视频模式（分辨率切换）
+
+1.1 三个 target 一律移除选单，**后端保留**、接回来即可：
+
+- `rocknix` — glue 脚本 `es4all-setvideomode`（wlr-randr，Wayland）
+- `emuelec` — `ApiSystem::applyEmuelecVideoMode()`（解 `/sys/class/display/debug` 锁 + 写完还原 PHY）
+- `armbian` — 尚未实作
+
+> ⚠️ 难点在**验证手段**：采集卡本身不重新协商输入时序，切模式后会黑屏/角落/撕裂，
+> **看到异常不一定是程式的错**（1.1 期间为此误判过一次）。要嘛接真电视验，
+> 要嘛先做好防呆（试用确认对话框那套机制已写过）。
+
+### 3. ROCKNIX：把 zh_CN 预编进映像
+
+R 的 locale 是**执行时现编**的（JELOS 继承的设计，为省映像空间）：`es_settings` 开机检查
+`zh_CN.UTF-8/LC_NAME` 不在就跑 `localedef`，在 RK3566 上要 **约 28 秒**，期间画面全黑、
+没有任何提示。上游只预编了 `en_US.UTF-8`（`dist/rocknix/package.mk` 的注解自己写着
+「在 RK3326 上省下一两分钟、代价约 1MB」），而我们预设语言是 zh_CN。
+→ 比照办理，把 zh_CN 也预编进去，连全新安装第一次开机的 28 秒也省掉。
+
+（**A 与 E 没有这个问题**：A 靠 Debian 发行版自带、E 映像里就备妥。）
+
+### 4. 其他
+
+- **ARMBIAN 的 CPU 调速器**：ES 侧已备妥（`isCpuGovernorSettable()` 探到 sysfs 可写就自动出现选单，
+  不必重编），但 `es4all.service` 跑在 `User=game`，而 `scaling_governor` 是 `root:root 0644`。
+  需 `es4all-1key` 补一行 tmpfiles：`z /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor 0664 root game`
+- 游戏内 FPS 显示、手柄布局侦测的 remap applier（见 `README_es4armbian.md` 与各 target 的胶水）
