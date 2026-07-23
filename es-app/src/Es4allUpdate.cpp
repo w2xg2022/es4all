@@ -456,7 +456,25 @@ namespace Es4allUpdate
 			// 才是唯一能安全替换 resources/locale 的时机(apply() 里换会挖空运行中的 ES, 见上方说明)。
 			// 幂等: 没有 .new 就整段跳过; 换完 .new 消失, 重复执行无副作用。
 			"[ -d " + stRes + ".new ] && { rm -rf " + stRes + "; mv " + stRes + ".new " + stRes + "; }; "
-			"[ -d " + stLoc + ".new ] && { rm -rf " + stLoc + "; mv " + stLoc + ".new " + stLoc + "; }; "
+			// ★换 locale 前，把已编译好的系统 locale(*.UTF-8)先搬到 .new 里★(2026-07-23 实机 .198 定位)
+			//   ROCKNIX 的 /usr/bin/es_settings 开机时有这段:
+			//       [ ! -e "$MYLOCPATH/locale/zh_CN.UTF-8/LC_NAME" ] && localedef -i zh_CN ...
+			//   而 MYLOCPATH/locale 一路符号链接过来正是本目录(/storage/.config/locale ->
+			//   /usr/share/locale -> 这里的 bind 来源)。localedef 在 RK3566 上要跑 **约 28 秒**，
+			//   期间画面全黑、journal 一行都没有 —— 使用者会以为更新把机器弄坏了。
+			//   旧写法整包 rm -rf，把 localedef 产生的 zh_CN.UTF-8/ 一起带走 → **每次 OTA 更新后的
+			//   第一次开机都要重编一遍**。实测: 更新后首次开机 essway 起来后卡 28 秒才继续,
+			//   之后每次开机只要 0.4 秒。
+			//   那些 *.UTF-8 目录是 localedef 产生的系统 locale，跟我们发布的 .mo 翻译档是两回事，
+			//   本来就不该被 OTA 覆盖 —— 故搬过去保留。glob 没命中时会保持字面值，用 [ -d ] 挡掉。
+			//   ★写法上避开 `$`★: 本字串同时要塞进 systemd 的 `ExecStart=/bin/sh -c '...'`，
+			//   而 systemd 会把 `$d` 当环境变数展开(得写 `$$` 转义)，但同一份字串又要写进
+			//   autostart 钩子那个纯 shell 脚本(那里 `$$` 是 PID) —— 两边转义规则打架。
+			//   故不用 for 回圈，改用一行 mv + glob: glob 没命中时 mv 拿到字面路径而失败，
+			//   2>/dev/null 吞掉、后面接 `;` 不接 `&&`，流程照走。
+			"[ -d " + stLoc + ".new ] && { "
+				"mv " + stLoc + "/*.UTF-8 " + stLoc + ".new/ 2>/dev/null; "
+				"rm -rf " + stLoc + "; mv " + stLoc + ".new " + stLoc + "; }; "
 			"grep -q \" " + realBin + " \" /proc/mounts || mount --bind " + stBin + " " + realBin + "; "
 			"[ -d " + stRes + " ] && { mkdir -p " + userResDir + "; grep -q \" " + userResDir + " \" /proc/mounts || mount --bind " + stRes + " " + userResDir + "; }; "
 			"[ -d " + stLoc + " ] && { mkdir -p " + userLocaleDir + "; grep -q \" " + userLocaleDir + " \" /proc/mounts || mount --bind " + stLoc + " " + userLocaleDir + "; }; "
