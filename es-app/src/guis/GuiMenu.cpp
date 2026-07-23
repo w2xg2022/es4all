@@ -494,7 +494,17 @@ void GuiMenu::openEmuELECSettings()
 		// 用来上 EDID 没报、但萤幕其实吃得下的模式。故不受「只列侦测到的」规则约束。
 		// ★显示名过 _() 中文化，但**值必须维持 "Custom"**★ —— save func 与 ee_videomode 都按这个
 		// 字串比对，若把值也翻译掉，自订模式那条分支就再也走不到。
-		emuelec_video_mode->add(_("CUSTOM"), "Custom", SystemConf::getInstance()->get("ee_videomode") == "Custom");
+		//
+		// ★只在「没别的可选」或「使用者真的建了自订档」时才显示 CUSTOM★(实机 .165 定位)：
+		//   CUSTOM 的实作是去读 /storage/.config/EE_VIDEO_MODE 或 /flash/EE_VIDEO_MODE，
+		//   两者都不存在时只会弹「... not found」错误 —— 对绝大多数机器就是个**点了必报错的死选项**。
+		//   (distro 侧 check_res.sh 对 "Custom" 的语意其实是「维持目前模式、不要改」，与 ES 这段
+		//    读档实作本来就对不上，更没有让它常驻的理由。)
+		//   现在能正常枚举到模式时就不放它；枚举为空(拿不到 disp_cap)才留着当最后手段。
+		bool hasCustomFile = Utils::FileSystem::exists("/storage/.config/EE_VIDEO_MODE")
+		                  || Utils::FileSystem::exists("/flash/EE_VIDEO_MODE");
+		if (videomode.empty() || hasCustomFile)
+			emuelec_video_mode->add(_("CUSTOM"), "Custom", SystemConf::getInstance()->get("ee_videomode") == "Custom");
 
 		s->addWithLabel(_("VIDEO MODE"), emuelec_video_mode);
 	   	
@@ -508,19 +518,27 @@ void GuiMenu::openEmuELECSettings()
 		// 是可选中的假项，得挡掉免得被当成模式套用)。分隔线连同写死清单已一并移除，此特判成死码，故删。
 		{
 			if (emuelec_video_mode->getSelected() != "Custom") {
+			// es4all: ★套用需要【整机重开机】，不是重启 ES★(实机 .165 追出来的链路)：
+			//   ES 这里只写 ee_videomode 到 emuelec.conf；真正套用的是开机流程 ——
+			//   `emuelec_autostart.sh` → `check_res.sh` → `setres.sh`，**在 ES 启动之前**设
+			//   /sys/class/display/mode(check_res.sh 自己注明 "has to be done before starting ES")。
+			//   所以影响的是整个系统的 HDMI 输出(ES UI / RA 全都跟着变)，不是只有 RA。
+			//   ⚠️ 原本这里是 fireEvent("quit","restart") + quitES(QUIT) —— 只重启 ES 进程，
+			//   而 check_res.sh 挂在开机流程里、重启 ES 根本不会经过它 => **白重启一次、设定不生效**，
+			//   使用者看到的就是「设了没反应」。改成 REBOOT，确认后直接整机重开机套用。
+			//   (check_res.sh 的优先序: /flash/config.ini 的 vout > EE_VIDEO_MODE 档 > ee_videomode。
+			//    若该机 config.ini 有 vout，ES 这个设定会被它盖过 —— 排查时先看那里。)
 			std::string msg = _("You are about to set EmuELEC resolution to:") +"\n" + selectedVideoMode + "\n";
+			msg += _("The system will reboot now to apply it.") + std::string("\n");
 			msg += _("Do you want to proceed ?");
-		
+
 			window->pushGui(new GuiMsgBox(window, msg,
 				_("YES"), [selectedVideoMode] {
-					//Utils::Platform::ProcessStartInfo("echo "+selectedVideoMode+" > /sys/class/display/mode").run();
 					SystemConf::getInstance()->set("ee_videomode", selectedVideoMode);
 					LOG(LogInfo) << "Setting video to " << selectedVideoMode;
-					//Utils::Platform::ProcessStartInfo("/usr/bin/setres.sh").run();
 					SystemConf::getInstance()->saveSystemConf();
-					Scripting::fireEvent("quit", "restart");
-					Utils::Platform::quitES(Utils::Platform::QuitMode::QUIT);
-				//	v_need_reboot = true;
+					Scripting::fireEvent("quit", "reboot");
+					Utils::Platform::quitES(Utils::Platform::QuitMode::REBOOT);
 				}, _("NO"),nullptr));
 		
 		} else { 

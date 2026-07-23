@@ -1940,6 +1940,9 @@ msgstr "视频模式"
 msgid "You are about to set EmuELEC resolution to:"
 msgstr "您即将将 EmuELEC 分辨率设置为："
 
+msgid "The system will reboot now to apply it."
+msgstr "系统将立即重启以套用。"
+
 msgid "Do you want to proceed ?"
 msgstr "是否要继续？"
 
