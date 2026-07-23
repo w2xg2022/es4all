@@ -572,7 +572,7 @@ void GuiMenu::openEmuELECSettings()
 		// es4all: 补上与 R 版同一句说明(2026-07-23) —— 原本 E/A 这项没有说明文字，
 		// 使用者容易与开发者选项里的「ES 日志级别」(es_log.txt)搞混。三个 target 同标题同说明。
 		s->addWithDescription(_("RETROARCH LOGGING"),
-			_("Logging for games/RetroArch, not EmulationStation itself."),
+			_("RetroArch logs; enable when you need to debug."),
 			ra_logging_enabled);
 		s->addSaveFunc([ra_logging_enabled] {
 				bool logging_enabled = ra_logging_enabled->getState();
@@ -5137,7 +5137,7 @@ void GuiMenu::openPlatformSettings()
 	// 不归一化的话 OptionList 匹配不到任何项，会退回显示第一项「默认」，与实际(关闭)不符。
 	if (curLog == "none") curLog = "off";
 	loglevel->addRange({ { _("DEFAULT"), "" }, { _("OFF"), "off" }, { _("VERBOSE"), "verbose" } }, curLog);
-	s->addWithDescription(_("RETROARCH LOGGING"), _("Logging for games/RetroArch, not EmulationStation itself."), loglevel);
+	s->addWithDescription(_("RETROARCH LOGGING"), _("RetroArch logs; enable when you need to debug."), loglevel);
 	s->addSaveFunc([loglevel] {
 		if (loglevel->changed() && SystemConf::getInstance()->set("system.loglevel", loglevel->getSelected()))
 			SystemConf::getInstance()->saveSystemConf();
