@@ -5363,6 +5363,17 @@ void GuiMenu::openQuitMenu_static(Window *window, bool quickAccessMenu, bool ani
 	}, "iconRestart");
 #endif
 
+// es4all: ★「重启到 USB/SD」评估后决定【不做】（1.1 收敛）★
+//   实读 eMMC 上的 u-boot 二进位: boot_targets = nvme mmc1 mmc0 usb0 pxe dhcp,
+//   其中 mmc1=SD/TF 卡槽(fe2b0000, cap-sd-highspeed)、mmc0=eMMC(fe310000, non-removable)。
+//   => TF/SD 排在 eMMC 【之前】: 插上可开机的卡本来就会自动进去, ES 做不做这个选项都一样;
+//      USB 排在 eMMC 【之后】: eMMC 有 boot.scr 时永远轮不到, 给按钮也切不过去。
+//   两个方向都不需要(或无法)由 ES 介入, 故不提供 —— 与其放个语意含糊的按钮, 不如不放。
+//   ⚠️ 顺带更正 installtoemmc 注解里「u-boot 读不了 USB」的说法: 那是错的,
+//      u-boot 编入了 bootcmd_usb0, 真正原因是扫描顺序。将来若要让 USB 可开机,
+//      正解是改我们自己维护的 boot.scr(加 usb start + 标记档), 不必动 u-boot。详见交接单。
+
+
 #ifdef _ENABLEEMUELEC
 	bool isFullUI = UIModeController::getInstance()->isUIModeFull();
 	if (isFullUI)
