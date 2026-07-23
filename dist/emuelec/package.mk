@@ -4,8 +4,8 @@
 # es4all: 源码改由统一仓库 es4all 提供（原 EmuELEC/emuelec-emulationstation）。
 # 同步 w2xg2022/EmuELEC 主建置采用的版本(evdev布局侦测/AB可换位XY维持标准显示等)。
 PKG_NAME="emuelec-emulationstation"
-PKG_VERSION="c9865b25b2bfccdbec4933b064dc3d2bf20ac933"
-PKG_GIT_CLONE_BRANCH="v1.1-dev"
+PKG_VERSION="126d87e0cfe05b754a7ae8e7e9ed8a35edcacf6b"
+PKG_GIT_CLONE_BRANCH="v1.1-stable"
 PKG_REV="1"
 PKG_ARCH="any"
 PKG_LICENSE="GPL"
