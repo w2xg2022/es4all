@@ -569,7 +569,11 @@ void GuiMenu::openEmuELECSettings()
 		// glue 里 seed global.retroarchLogging=0(记入 memory 待办)。
 		bool raLogging = SystemConf::getInstance()->get("global.retroarchLogging") == "1";
 		ra_logging_enabled->setState(raLogging);
-		s->addWithLabel(_("RETROARCH LOGGING"), ra_logging_enabled);
+		// es4all: 补上与 R 版同一句说明(2026-07-23) —— 原本 E/A 这项没有说明文字，
+		// 使用者容易与开发者选项里的「ES 日志级别」(es_log.txt)搞混。三个 target 同标题同说明。
+		s->addWithDescription(_("RETROARCH LOGGING"),
+			_("Logging for games/RetroArch, not EmulationStation itself."),
+			ra_logging_enabled);
 		s->addSaveFunc([ra_logging_enabled] {
 				bool logging_enabled = ra_logging_enabled->getState();
 				SystemConf::getInstance()->set("global.retroarchLogging", logging_enabled ? "1" : "0");
@@ -5120,13 +5124,20 @@ void GuiMenu::openPlatformSettings()
 
 	// 日志等级 —— system.loglevel（ROCKNIX runemu.sh 原生读取:off / verbose / 默认normal，零 shell 改动）
 	// 位置对应 EMUELEC 的 RETROARCH LOGGING（同样排在 CPU GOVERNOR 之后）。
-	auto loglevel = std::make_shared< OptionListComponent<std::string> >(mWindow, _("LOG LEVEL"), false);
+	//
+	// es4all: ★标题改用与 E 版同一个字串 RETROARCH LOGGING(2026-07-23 用户要求对标)★
+	//   原本叫「日志级别」，与开发者选项里的「ES 日志级别」(Settings LogLevel -> es_log.txt)
+	//   只差三个字，使用者分不出哪个管游戏、哪个管前端 —— 实机截图上就被误认成 ES 的日志开关。
+	//   这里管的是 runemu.sh(游戏启动脚本)那条: system.loglevel 决定 exec.log 记不记、
+	//   verbose 再额外开脚本自身的除错讯息，跟 ES 自己的 es_log.txt 无关。
+	//   与 E 版的差别只在档位: E 是布尔开关，R 保留 runemu.sh 原生的三档(默认/关闭/详细)。
+	auto loglevel = std::make_shared< OptionListComponent<std::string> >(mWindow, _("RETROARCH LOGGING"), false);
 	std::string curLog = SystemConf::getInstance()->get("system.loglevel");
 	// es4all: ROCKNIX 出厂/原生可能写 "none"，runemu.sh 的 case 是 `off|none)` 两者等价；
 	// 不归一化的话 OptionList 匹配不到任何项，会退回显示第一项「默认」，与实际(关闭)不符。
 	if (curLog == "none") curLog = "off";
 	loglevel->addRange({ { _("DEFAULT"), "" }, { _("OFF"), "off" }, { _("VERBOSE"), "verbose" } }, curLog);
-	s->addWithDescription(_("LOG LEVEL"), _("RetroArch/system logging verbosity (verbose = full debug)."), loglevel);
+	s->addWithDescription(_("RETROARCH LOGGING"), _("Logging for games/RetroArch, not EmulationStation itself."), loglevel);
 	s->addSaveFunc([loglevel] {
 		if (loglevel->changed() && SystemConf::getInstance()->set("system.loglevel", loglevel->getSelected()))
 			SystemConf::getInstance()->saveSystemConf();

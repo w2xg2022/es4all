@@ -4416,3 +4416,6 @@ msgstr "請重開機以完成更新。"
 
 msgid "UPDATE DOWNLOADED. RESTART NOW TO APPLY?"
 msgstr "更新已下載完成，是否立即重啟以套用？"
+
+msgid "Logging for games/RetroArch, not EmulationStation itself."
+msgstr "遊戲/RetroArch 的日誌，不是 EmulationStation 自身的。"
