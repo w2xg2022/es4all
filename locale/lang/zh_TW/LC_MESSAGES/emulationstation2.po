@@ -1944,6 +1944,15 @@ msgstr "您即將將 EmuELEC 解析度設定為："
 msgid "The system will reboot now to apply it."
 msgstr "系統將立即重新開機以套用。"
 
+msgid ""
+"Display mode is now %s.\n"
+"Keep this mode?\n"
+"If not confirmed, it will be restored automatically on next boot."
+msgstr ""
+"顯示模式已切換為 %s。\n"
+"要保留這個模式嗎？\n"
+"若未確認，下次開機會自動還原。"
+
 msgid "Do you want to proceed ?"
 msgstr "是否要繼續？"
 

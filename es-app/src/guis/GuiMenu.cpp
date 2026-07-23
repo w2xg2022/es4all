@@ -498,8 +498,21 @@ void GuiMenu::openEmuELECSettings()
 
 			window->pushGui(new GuiMsgBox(window, msg,
 				_("YES"), [selectedVideoMode] {
+					// es4all: ★武装「试用」防呆★(另一半在 main.cpp 开机流程，见那边说明)。
+					//   EDID 报得出的模式电视不一定显示得出来(实机 720p60hz 就整片黑)，黑屏后
+					//   使用者看不到画面也就改不回来。故先把【当前实际正在显示】的模式记成
+					//   known-good，重开机试用；没被确认就自动还原。
+					//   ⚠️ known-good 取 /sys/class/display/mode 的实际值，**不是** SystemConf 里的
+					//   ee_videomode —— 后者可能根本没套用成功(内核 debug 锁那个 bug 就是这样)，
+					//   拿它当还原目标等于还原到一个同样不能用的模式。
+					std::string curMode = Utils::String::trim(Utils::Platform::getShOutput(
+						"cat /sys/class/display/mode 2>/dev/null"));
+					if (!curMode.empty())
+						SystemConf::getInstance()->set("ee_videomode_prev", curMode);
+					SystemConf::getInstance()->set("ee_videomode_pending", "1");
+
 					SystemConf::getInstance()->set("ee_videomode", selectedVideoMode);
-					LOG(LogInfo) << "Setting video to " << selectedVideoMode;
+					LOG(LogInfo) << "Setting video to " << selectedVideoMode << " (trial armed, known-good=" << curMode << ")";
 					SystemConf::getInstance()->saveSystemConf();
 					Scripting::fireEvent("quit", "reboot");
 					Utils::Platform::quitES(Utils::Platform::QuitMode::REBOOT);

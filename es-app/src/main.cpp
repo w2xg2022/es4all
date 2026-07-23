@@ -567,6 +567,35 @@ int err = snd_pcm_open(&pcm_handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
 	// 开机链原本是 emuelec_autostart.sh → check_res.sh → setres.sh，但那条链在本机内核上**静默失效**
 	// (setres.sh 没先解开 /sys/class/display/debug 就写 mode，被内核挡下后自己 exit 1)，
 	// 表现就是「视频模式设了没反应」。故改由 ES 在此补上，详见 applyEmuelecVideoMode 说明。
+	//
+	// ★★防呆：换分辨率有「变砖」等级的风险★★
+	//   EDID 报得出的模式，电视**不一定显示得出来** —— 实机 .165 选 720p60hz 就整片黑
+	//   (setres.sh 回报成功、dmesg 也确认 vout changed，纯粹是电视不显示)。一旦黑屏，
+	//   使用者【看不到画面、也就无法改回来】，只能靠 SSH 或重刷。
+	//   故采「试用 + 下次开机未确认即还原」两阶段确认。**不需要倒数计时器** ——
+	//   黑屏时使用者必然会断电重开，那次重开就是我们要的失败信号。
+	//     ee_videomode_pending: ""=无 / "1"=已武装(选单刚改完) / "2"=试用中(本次开机)
+	//     ee_videomode_prev   : 上一个【确认看得到】的模式
+	{
+		std::string vmPending = SystemConf::getInstance()->get("ee_videomode_pending");
+		std::string vmPrev    = SystemConf::getInstance()->get("ee_videomode_prev");
+
+		if (vmPending == "2")
+		{
+			// 上次开机就是试用、却没等到确认 -> 判定该模式不可用(多半黑屏被断电)，还原。
+			LOG(LogWarning) << "es4all: video mode trial was not confirmed, reverting to " << vmPrev;
+			if (!vmPrev.empty())
+				SystemConf::getInstance()->set("ee_videomode", vmPrev);
+			SystemConf::getInstance()->set("ee_videomode_pending", "");
+			SystemConf::getInstance()->saveSystemConf();
+		}
+		else if (vmPending == "1")
+		{
+			// 本次开机是试用 -> 标记进行中；UI 起来后弹确认框(见下方 closeSplashScreen 之后)。
+			SystemConf::getInstance()->set("ee_videomode_pending", "2");
+			SystemConf::getInstance()->saveSystemConf();
+		}
+	}
 	ApiSystem::getInstance()->applyEmuelecVideoMode(SystemConf::getInstance()->get("ee_videomode"));
 #endif
 
@@ -676,6 +705,37 @@ int err = snd_pcm_open(&pcm_handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
 	}
 
 	window.closeSplashScreen();
+
+#if defined(ES4ALL_TARGET_EMUELEC)
+	// es4all: 视频模式【试用确认】(防呆的后半，前半在上面 window.init() 之前)。
+	// 逻辑很简单：**看得到这个框，就代表这个模式在这台电视上真的能显示**。
+	//   按「是」-> 记为 known-good、解除试用；按「否」-> 立刻还原并重开机。
+	//   完全没回应(黑屏 -> 使用者断电重开) -> 下次开机看到 pending 仍是 "2"，自动还原。
+	if (SystemConf::getInstance()->get("ee_videomode_pending") == "2")
+	{
+		std::string vmNow = SystemConf::getInstance()->get("ee_videomode");
+		std::string msg = Utils::String::format(
+			_("Display mode is now %s.\nKeep this mode?\nIf not confirmed, it will be restored automatically on next boot.").c_str(),
+			vmNow.c_str());
+
+		window.pushGui(new GuiMsgBox(&window, msg,
+			_("YES"), [vmNow]
+			{
+				SystemConf::getInstance()->set("ee_videomode_prev", vmNow);
+				SystemConf::getInstance()->set("ee_videomode_pending", "");
+				SystemConf::getInstance()->saveSystemConf();
+			},
+			_("NO"), []
+			{
+				std::string prev = SystemConf::getInstance()->get("ee_videomode_prev");
+				if (!prev.empty())
+					SystemConf::getInstance()->set("ee_videomode", prev);
+				SystemConf::getInstance()->set("ee_videomode_pending", "");
+				SystemConf::getInstance()->saveSystemConf();
+				Utils::Platform::quitES(Utils::Platform::QuitMode::REBOOT);
+			}));
+	}
+#endif
 
 	// Create a flag in  temporary directory to signal READY state
 	ApiSystem::getInstance()->setReadyFlag();

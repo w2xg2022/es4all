@@ -152,7 +152,8 @@ void Settings::setDefaults()
 	mBoolMap["ShowControllerNotifications"] = true;	
 	mBoolMap["ShowControllerActivity"] = Settings::_ShowControllerActivity;
 	mBoolMap["ShowControllerBattery"] = Settings::_ShowControllerBattery;
-    mIntMap["SystemVolume"] = 95;
+    // es4all: 出厂预设音量 95 → 80(使用者要求)。滑杆范围 0-100(%)，见 GuiMenu 声音设置。
+    mIntMap["SystemVolume"] = 80;
     mBoolMap["Overscan"] = false;
     mStringMap["Language"] = "en_US";
     mStringMap["INPUT P1"] = "DEFAULT";
@@ -299,7 +300,10 @@ void Settings::setDefaults()
 	mBoolMap["VideoLowersMusic"] = true;
 	mBoolMap["VolumePopup"] = Settings::_VolumePopup;
 
-	mIntMap["MusicVolume"] = 128;
+	// es4all: 出厂预设 128 → 80(使用者要求)。
+	// ★128 本来就是错的★：音乐音量滑杆是 0-100(%)(GuiMenu 声音设置里 SliderComponent(0.f, 100.f))，
+	// 128 超出上限、只会被夹到 100，等于「预设满音量」。改 80 顺带修掉这个越界值。
+	mIntMap["MusicVolume"] = 80;
 
 	// Audio out device for Video playback using OMX player.
 	mStringMap["OMXAudioDev"] = "both";
