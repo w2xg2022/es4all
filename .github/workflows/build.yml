@@ -92,10 +92,11 @@ jobs:
             dist/emulationstation-armbian-aarch64.zip
             dist/emulationstation-armbian-aarch64.zip.md5
             dist/emulationstation-armbian-aarch64.zip.build-info
-          body: |
-            es4all 三平台(armbian / rocknix / emuelec)aarch64 构建。
-            每个 zip 内含 emulationstation(主程序) + resources + locale，解压后覆盖到设备对应目录即可，无需重新编译，重启 EmulationStation 生效。
-            版本号含 "pre" 为预览版(开发中)。
+          # es4all: Release 说明取自仓库根目录的 RELEASE_NOTES.md ——
+          #   ★发版前把该档改成「这一版改了什么」★，别再放泛泛的构建说明。
+          #   原本这里内嵌一段固定文字(还写着「版本号含 pre 为预览版」——GitHub 本来就会标
+          #   Pre-release 标签，等于白讲)，看的人得不到任何有用资讯。
+          body_path: RELEASE_NOTES.md
 
   build-rocknix:
     runs-on: ubuntu-24.04-arm

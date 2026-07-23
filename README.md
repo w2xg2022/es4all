@@ -104,10 +104,3 @@ R 的 locale 是**执行时现编**的（JELOS 继承的设计，为省映像空
 → 比照办理，把 zh_CN 也预编进去，连全新安装第一次开机的 28 秒也省掉。
 
 （**A 与 E 没有这个问题**：A 靠 Debian 发行版自带、E 映像里就备妥。）
-
-### 4. 其他
-
-- **ARMBIAN 的 CPU 调速器**：ES 侧已备妥（`isCpuGovernorSettable()` 探到 sysfs 可写就自动出现选单，
-  不必重编），但 `es4all.service` 跑在 `User=game`，而 `scaling_governor` 是 `root:root 0644`。
-  需 `es4all-1key` 补一行 tmpfiles：`z /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor 0664 root game`
-- 游戏内 FPS 显示、手柄布局侦测的 remap applier（见 `README_es4armbian.md` 与各 target 的胶水）
