@@ -7,7 +7,7 @@
 #define PROGRAM_VERSION_MAJOR        42
 #define PROGRAM_VERSION_MINOR        0
 #define PROGRAM_VERSION_MAINTENANCE  0
-#define PROGRAM_VERSION_STRING		"1.1pre"
+#define PROGRAM_VERSION_STRING		"1.1"
 
 // es4all: ★这里刻意不用 __DATE__ / __TIME__★
 //   自我更新改用「binary 的 md5」当构建指纹(见 Es4allUpdate)，前提是**相同源码要编出相同 binary**。
