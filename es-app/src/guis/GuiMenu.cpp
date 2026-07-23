@@ -5189,7 +5189,29 @@ void GuiMenu::openPlatformSettings()
 	s->addEntry(_("SPLASH SETTINGS"), true, [this] { openRocknixSplashSettings(mWindow); });
 
 	// 外接挂载 —— 子菜单（走 ROCKNIX 原生 system.automount 机制）
+	//
+	// es4all: ★1.1 先藏起来（2026-07-23 实机 MD1000/ROCKNIX 192.168.8.198 验证后决定）★
+	//   ES 这边四个键都对得上 automount，问题全在上游 ROCKNIX 韧体，选单给了做不到的承诺:
+	//   ① **外接碟根本永远挂不上**（时序）: sda 开机 +3.9s 被认出、rocknix-automount 在 +9.8s
+	//      就跑完并判定「没有外接碟」，而 sdb 要到 **+65.9s** 才被内核认出 —— 晚了 56 秒。
+	//      之后 udevil 把它挂到 /var/media/sdb1-usb-XXX，往后每次 automount 都在 find_games
+	//      印 `/dev/sdb1 not available.`（它把「已出现在 /proc/mounts」当成不可用）。
+	//      mount_games 里明明有 `umount /var/media/*` 专门处理这情况，却因为 find_games
+	//      在更前面就筛掉而永远走不到。
+	//   ② **「合并储存」在 FAT/exFAT/NTFS 碟上必定无效、UI 却显示已开**: mount_games 只有
+	//      ext4/btrfs 才 touch .ms_supported，其余一律 .ms_unsupported，而 start_ms 见到该档
+	//      就强制 bind mount、忽略 system.merged.storage(overlayfs 要求 upperdir 支援 xattr)。
+	//      实测: 指定 FAT 碟 -> .ms_unsupported 产生 -> 开关设 1 -> /storage/roms 仍是 vfat bind，
+	//      开关却亮着、system.merged.device 还被写成 external，全程零提示。
+	//   唯一能用的是「游戏装置」明确指定(主流程 `[ -e "$GAMES_DEVICE" ] && mount_games` 直接
+	//   呼叫、跳过出问题的 find_games) —— 但为了一个可用选项而留着整个会误导人的子菜单不值得。
+	//
+	//   与 ARMBIAN 同样处置(那边是彻底的空壳)。1.2 会连同 A/E 一起重做成真正的内外部聚合，
+	//   届时恢复本入口；韧体侧那两个 bug 归 w2xg2022/rocknix。函式本体保留不删。
+#if 0
 	s->addEntry(_("EXTERNAL MOUNT OPTIONS"), true, [this, window] { openRocknixExternalMount(window); });
+#endif
+	(void)window;
 
 	mWindow->pushGui(s);
 }
