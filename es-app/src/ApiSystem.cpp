@@ -289,6 +289,21 @@ void ApiSystem::setCpuGovernor(const std::string& gov)
 	Utils::Platform::ProcessStartInfo(sh).run();
 }
 
+// es4all: CPU 调速器能不能真的套用 —— 用来决定「CPU 调速器」选单出不出。
+// 背景: setCpuGovernor 直接写 sysfs，而 sysfs 的 scaling_governor 是 root:root 0644。
+//   EMUELEC / ROCKNIX 的 ES 以 root 运行，写得进去；
+//   ARMBIAN 的 es4all.service 写着 User=game(实机 192.168.8.198 查证)，写不进去 ——
+//   setCpuGovernor 里的 `[ -w ]` 会静默跳过，选单就变成第三个「点了没反应」的空壳
+//   (前两个是外部挂载与 RA 日志)。故此处先探一次可写性，不可写就不出这个选单。
+// 写成共用函式(不加 target 门控)：日后 ARMBIAN 若改用 root 跑、或 1key 补了权限，
+// 选单会自己出现，不必再改一次程式码。
+bool ApiSystem::isCpuGovernorSettable()
+{
+	return Utils::String::trim(Utils::Platform::getShOutput(
+		"for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do "
+		"[ -w \"$f\" ] && { echo 1; break; }; done")) == "1";
+}
+
 // es4all: 解析 resources/audio_outputs.cfg -> [(显示标签, "card,device")]，EMUELEC / ROCKNIX 共用。
 // 格式与匹配规则见该文件头；取第一个「型号子串命中 /proc/device-tree/model」的行。
 // 原本是 GuiMenu.cpp 的 file-static，移来这里是为了让开机还原(main.cpp)也用得到同一份逻辑。
@@ -467,6 +482,71 @@ void ApiSystem::applyArmbianAudioOutput(const std::string& dev)
 	ofs.close();
 
 	LOG(LogInfo) << "es4all: ARMBIAN audio output -> card " << card << ", device " << pcm;
+}
+
+void ApiSystem::applyArmbianRetroarchLogging(bool enabled)
+{
+	// es4all: ARMBIAN 没有 EmuELEC 的 emuelecRunEmu.sh(它才是 global.retroarchLogging 的消费端)，
+	// RA 启动链是 es4a-ra-launch(es4all-1key 部署，只做语系透传)。与其去改那支跨仓库的脚本，
+	// 不如直接写 RetroArch 自己的设定键 —— 免权限(档在 game 自己家目录)、免跨仓库。
+	//   log_verbosity      RA 是否输出详细日志
+	//   log_to_file        输出到档案而非 stdout(ES 接管了 tty，stdout 看不到)
+	//   frontend_log_level 0=DEBUG 起 …… 3=NONE；开日志时要一并降到 0，否则 verbosity 开了也几乎没内容
+	const std::string cfgPath = Paths::getHomePath() + "/.config/retroarch/retroarch.cfg";
+
+	std::vector<std::pair<std::string, std::string>> kv = {
+		{ "log_verbosity",      enabled ? "true" : "false" },
+		{ "log_to_file",        enabled ? "true" : "false" },
+		{ "frontend_log_level", enabled ? "0"    : "3"     }
+	};
+
+	// 读进来逐行处理: 已存在的键就地改值(保留档案其余内容与顺序)，没出现过的最后补上。
+	std::vector<std::string> lines;
+	{
+		std::ifstream ifs(cfgPath.c_str());
+		if (!ifs)
+		{
+			LOG(LogError) << "es4all: 读不到 " << cfgPath << "(RA 日志开关未套用)";
+			return;
+		}
+		std::string line;
+		while (std::getline(ifs, line))
+			lines.push_back(line);
+	}
+
+	std::vector<bool> seen(kv.size(), false);
+	for (auto& line : lines)
+	{
+		for (size_t i = 0; i < kv.size(); i++)
+		{
+			// RA 的格式是 `key = "value"`，行首无缩排；只认行首完全匹配的键，避免误伤同前缀的键
+			// (例如 log_to_file 与 log_to_file_timestamp)。
+			const std::string& key = kv[i].first;
+			if (line.compare(0, key.size(), key) != 0)
+				continue;
+			size_t p = line.find_first_not_of(" \t", key.size());
+			if (p == std::string::npos || line[p] != '=')
+				continue;
+			line = key + " = \"" + kv[i].second + "\"";
+			seen[i] = true;
+		}
+	}
+
+	for (size_t i = 0; i < kv.size(); i++)
+		if (!seen[i])
+			lines.push_back(kv[i].first + " = \"" + kv[i].second + "\"");
+
+	std::ofstream ofs(cfgPath.c_str(), std::ios::trunc);
+	if (!ofs)
+	{
+		LOG(LogError) << "es4all: 无法写入 " << cfgPath << "(RA 日志开关未套用)";
+		return;
+	}
+	for (auto& line : lines)
+		ofs << line << "\n";
+	ofs.close();
+
+	LOG(LogInfo) << "es4all: ARMBIAN RetroArch logging -> " << (enabled ? "on" : "off");
 }
 #endif
 

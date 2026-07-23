@@ -551,11 +551,14 @@ int err = snd_pcm_open(&pcm_handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
 	// Set locale
 	setLocale(argv[0]);
 
-#if defined(ES4ALL_TARGET_EMUELEC)
-	// es4all: EMUELEC 无发行版消费脚本(不像 ROCKNIX 有 autostart 读 system.cpugovernor), 故开机时
-	// 由 ES 重新套用保存的 CPU governor 以持久化。空值(AUTO)则不动, 保持内核默认。
+#if defined(ES4ALL_TARGET_EMUELEC) || defined(ES4ALL_TARGET_ARMBIAN)
+	// es4all: EMUELEC 与 ARMBIAN 都无发行版消费脚本(不像 ROCKNIX 有 autostart 读 system.cpugovernor),
+	// 故开机时由 ES 重新套用保存的 CPU governor 以持久化。空值(AUTO)则不动, 保持内核默认。
+	// ARMBIAN 若因 User=game 写不进 sysfs, setCpuGovernor 内的 `[ -w ]` 会静默跳过(选单那边也不会出现)。
 	ApiSystem::getInstance()->setCpuGovernor(SystemConf::getInstance()->get("system.cpugovernor"));
+#endif
 
+#if defined(ES4ALL_TARGET_EMUELEC)
 	// es4all: 同理重新套用音源输出。★这条必须做★ —— 该机**没有 asound.state、也没有 alsa-restore
 	// 服务**(实机 .165 查证)，`Audio hdmi-out mute` 这类 ALSA 控制项**重开机一定掉回预设(HDMI 不静音)**，
 	// 于是选了 AV 的人重开机后又变成 HDMI/AV 两边同时出声。asound.conf 那半是写在档案里的、本来就持久，

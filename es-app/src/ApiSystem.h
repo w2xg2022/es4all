@@ -159,6 +159,9 @@ public:
     // setCpuGovernor 直接写 sysfs(EMUELEC 用 —— 无发行版消费脚本, 由 ES 自己套用)。
     std::vector<std::string> getAvailableCpuGovernors();
     void setCpuGovernor(const std::string& gov);
+    // 探 sysfs 可写性(ARMBIAN 的 ES 以 game 身份跑，可能写不进) —— 不可写就别出这个选单，
+    // 免得变成「点了没反应」的空壳。详见 ApiSystem.cpp 的实作说明。
+    bool isCpuGovernorSettable();
 
     // es4all: 机型 -> 音源输出映射表(resources/audio_outputs.cfg)。EMUELEC / ROCKNIX 共用，
     // 从 GuiMenu 移来这里，好让开机还原(main.cpp)也取得到。回传 [(显示标签, "card,device")]，
@@ -178,10 +181,16 @@ public:
 #endif
 
 #if defined(ES4ALL_TARGET_ARMBIAN)
-    // es4all: 套用 ARMBIAN 音源输出 —— 直接改写 /etc/asound.conf 的默认装置。
+    // es4all: 套用 ARMBIAN 音源输出 —— 改写 ~/.asoundrc 的默认装置(ES 以 game 身份跑，
+    // 写不了 root 拥有的 /etc/asound.conf；ALSA 读取顺序让 ~/.asoundrc 能覆盖它)。
     // 该 target 是**裸 ALSA**(实机 MD1000/Armbian 查证: PipeWire 与 PulseAudio 都没装)，
     // 所以既不能用 EMUELEC 的 emuelec-utils setauddev、也不能用 ROCKNIX 的 PipeWire sink 那套。
     void applyArmbianAudioOutput(const std::string& dev);
+
+    // es4all: 套用 ARMBIAN 的 RetroArch 日志开关 —— 直接写 RetroArch 自己的设定键
+    // (log_verbosity / log_to_file / frontend_log_level)，不依赖发行版脚本。
+    // EMUELEC 那套是写 global.retroarchLogging 等 emuelecRunEmu.sh 读，ARMBIAN 没有该脚本。
+    void applyArmbianRetroarchLogging(bool enabled);
 #endif
 
     virtual std::pair<std::string, int> updateSystem(const std::function<void(const std::string)>& func = nullptr);

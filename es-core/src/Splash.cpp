@@ -15,17 +15,20 @@ Splash::Splash(Window* window, const std::string image, bool fullScreenBackGroun
 {
 	mBackgroundColor = 0x000000FF;
 
-#if defined(ES4ALL_TARGET_EMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)
-	// es4all: EmuELEC 的 splash 图是透明去背的向量图(跟上游原厂一致)，副标 EMULATIONSTATION
+	// es4all: splash 图是透明去背的向量图(跟上游原厂一致)，副标 EMULATIONSTATION
 	// 用 #231F20(近黑)，画在预设黑底上几乎看不见——原厂就有这个毛病。改成白底后：
 	//   ①近黑副标在白底上清楚可读；
 	//   ②图透明 + 底色白 → 80%x60% 卡片的边界看不出来，视觉上就是整片白的全屏 splash。
 	// 条件用「显示的是不是内建那张 logo」而不是 fullScreenBackGround：游戏启动过场在没有封面图时
 	// 也会 fallback 用这张 SVG，同样需要白底；真的在显示游戏图(或用户自订 AlternateSplashScreen)
 	// 时则维持黑底，否则图片周围会出现白框。
+	//
+	// ★2026-07-23: 移除 target 门控，A/E/R 三个版本一律适用★
+	//   原本只 EMUELEC+ROCKNIX 有，ARMBIAN 漏掉 —— 实机截图上开机/退出画面的副标整片糊在黑底里。
+	//   三份 splash_*.svg 用的是同一组近黑副标(#231F20 在 splash_armbian.svg 里就出现 31 次)，
+	//   这个毛病与 target 无关，是「近黑字画在黑底上」本身，故不该有门控。
 	if (image == DEFAULT_SPLASH_IMAGE)
 		mBackgroundColor = 0xFFFFFFFF;
-#endif
 
 	mRoundCorners = 0.01;
 	mPercent = -1;

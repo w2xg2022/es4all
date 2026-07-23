@@ -531,13 +531,19 @@ void GuiMenu::openEmuELECSettings()
 		});
 #endif
 
-#if defined(ES4ALL_TARGET_EMUELEC)
-	// es4all: CPU 调速器(governor)。移植自 ROCKNIX 平台设置。EMUELEC 无发行版消费脚本(ROCKNIX 靠
-	// autostart/runemu.sh 读 system.cpugovernor 套用), 故由 ES 直接写 sysfs(ApiSystem::setCpuGovernor)
-	// 即时生效 + 开机重套(main.cpp)。列表动态读 scaling_available_governors, 只列内核实际支持的。
+#if defined(ES4ALL_TARGET_EMUELEC) || defined(ES4ALL_TARGET_ARMBIAN)
+	// es4all: CPU 调速器(governor)。移植自 ROCKNIX 平台设置。EMUELEC/ARMBIAN 都无发行版消费脚本
+	// (ROCKNIX 靠 autostart/runemu.sh 读 system.cpugovernor 套用), 故由 ES 直接写 sysfs
+	// (ApiSystem::setCpuGovernor)即时生效 + 开机重套(main.cpp)。列表动态读
+	// scaling_available_governors, 只列内核实际支持的。
+	//
+	// es4all: ★ARMBIAN 多一道可写性检查★ —— sysfs 的 scaling_governor 是 root:root 0644，
+	//   而 ARMBIAN 的 es4all.service 写着 User=game，写不进去时 setCpuGovernor 会静默跳过，
+	//   选单就成了「点了没反应」的空壳。isCpuGovernorSettable() 探不到可写就整项不出。
+	//   (EMUELEC/ROCKNIX 的 ES 以 root 跑，恒为真，行为不变。)
 	{
 		auto govs = ApiSystem::getInstance()->getAvailableCpuGovernors();
-		if (!govs.empty())
+		if (!govs.empty() && ApiSystem::getInstance()->isCpuGovernorSettable())
 		{
 			auto cpugov = std::make_shared< OptionListComponent<std::string> >(mWindow, _("CPU GOVERNOR"), false);
 			std::string curGov = SystemConf::getInstance()->get("system.cpugovernor");
@@ -568,6 +574,15 @@ void GuiMenu::openEmuELECSettings()
 				bool logging_enabled = ra_logging_enabled->getState();
 				SystemConf::getInstance()->set("global.retroarchLogging", logging_enabled ? "1" : "0");
 				SystemConf::getInstance()->saveSystemConf();
+#if defined(ES4ALL_TARGET_ARMBIAN)
+				// es4all: ★ARMBIAN 的后端不同★(2026-07-23 实机 192.168.8.198 查证)
+				//   global.retroarchLogging 的消费端是 EmuELEC 的 emuelecRunEmu.sh，
+				//   ARMBIAN 上根本没有那支脚本 —— 这个开关本来是第二个空壳(第一个是外部挂载)。
+				//   ARMBIAN 的 RA 启动链是 es4a-ra-launch(1key 部署，只做语系透传，没有日志逻辑)，
+				//   与其去改那支跨仓库的脚本，不如直接写 RetroArch 自己的设定键 —— 完全在 ES 掌握内。
+				//   键存 SystemConf 照旧(UI 状态与另两个 target 一致)，套用则走 retroarch.cfg。
+				ApiSystem::getInstance()->applyArmbianRetroarchLogging(logging_enabled);
+#endif
 			});
 #endif
 
