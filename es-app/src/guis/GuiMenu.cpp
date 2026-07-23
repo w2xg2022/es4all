@@ -644,11 +644,22 @@ void GuiMenu::openEmuELECSettings()
 	// 与「前端开发人员选项」里的 RETROARCH MENU DRIVER 是同一个键、重复。保留开发者选项那份
 	// (面向进阶用户, 一般用户不易误触), 平台设置不再出现。
 
+// es4all: ★ARMBIAN 不出「外部挂载选项」★(2026-07-23 实机 MD1000/Armbian 192.168.8.198 查证)
+//   这整组功能是 EmuELEC 专属，只因 armbian 也带 -DENABLE_EMUELEC=1 才被顺带编进来，是个空壳:
+//     ① 碟的列举写死 `find /var/media/ ...`，而 Armbian 上**没有 /var/media 这个目录** -> 恒为空，
+//        选单永远只剩「自动 / 内部存储」两项；
+//     ② 挂载后端 eemount / mount_romfs.sh 在 Armbian 上不存在；
+//     ③ ROM 根是 /home/game/ROMs，不是 EmuELEC 的 /storage/roms，语义对不上。
+//   而且该机**根本没有任何自动挂载机制**(udisks2/usbmount/pmount 都没装，fstab 也没写)，
+//   插上的 USB 碟连挂都不会挂。给个点进去什么也做不到的选单只会误导，故直接不出。
+//   ARMBIAN 的外接存储支持列为待办(见 [[es4all_features_todo]])，要做得连 es4all-1key 一起改。
+#if !defined(ES4ALL_TARGET_ARMBIAN)
 if (UIModeController::getInstance()->isUIModeFull())
 	{
         //External Mount Options
         s->addEntry(_("EXTERNAL MOUNT OPTIONS"), true, [this] { openExternalMounts(mWindow, "global"); });
     }
+#endif
 
     mWindow->pushGui(s);
 }
