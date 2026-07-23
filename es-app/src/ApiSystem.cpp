@@ -412,9 +412,19 @@ void ApiSystem::applyArmbianAudioOutput(const std::string& dev)
 		return;
 
 	// es4all: ARMBIAN 是**裸 ALSA**(实机 MD1000/Armbian 查证: PipeWire、PulseAudio 都没装)，
-	// 所以切音源就是改 /etc/asound.conf 的默认装置 —— 由 ES 直接写，不另外做 glue 脚本：
+	// 所以切音源就是改 ALSA 的默认装置 —— 由 ES 直接写，不另外做 glue 脚本：
 	//   ① 随 OTA 下发，不必重跑 es4all-1key 的安装脚本；
 	//   ② 不必跨仓库协调(ROCKNIX 那边 glue 脚本漏装进韧体的教训还很新)。
+	//
+	// ★为什么写 ~/.asoundrc 而不是 /etc/asound.conf★:
+	//   实机查证: es4all.service 写着 `User=game`(uid 1000)，而 /etc/asound.conf 是
+	//   root:root 0644 —— ES 以 game 身份根本写不进去，ofstream 静默失败，
+	//   选单看起来有反应、实际什么都没发生。game 也没有任何 sudo 权限(sudoers 查无此人)，
+	//   要加 sudoers 就得回头改 es4all-1key(跨仓库，正是上面①②想避开的)。
+	//   ALSA 的读取顺序是 /etc/asound.conf 之后才读 $HOME/.asoundrc，而这里三个节点
+	//   都带 `!` 前缀(pcm.!default / pcm.!playback / ctl.!default)——
+	//   `!` 是 ALSA 的「覆盖而非合并」运算符，能干净盖掉 1key 装的那份系统级配置。
+	//   ES 与各模拟器都以 game 身份执行，这份 .asoundrc 对它们全体生效。
 	//
 	// ★为什么套 softvol 而不是直接 plughw★:
 	//   本板 HDMI(card 0)**没有任何硬件混音器控件**(`amixer -c0 scontrols` 是空的)，
@@ -427,12 +437,13 @@ void ApiSystem::applyArmbianAudioOutput(const std::string& dev)
 	std::string conf =
 		"# es4all: 由 ES 的 AUDIO OUTPUT 选单写入(ApiSystem::applyArmbianAudioOutput)。\n"
 		"# 手动改这里会在下次切换音源时被覆盖。\n"
+		"# 本档覆盖 /etc/asound.conf(由 es4all-1key 的 01-prep.sh 装的系统级预设)。\n"
 		"pcm.!default {\n"
 		"    type asym\n"
 		"    playback.pcm \"playback\"\n"
 		"    capture.pcm \"plughw:" + card + "\"\n"
 		"}\n"
-		"pcm.playback {\n"
+		"pcm.!playback {\n"
 		"    type softvol\n"
 		"    slave.pcm \"plughw:" + card + "," + pcm + "\"\n"
 		"    control {\n"
@@ -445,10 +456,11 @@ void ApiSystem::applyArmbianAudioOutput(const std::string& dev)
 		"    card " + card + "\n"
 		"}\n";
 
-	std::ofstream ofs("/etc/asound.conf", std::ios::trunc);
+	std::string rcPath = Utils::FileSystem::getHomePath() + "/.asoundrc";
+	std::ofstream ofs(rcPath.c_str(), std::ios::trunc);
 	if (!ofs)
 	{
-		LOG(LogError) << "es4all: 无法写入 /etc/asound.conf(音源切换失败)";
+		LOG(LogError) << "es4all: 无法写入 " << rcPath << "(音源切换失败)";
 		return;
 	}
 	ofs << conf;
