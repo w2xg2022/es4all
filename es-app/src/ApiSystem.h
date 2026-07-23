@@ -177,6 +177,13 @@ public:
     void applyEmuelecVideoMode(const std::string& mode);
 #endif
 
+#if defined(ES4ALL_TARGET_ARMBIAN)
+    // es4all: 套用 ARMBIAN 音源输出 —— 直接改写 /etc/asound.conf 的默认装置。
+    // 该 target 是**裸 ALSA**(实机 MD1000/Armbian 查证: PipeWire 与 PulseAudio 都没装)，
+    // 所以既不能用 EMUELEC 的 emuelec-utils setauddev、也不能用 ROCKNIX 的 PipeWire sink 那套。
+    void applyArmbianAudioOutput(const std::string& dev);
+#endif
+
     virtual std::pair<std::string, int> updateSystem(const std::function<void(const std::string)>& func = nullptr);
 
     std::pair<std::string, int> backupSystem(BusyComponent* ui, std::string device);

@@ -399,6 +399,65 @@ void ApiSystem::applyEmuelecVideoMode(const std::string& mode)
 }
 #endif
 
+#if defined(ES4ALL_TARGET_ARMBIAN)
+void ApiSystem::applyArmbianAudioOutput(const std::string& dev)
+{
+	// dev 形如 "card,device"(与 audio_outputs.cfg 一致)。
+	size_t comma = dev.find(',');
+	if (comma == std::string::npos)
+		return;
+	std::string card = Utils::String::trim(dev.substr(0, comma));
+	std::string pcm  = Utils::String::trim(dev.substr(comma + 1));
+	if (card.empty() || pcm.empty())
+		return;
+
+	// es4all: ARMBIAN 是**裸 ALSA**(实机 MD1000/Armbian 查证: PipeWire、PulseAudio 都没装)，
+	// 所以切音源就是改 /etc/asound.conf 的默认装置 —— 由 ES 直接写，不另外做 glue 脚本：
+	//   ① 随 OTA 下发，不必重跑 es4all-1key 的安装脚本；
+	//   ② 不必跨仓库协调(ROCKNIX 那边 glue 脚本漏装进韧体的教训还很新)。
+	//
+	// ★为什么套 softvol 而不是直接 plughw★:
+	//   本板 HDMI(card 0)**没有任何硬件混音器控件**(`amixer -c0 scontrols` 是空的)，
+	//   ES 的 VolumeControl::isAvailable() 会回 false -> 整组「音量设置」菜单不显示。
+	//   softvol 虚拟出一个名为 "PCM" 的控件挂到该卡上，音量选单才活得下来。
+	//   这个结构沿用 es4all-1key 的 01-prep.sh 原本就部署的那份 asound.conf，只是把卡号参数化 ——
+	//   两边形状一致，日后谁先写都不会互相打架。
+	//   (AV/card1 的 RK809 本身有硬件 Master；softvol 叠在上面只是多一层衰减、不影响可用性，
+	//    换来的是「不管切到哪张卡，ES 都有一个统一的音量控件」。)
+	std::string conf =
+		"# es4all: 由 ES 的 AUDIO OUTPUT 选单写入(ApiSystem::applyArmbianAudioOutput)。\n"
+		"# 手动改这里会在下次切换音源时被覆盖。\n"
+		"pcm.!default {\n"
+		"    type asym\n"
+		"    playback.pcm \"playback\"\n"
+		"    capture.pcm \"plughw:" + card + "\"\n"
+		"}\n"
+		"pcm.playback {\n"
+		"    type softvol\n"
+		"    slave.pcm \"plughw:" + card + "," + pcm + "\"\n"
+		"    control {\n"
+		"        name \"PCM\"\n"
+		"        card " + card + "\n"
+		"    }\n"
+		"}\n"
+		"ctl.!default {\n"
+		"    type hw\n"
+		"    card " + card + "\n"
+		"}\n";
+
+	std::ofstream ofs("/etc/asound.conf", std::ios::trunc);
+	if (!ofs)
+	{
+		LOG(LogError) << "es4all: 无法写入 /etc/asound.conf(音源切换失败)";
+		return;
+	}
+	ofs << conf;
+	ofs.close();
+
+	LOG(LogInfo) << "es4all: ARMBIAN audio output -> card " << card << ", device " << pcm;
+}
+#endif
+
 // BusyComponent* ui
 std::pair<std::string, int> ApiSystem::updateSystem(const std::function<void(const std::string)>& func)
 {

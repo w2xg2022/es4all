@@ -466,9 +466,15 @@ void GuiMenu::openEmuELECSettings()
             });
 #endif
 
-#if defined(ES4ALL_CAP_EMUELEC_PLATFORM)
-	// es4all: AUDIO OUTPUT —— 按机型只列该盒【实际有实体孔】的音源输出。后端复用 emuelec-utils
-	// setauddev: 写 ee_audio_device 并把 /storage/.config/asound.conf 默认 PCM 改成 hw:<card,device>。
+// es4all: ★AUDIO OUTPUT 放宽给 ARMBIAN★(1.1 收敛: 三个 target 都要有这个选项)。
+//   原本关在 ES4ALL_CAP_EMUELEC_PLATFORM 里, 而该旗标只在 target=emuelec 时定义 ——
+//   于是 ARMBIAN 虽然走同一个 openEmuELECSettings(CI 给它带了 -DENABLE_EMUELEC=1),
+//   却看不到这一项。选单本身是通用的(读 audio_outputs.cfg), 只有【套用的后端】各家不同:
+//     EMUELEC = emuelec-utils setauddev + HDMI 硬件静音(同一张卡两个 device, 会一起出声)
+//     ARMBIAN = 直接改写 /etc/asound.conf(裸 ALSA, 无 PipeWire/PulseAudio)
+//   (ROCKNIX 有自己的 openPlatformSettings, 走 es4all-setauddev/PipeWire, 不在这块。)
+#if defined(ES4ALL_CAP_EMUELEC_PLATFORM) || defined(ES4ALL_TARGET_ARMBIAN)
+	// es4all: AUDIO OUTPUT —— 按机型只列该盒【实际有实体孔】的音源输出。
 	//
 	// 为什么要机型白名单(不纯动态): card,device 各机型编号不同, 且 ALSA 列出某 PCM ≠ 盒子有那个
 	// 实体孔(Amlogic SoC 都支持 SPDIF/模拟, 但廉价盒常没接线)。故需实机 aplay -l + 逐一实听确认。
@@ -492,10 +498,15 @@ void GuiMenu::openEmuELECSettings()
 			audioout->setSelectedChangedCallback([audioout](std::string dev) {
 				if (SystemConf::getInstance()->set("ee_audio_device", dev))
 					SystemConf::getInstance()->saveSystemConf();
+#if defined(ES4ALL_TARGET_ARMBIAN)
+				// ARMBIAN: 裸 ALSA -> 直接改写 /etc/asound.conf 的默认装置。
+				ApiSystem::getInstance()->applyArmbianAudioOutput(dev);
+#else
 				// es4all: 走 applyEmuelecAudioOutput 而不是直接呼叫 setauddev ——
 				// setauddev 只改 asound.conf 的默认 PCM，不动硬件路由，会造成
 				// 「选了 AV，HDMI 还在同时出声」(实机 .165 确认)。见该函式说明。
 				ApiSystem::getInstance()->applyEmuelecAudioOutput(dev);
+#endif
 			});
 		}
 	}
