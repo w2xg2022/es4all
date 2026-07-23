@@ -483,21 +483,26 @@ void ApiSystem::applyArmbianAudioOutput(const std::string& dev)
 
 	LOG(LogInfo) << "es4all: ARMBIAN audio output -> card " << card << ", device " << pcm;
 }
+#endif // ES4ALL_TARGET_ARMBIAN
 
-void ApiSystem::applyArmbianRetroarchLogging(bool enabled)
+// es4all: RetroArch 日志级别 —— A/E 共用，**不加 target 门控**。
+// (把定义藏在守卫里害固件编译炸过三次: 11e8bc9 / 2f0b611 / af15bca。)
+void ApiSystem::applyRetroarchLogging(const std::string& level)
 {
 	// es4all: ARMBIAN 没有 EmuELEC 的 emuelecRunEmu.sh(它才是 global.retroarchLogging 的消费端)，
 	// RA 启动链是 es4a-ra-launch(es4all-1key 部署，只做语系透传)。与其去改那支跨仓库的脚本，
-	// 不如直接写 RetroArch 自己的设定键 —— 免权限(档在 game 自己家目录)、免跨仓库。
+	// 不如直接写 RetroArch 自己的设定键 —— 免权限(档在自己家目录)、免跨仓库、A/E 同一套。
 	//   log_verbosity      RA 是否输出详细日志
 	//   log_to_file        输出到档案而非 stdout(ES 接管了 tty，stdout 看不到)
-	//   frontend_log_level 0=DEBUG 起 …… 3=NONE；开日志时要一并降到 0，否则 verbosity 开了也几乎没内容
+	//   frontend_log_level RA 的级别: 0=DEBUG 1=INFO 2=WARNING 3=ERROR(最安静，只记错误)
+	// 关闭 = 前两项 false + 级别压到 3；其余就照使用者选的级别开。
+	const bool enabled = (level != "off" && !level.empty());
 	const std::string cfgPath = Paths::getHomePath() + "/.config/retroarch/retroarch.cfg";
 
 	std::vector<std::pair<std::string, std::string>> kv = {
 		{ "log_verbosity",      enabled ? "true" : "false" },
 		{ "log_to_file",        enabled ? "true" : "false" },
-		{ "frontend_log_level", enabled ? "0"    : "3"     }
+		{ "frontend_log_level", enabled ? level  : "3"     }
 	};
 
 	// 读进来逐行处理: 已存在的键就地改值(保留档案其余内容与顺序)，没出现过的最后补上。
@@ -546,9 +551,8 @@ void ApiSystem::applyArmbianRetroarchLogging(bool enabled)
 		ofs << line << "\n";
 	ofs.close();
 
-	LOG(LogInfo) << "es4all: ARMBIAN RetroArch logging -> " << (enabled ? "on" : "off");
+	LOG(LogInfo) << "es4all: RetroArch logging -> " << (enabled ? level : std::string("off"));
 }
-#endif
 
 // BusyComponent* ui
 std::pair<std::string, int> ApiSystem::updateSystem(const std::function<void(const std::string)>& func)

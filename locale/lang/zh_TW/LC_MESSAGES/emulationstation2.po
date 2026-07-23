@@ -4419,3 +4419,15 @@ msgstr "更新已下載完成，是否立即重啟以套用？"
 
 msgid "RetroArch logs; enable when you need to debug."
 msgstr "RetroArch 的日誌，需要除錯時可啟用。"
+
+msgid "DEBUG"
+msgstr "除錯"
+
+msgid "INFO"
+msgstr "資訊"
+
+msgid "WARNING"
+msgstr "警告"
+
+msgid "ERROR"
+msgstr "錯誤"

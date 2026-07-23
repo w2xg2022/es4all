@@ -187,11 +187,14 @@ public:
     // 所以既不能用 EMUELEC 的 emuelec-utils setauddev、也不能用 ROCKNIX 的 PipeWire sink 那套。
     void applyArmbianAudioOutput(const std::string& dev);
 
-    // es4all: 套用 ARMBIAN 的 RetroArch 日志开关 —— 直接写 RetroArch 自己的设定键
-    // (log_verbosity / log_to_file / frontend_log_level)，不依赖发行版脚本。
-    // EMUELEC 那套是写 global.retroarchLogging 等 emuelecRunEmu.sh 读，ARMBIAN 没有该脚本。
-    void applyArmbianRetroarchLogging(bool enabled);
 #endif
+
+    // es4all: 套用 RetroArch 日志级别 —— 直接写 RetroArch 自己的设定键
+    // (log_verbosity / log_to_file / frontend_log_level)，不依赖发行版脚本。
+    // level: "off" 或 RA 的 frontend_log_level 值 "0"(DEBUG)/"1"(INFO)/"2"(WARN)/"3"(ERROR)。
+    // A/E 共用(路径都是 $HOME/.config/retroarch/retroarch.cfg，E 的 HOME 是 /storage)；
+    // 不加 target 门控 —— 把定义藏在守卫里害固件编译炸过三次。
+    void applyRetroarchLogging(const std::string& level);
 
     virtual std::pair<std::string, int> updateSystem(const std::function<void(const std::string)>& func = nullptr);
 

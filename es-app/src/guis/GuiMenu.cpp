@@ -550,7 +550,28 @@ void GuiMenu::openEmuELECSettings()
 			cpugov->add(_("AUTO"), "", curGov.empty());
 			// es4all: 值保持内核 governor 名(小写, 写 sysfs 用); 显示用大写名过 _() 翻译
 			// (ONDEMAND/PERFORMANCE/... 已加 zh_CN/zh_TW; 未翻的 governor 回退显示大写原名)。
+			//
+			// es4all: ★按性能由强到弱排序，最省电的排最下面(2026-07-23 用户要求，比照 R 版)★
+			//   内核回报的顺序是字母序(conservative ondemand userspace powersave performance
+			//   schedutil)，对使用者没有意义。这里给一份优先序，表内的照表排、表外的接在后面
+			//   (不丢弃，别的板子可能有特有 governor)。
+			// ★userspace 直接滤掉★: 它不是一种调速策略，而是「把频率交给使用者空间的程式决定」。
+			//   没有搭配的守护程序时，选了等于把频率锁在当下那一档 —— 对使用者只有坏处，
+			//   而且它没有翻译，画面上就是一串突兀的英文(实机 .198 截图可见)。
+			static const char* kGovOrder[] = { "performance", "schedutil", "ondemand", "conservative", "powersave" };
+			std::vector<std::string> ordered;
+			for (auto* want : kGovOrder)
+				for (auto& g : govs)
+					if (g == want)
+						ordered.push_back(g);
 			for (auto& g : govs)
+			{
+				if (g == "userspace")
+					continue;
+				if (std::find(ordered.cbegin(), ordered.cend(), g) == ordered.cend())
+					ordered.push_back(g);
+			}
+			for (auto& g : ordered)
 				cpugov->add(_(Utils::String::toUpper(g).c_str()), g, curGov == g);
 			s->addWithDescription(_("CPU GOVERNOR"), _("CPU frequency scaling policy."), cpugov);
 			cpugov->setSelectedChangedCallback([cpugov](std::string val) {
@@ -563,37 +584,40 @@ void GuiMenu::openEmuELECSettings()
 #endif
 
 #ifdef _ENABLEEMUELEC
-		auto ra_logging_enabled = std::make_shared<SwitchComponent>(mWindow);
-		// es4all: 默认关闭(原为 != "0" 即未设时默认开)。仅显式设为 "1" 才开。
-		// 注: 消费端 emuelecRunEmu.sh 在该键为空时也默认开日志, 故如需实机默认关, 还要在发行版
-		// glue 里 seed global.retroarchLogging=0(记入 memory 待办)。
-		bool raLogging = SystemConf::getInstance()->get("global.retroarchLogging") == "1";
-		ra_logging_enabled->setState(raLogging);
+		// es4all: ★RA 日志由布尔开关改成 RetroArch 自己的四级 + 关闭(2026-07-23 用户要求)★
+		//   排列由轻到重: 关闭 → DEBUG(0) → INFO(1) → WARNING(2) → ERROR(3)，ERROR 在最下面。
+		//   **预设关闭**。
+		//
+		// ★为什么级别另存一个键，而不是塞回 global.retroarchLogging★:
+		//   E 的消费端 emuelecRunEmu.sh 只认该键的 "0"/非0，而 RA 的级别 0 正好是 DEBUG ——
+		//   共用一个键的话，使用者选「DEBUG」会被那支脚本读成「关闭」，完全相反。
+		//   故: global.retroarchLogging 维持 0/1 给 E 的脚本用，级别另存 global.retroarch.loglevel。
+		auto ra_loglevel = std::make_shared< OptionListComponent<std::string> >(mWindow, _("RETROARCH LOGGING"), false);
+		std::string raLevel = SystemConf::getInstance()->get("global.retroarch.loglevel");
+		// 旧版只有布尔键时的迁移: 没有级别键就看旧的开关，开着就当 DEBUG(等同旧行为)。
+		if (raLevel.empty())
+			raLevel = (SystemConf::getInstance()->get("global.retroarchLogging") == "1") ? "0" : "off";
+		ra_loglevel->addRange({ { _("OFF"), "off" }, { _("DEBUG"), "0" }, { _("INFO"), "1" },
+		                        { _("WARNING"), "2" }, { _("ERROR"), "3" } }, raLevel);
 		// es4all: 补上与 R 版同一句说明(2026-07-23) —— 原本 E/A 这项没有说明文字，
 		// 使用者容易与开发者选项里的「ES 日志级别」(es_log.txt)搞混。三个 target 同标题同说明。
 		s->addWithDescription(_("RETROARCH LOGGING"),
 			_("RetroArch logs; enable when you need to debug."),
-			ra_logging_enabled);
-		s->addSaveFunc([ra_logging_enabled, raLogging] {
-				bool logging_enabled = ra_logging_enabled->getState();
+			ra_loglevel);
+		s->addSaveFunc([ra_loglevel, raLevel] {
+				const std::string sel = ra_loglevel->getSelected();
+				const bool logging_enabled = (sel != "off");
+				SystemConf::getInstance()->set("global.retroarch.loglevel", sel);
 				SystemConf::getInstance()->set("global.retroarchLogging", logging_enabled ? "1" : "0");
 				SystemConf::getInstance()->saveSystemConf();
-#if defined(ES4ALL_TARGET_ARMBIAN)
-				// es4all: ★ARMBIAN 的后端不同★(2026-07-23 实机 192.168.8.198 查证)
-				//   global.retroarchLogging 的消费端是 EmuELEC 的 emuelecRunEmu.sh，
-				//   ARMBIAN 上根本没有那支脚本 —— 这个开关本来是第二个空壳(第一个是外部挂载)。
-				//   ARMBIAN 的 RA 启动链是 es4a-ra-launch(1key 部署，只做语系透传，没有日志逻辑)，
-				//   与其去改那支跨仓库的脚本，不如直接写 RetroArch 自己的设定键 —— 完全在 ES 掌握内。
-				//   键存 SystemConf 照旧(UI 状态与另两个 target 一致)，套用则走 retroarch.cfg。
-				//
-				// ★必须比对旧值、只在真的改动时才写★：本 addSaveFunc **没有 changed() 闸门**，
-				//   选单一关就会无条件执行(原本只写个 SystemConf 键，无所谓)。接上改写
-				//   retroarch.cfg 之后，光是「进平台设置看一眼再退出」就会把使用者自己在
-				//   RetroArch 里调过的 frontend_log_level 覆盖掉 —— 实机 .198 上真的发生了
-				//   (原本手动设的 "1" 被写成 "3")。故此处自行比对进选单时的初始值。
-				if (logging_enabled != raLogging)
-					ApiSystem::getInstance()->applyArmbianRetroarchLogging(logging_enabled);
-#endif
+
+				// es4all: ★必须比对旧值、只在真的改动时才写★
+				//   本 addSaveFunc **没有 changed() 闸门**，选单一关就会无条件执行(原本只写个
+				//   SystemConf 键，无所谓)。接上改写 retroarch.cfg 之后，光是「进平台设置看一眼
+				//   再退出」就会把使用者自己在 RetroArch 里调过的 frontend_log_level 覆盖掉 ——
+				//   实机 .198 上真的发生了(手动设的 "1" 被写成 "3")。故自行比对进选单时的初始值。
+				if (sel != raLevel)
+					ApiSystem::getInstance()->applyRetroarchLogging(sel);
 			});
 #endif
 
