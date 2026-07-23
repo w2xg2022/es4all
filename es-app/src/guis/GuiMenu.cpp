@@ -403,50 +403,14 @@ std::shared_ptr<OptionListComponent<std::string>> GuiMenu::createSplashExitOptio
 
 	return emuelec_splash_exit_mode;
 }
-#endif // 结束外层 `#ifdef _ENABLEEMUELEC`(338 行起)—— 把下面的 es4allParseAudioOutputs 移出去
+#endif // 结束外层 `#ifdef _ENABLEEMUELEC`(338 行起)—— 该函式已移到 ApiSystem::parseAudioOutputs
 
-// es4all: 解析 resources/audio_outputs.cfg -> [(显示标签, "card,device")]，EMUELEC / ROCKNIX 共用。
-// 格式与匹配规则见该文件头；取第一个「型号子串命中 /proc/device-tree/model」的行。
-// 返回空 = 本机型不在表内 -> 调用方不显示 AUDIO OUTPUT 选单(保持出厂默认音源，最安全)。
-//
-// ★守卫是 _ENABLEEMUELEC || ES4ALL_TARGET_ROCKNIX★：
-//   本函数被 ROCKNIX 专属的 openPlatformSettings()(该函数在 #if defined(ES4ALL_TARGET_ROCKNIX))
-//   调用。原本它落在外层那个大 `#ifdef _ENABLEEMUELEC` 块里，而 **rocknix repo 的固件
-//   package.mk 没有 -DENABLE_EMUELEC=1**(只有 -DES4ALL_TARGET=rocknix -DROCKNIX=1)，
-//   固件建置时本函数整个不存在 -> ROCKNIX 分支调用它必然编不过。
-//   (es4all CI 的 rocknix job 多带了 -DENABLE_EMUELEC=1，把这个 bug 遮住了、CI 绿灯 ≠ 固件能编。)
-//   与 GuiFileBrowser::AUDIO(11e8bc9)、splash 白底(2f0b611)是同一类「定义漏在守卫内」的 bug。
-#if defined(_ENABLEEMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)
-static std::vector<std::pair<std::string, std::string>> es4allParseAudioOutputs()
-{
-	std::vector<std::pair<std::string, std::string>> outs;
-
-	std::string model = Utils::String::trim(Utils::Platform::getShOutput(
-		"cat /proc/device-tree/model 2>/dev/null | tr -d '\\000'"));
-
-	std::string cfgPath = ResourceManager::getInstance()->getResourcePath(":/audio_outputs.cfg");
-	if (model.empty() || !Utils::FileSystem::exists(cfgPath))
-		return outs;
-
-	for (const std::string& raw : Utils::String::split(Utils::FileSystem::readAllText(cfgPath), '\n', true))
-	{
-		std::string line = Utils::String::trim(raw);
-		if (line.empty() || line[0] == '#')
-			continue;
-		auto toks = Utils::String::splitAny(line, " \t", true);
-		if (toks.empty() || model.find(toks[0]) == std::string::npos)
-			continue;
-		for (size_t i = 1; i < toks.size(); i++)
-		{
-			size_t c = toks[i].find(':');   // 每项 label:card,device
-			if (c != std::string::npos)
-				outs.push_back({ toks[i].substr(0, c), toks[i].substr(c + 1) });
-		}
-		break;
-	}
-	return outs;
-}
-#endif
+// es4all: audio_outputs.cfg 的解析已移到 `ApiSystem::parseAudioOutputs()`。
+//   原本是本档的 file-static，但**开机还原(main.cpp)也需要同一份逻辑**(EMUELEC 没有发行版
+//   消费脚本，音源路由得由 ES 在启动时重新套用)，放 ApiSystem 才两边都取得到、不必复制一份。
+//   顺带解决了旧守卫的麻烦：ApiSystem 三个 target 都会编，不再需要
+//   `_ENABLEEMUELEC || ES4ALL_TARGET_ROCKNIX` 这种「定义漏在守卫内」的写法
+//   (那类 bug 已出现过三次：GuiFileBrowser::AUDIO 11e8bc9、splash 白底 2f0b611、本函数 af15bca)。
 
 #ifdef _ENABLEEMUELEC   // es4all: 重开外层守卫，下面 openEmuELECSettings 等仍是纯 EmuELEC
 /* < emuelec */
@@ -621,9 +585,9 @@ void GuiMenu::openEmuELECSettings()
 	// 映射表放 resources/audio_outputs.cfg(数据文件, 非代码): 加机型只改一行、随 OTA 下发, 见文件头。
 	{
 		// es4all: 机型->音源映射来自 resources/audio_outputs.cfg(数据文件, 非代码)，
-		// 解析逻辑抽成 es4allParseAudioOutputs() 与 ROCKNIX 共用。
+		// 解析逻辑在 ApiSystem::parseAudioOutputs() 与 ROCKNIX / 开机还原共用。
 		// 不在表内的机型: outs 为空 -> 下面 if 不成立 -> 不显示本选单(保持出厂默认音源, 最安全)。
-		std::vector<std::pair<std::string, std::string>> outs = es4allParseAudioOutputs();
+		std::vector<std::pair<std::string, std::string>> outs = ApiSystem::getInstance()->parseAudioOutputs();
 
 		if (!outs.empty())
 		{
@@ -638,7 +602,10 @@ void GuiMenu::openEmuELECSettings()
 			audioout->setSelectedChangedCallback([audioout](std::string dev) {
 				if (SystemConf::getInstance()->set("ee_audio_device", dev))
 					SystemConf::getInstance()->saveSystemConf();
-				Utils::Platform::ProcessStartInfo("/usr/bin/emuelec-utils setauddev " + dev).run();
+				// es4all: 走 applyEmuelecAudioOutput 而不是直接呼叫 setauddev ——
+				// setauddev 只改 asound.conf 的默认 PCM，不动硬件路由，会造成
+				// 「选了 AV，HDMI 还在同时出声」(实机 .165 确认)。见该函式说明。
+				ApiSystem::getInstance()->applyEmuelecAudioOutput(dev);
 			});
 		}
 	}
@@ -5218,7 +5185,7 @@ void GuiMenu::openPlatformSettings()
 		}
 	}
 
-	// 音源输出 —— 与 EMUELEC 共用 resources/audio_outputs.cfg 映射表(见 es4allParseAudioOutputs)，
+	// 音源输出 —— 与 EMUELEC 共用 resources/audio_outputs.cfg 映射表(见 ApiSystem::parseAudioOutputs)，
 	// 但后端不同：EMUELEC 是裸 ALSA(emuelec-utils setauddev 改 asound.conf 默认 PCM)，
 	// ROCKNIX 走 PipeWire(aplay -L 的 default 指向 PipeWire Media Server)，写 asound.conf 无效，
 	// 必须改 PipeWire 默认 sink -> 交给 glue 脚本 es4all-setauddev(按 ALSA card 号解析 sink id，
@@ -5228,7 +5195,7 @@ void GuiMenu::openPlatformSettings()
 	// 板载 3.5mm 是 AV 孔，但设备树里没有任何模拟 codec 节点(只有 rockchip,rk3568-spdif + spdif-dit
 	// 这个数字 dummy codec)，实听 card1 无声、HDMI 正常。只剩一个可选项的选单没有意义。
 	{
-		std::vector<std::pair<std::string, std::string>> outs = es4allParseAudioOutputs();
+		std::vector<std::pair<std::string, std::string>> outs = ApiSystem::getInstance()->parseAudioOutputs();
 		if (!outs.empty())
 		{
 			auto audioout = std::make_shared< OptionListComponent<std::string> >(mWindow, _("AUDIO OUTPUT"), false);

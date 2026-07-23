@@ -160,6 +160,18 @@ public:
     std::vector<std::string> getAvailableCpuGovernors();
     void setCpuGovernor(const std::string& gov);
 
+    // es4all: 机型 -> 音源输出映射表(resources/audio_outputs.cfg)。EMUELEC / ROCKNIX 共用，
+    // 从 GuiMenu 移来这里，好让开机还原(main.cpp)也取得到。回传 [(显示标签, "card,device")]，
+    // 空 = 本机型不在表内 -> 调用方不显示 AUDIO OUTPUT 选单(保持出厂默认音源，最安全)。
+    std::vector<std::pair<std::string, std::string>> parseAudioOutputs();
+
+#if defined(ES4ALL_TARGET_EMUELEC)
+    // es4all: 套用 EMUELEC 音源输出 —— 切换时与开机还原共用同一条路径。
+    // ★不能只呼叫 emuelec-utils setauddev★：它【只】改 asound.conf 的默认 PCM，不动硬件路由，
+    // 结果选了 AV、HDMI 仍在同时出声(实机 .165 确认)。本函式会连 HDMI 输出路径一起开/关。
+    void applyEmuelecAudioOutput(const std::string& dev);
+#endif
+
     virtual std::pair<std::string, int> updateSystem(const std::function<void(const std::string)>& func = nullptr);
 
     std::pair<std::string, int> backupSystem(BusyComponent* ui, std::string device);

@@ -555,6 +555,12 @@ int err = snd_pcm_open(&pcm_handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
 	// es4all: EMUELEC 无发行版消费脚本(不像 ROCKNIX 有 autostart 读 system.cpugovernor), 故开机时
 	// 由 ES 重新套用保存的 CPU governor 以持久化。空值(AUTO)则不动, 保持内核默认。
 	ApiSystem::getInstance()->setCpuGovernor(SystemConf::getInstance()->get("system.cpugovernor"));
+
+	// es4all: 同理重新套用音源输出。★这条必须做★ —— 该机**没有 asound.state、也没有 alsa-restore
+	// 服务**(实机 .165 查证)，`Audio hdmi-out mute` 这类 ALSA 控制项**重开机一定掉回预设(HDMI 不静音)**，
+	// 于是选了 AV 的人重开机后又变成 HDMI/AV 两边同时出声。asound.conf 那半是写在档案里的、本来就持久，
+	// 掉的只有硬件路由这半，所以要在开机时补回来。
+	ApiSystem::getInstance()->applyEmuelecAudioOutput(SystemConf::getInstance()->get("ee_audio_device"));
 #endif
 
 #if !WIN32

@@ -12,6 +12,7 @@
 #include "utils/FileSystemUtil.h"
 #include "utils/StringUtil.h"
 #include "utils/ThreadPool.h"
+#include "resources/ResourceManager.h"   // parseAudioOutputs 读 :/audio_outputs.cfg
 #include "RetroAchievements.h"
 #include "Es4allUpdate.h"
 #include "utils/ZipFile.h"
@@ -287,6 +288,75 @@ void ApiSystem::setCpuGovernor(const std::string& gov)
 	                 "[ -w \"$f\" ] && echo '" + gov + "' > \"$f\" 2>/dev/null; done";
 	Utils::Platform::ProcessStartInfo(sh).run();
 }
+
+// es4all: 解析 resources/audio_outputs.cfg -> [(显示标签, "card,device")]，EMUELEC / ROCKNIX 共用。
+// 格式与匹配规则见该文件头；取第一个「型号子串命中 /proc/device-tree/model」的行。
+// 原本是 GuiMenu.cpp 的 file-static，移来这里是为了让开机还原(main.cpp)也用得到同一份逻辑。
+std::vector<std::pair<std::string, std::string>> ApiSystem::parseAudioOutputs()
+{
+	std::vector<std::pair<std::string, std::string>> outs;
+
+	std::string model = Utils::String::trim(Utils::Platform::getShOutput(
+		"cat /proc/device-tree/model 2>/dev/null | tr -d '\\000'"));
+
+	std::string cfgPath = ResourceManager::getInstance()->getResourcePath(":/audio_outputs.cfg");
+	if (model.empty() || !Utils::FileSystem::exists(cfgPath))
+		return outs;
+
+	for (const std::string& raw : Utils::String::split(Utils::FileSystem::readAllText(cfgPath), '\n', true))
+	{
+		std::string line = Utils::String::trim(raw);
+		if (line.empty() || line[0] == '#')
+			continue;
+		auto toks = Utils::String::splitAny(line, " \t", true);
+		if (toks.empty() || model.find(toks[0]) == std::string::npos)
+			continue;
+		for (size_t i = 1; i < toks.size(); i++)
+		{
+			size_t c = toks[i].find(':');   // 每项 label:card,device
+			if (c != std::string::npos)
+				outs.push_back({ toks[i].substr(0, c), toks[i].substr(c + 1) });
+		}
+		break;
+	}
+	return outs;
+}
+
+#if defined(ES4ALL_TARGET_EMUELEC)
+void ApiSystem::applyEmuelecAudioOutput(const std::string& dev)
+{
+	if (dev.empty() || dev == "auto")
+		return;
+
+	// 1) 应用层：改 asound.conf 的默认 PCM。emuelec-utils setauddev 【只】做这一件事
+	//    (实作就一行 sed: `pcm "hw:..."` -> `pcm "hw:<dev>"`)。
+	Utils::Platform::ProcessStartInfo("/usr/bin/emuelec-utils setauddev " + dev).run();
+
+	// 2) 硬件层：开/关 HDMI 那条输出路径。
+	//    ★实机 .165 定位★：只做第 1 步不够 —— 切到 AV 之后【HDMI 仍在同时出声】，因为
+	//    ALSA 控制项 `Audio hdmi-out mute` 一直是 off、HDMI 输出路径从头到尾没人关过。
+	//    (EmuELEC 原本预设就走 HDMI、没人切 AV，所以这个洞一直没暴露；是我们做出 AUDIO OUTPUT
+	//     选单之后才浮现的。实测设 on 后 AV 独占、HDMI 静音；切回 HDMI 设 off 即恢复。)
+	//    ★用【控制项名称】定址而非 numid★ —— numid 会随内核/机型变动，写死数字换台机器就错。
+	//    非 HDMI 项(AV / 光纤等)一律静音 HDMI；找不到该机型的表(outs 空)时不动，避免误关。
+	bool known = false, isHdmi = false;
+	for (auto& o : parseAudioOutputs())
+	{
+		if (o.second == dev)
+		{
+			known = true;
+			isHdmi = (Utils::String::toUpper(o.first) == "HDMI");
+			break;
+		}
+	}
+	if (!known)
+		return;
+
+	Utils::Platform::ProcessStartInfo(
+		std::string("amixer -c 0 cset name='Audio hdmi-out mute' ") + (isHdmi ? "off" : "on")
+		+ " >/dev/null 2>&1").run();
+}
+#endif
 
 // BusyComponent* ui
 std::pair<std::string, int> ApiSystem::updateSystem(const std::function<void(const std::string)>& func)
