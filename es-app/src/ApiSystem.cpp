@@ -378,9 +378,24 @@ void ApiSystem::applyEmuelecVideoMode(const std::string& mode)
 	//   ⚠️ 必须在建立视窗/renderer **之前**呼叫(check_res.sh 自己也注明
 	//   "this has to be done before starting ES")，否则 ES 会以旧分辨率初始化。
 	//   debug 开着不复位：留着 1 才不会有别的路径又被挡回去，且它本身只是解锁开关。
-	Utils::Platform::ProcessStartInfo(
-		"echo 1 > /sys/class/display/debug 2>/dev/null; "
-		"/usr/bin/setres.sh " + mode + " >/dev/null 2>&1").run();
+	//
+	// ★另外两个实机踩到的坑，一并处理★
+	//   ① setres.sh 偶尔首次失败：实测切换后读回还是旧模式，再跑一次才成功(驱动可能还在处理
+	//      前一次切换)。故读回验证、最多重试 3 次 —— 这对**防呆的还原路径**尤其要紧：
+	//      还原若默默失败，使用者就永远卡在看不到画面的模式里，防呆等于自废。
+	//   ② **切完模式后 HDMI PHY 会停在 0**(= 输出直接被关掉)。这不是采集卡的问题，
+	//      对真电视一样是黑屏 —— 先前多次「切了就再也没画面」有一部分就是它造成的。
+	//      故结尾无条件补 `echo 1 > .../phy`(本来就是 1 时写入无害)。
+	std::string sh =
+		"for i in 1 2 3; do "
+		  "echo 1 > /sys/class/display/debug 2>/dev/null; "
+		  "/usr/bin/setres.sh " + mode + " >/dev/null 2>&1; "
+		  "[ \"$(cat /sys/class/display/mode 2>/dev/null)\" = \"" + mode + "\" ] && break; "
+		  "sleep 1; "
+		"done; "
+		"echo 1 > /sys/class/amhdmitx/amhdmitx0/phy 2>/dev/null; "
+		"true";
+	Utils::Platform::ProcessStartInfo(sh).run();
 }
 #endif
 
