@@ -5136,7 +5136,14 @@ void GuiMenu::openPlatformSettings()
 	// es4all: ROCKNIX 出厂/原生可能写 "none"，runemu.sh 的 case 是 `off|none)` 两者等价；
 	// 不归一化的话 OptionList 匹配不到任何项，会退回显示第一项「默认」，与实际(关闭)不符。
 	if (curLog == "none") curLog = "off";
-	loglevel->addRange({ { _("DEFAULT"), "" }, { _("OFF"), "off" }, { _("VERBOSE"), "verbose" } }, curLog);
+	// es4all: 顺序照「记录量由少到多」排 —— 关闭 → 默认 → 详细(2026-07-23 用户要求)。
+	//   原本是 默认/关闭/详细，把记录量最少的「关闭」摆中间，反直觉。
+	//   三档对应 runemu.sh:133 的三个分支:
+	//     off|none  -> LOG=false                 完全不记
+	//     (空)      -> LOG=true                  记 exec.log，但不开 VERBOSE
+	//     verbose   -> LOG=true; VERBOSE=true    另外再记 runemu.sh 自身的步骤讯息
+	//   即「默认」确实比「详细」少一层，夹在中间是对的。
+	loglevel->addRange({ { _("OFF"), "off" }, { _("DEFAULT"), "" }, { _("VERBOSE"), "verbose" } }, curLog);
 	s->addWithDescription(_("RETROARCH LOGGING"), _("RetroArch logs; enable when you need to debug."), loglevel);
 	s->addSaveFunc([loglevel] {
 		if (loglevel->changed() && SystemConf::getInstance()->set("system.loglevel", loglevel->getSelected()))
