@@ -574,7 +574,7 @@ void GuiMenu::openEmuELECSettings()
 		s->addWithDescription(_("RETROARCH LOGGING"),
 			_("RetroArch logs; enable when you need to debug."),
 			ra_logging_enabled);
-		s->addSaveFunc([ra_logging_enabled] {
+		s->addSaveFunc([ra_logging_enabled, raLogging] {
 				bool logging_enabled = ra_logging_enabled->getState();
 				SystemConf::getInstance()->set("global.retroarchLogging", logging_enabled ? "1" : "0");
 				SystemConf::getInstance()->saveSystemConf();
@@ -585,7 +585,14 @@ void GuiMenu::openEmuELECSettings()
 				//   ARMBIAN 的 RA 启动链是 es4a-ra-launch(1key 部署，只做语系透传，没有日志逻辑)，
 				//   与其去改那支跨仓库的脚本，不如直接写 RetroArch 自己的设定键 —— 完全在 ES 掌握内。
 				//   键存 SystemConf 照旧(UI 状态与另两个 target 一致)，套用则走 retroarch.cfg。
-				ApiSystem::getInstance()->applyArmbianRetroarchLogging(logging_enabled);
+				//
+				// ★必须比对旧值、只在真的改动时才写★：本 addSaveFunc **没有 changed() 闸门**，
+				//   选单一关就会无条件执行(原本只写个 SystemConf 键，无所谓)。接上改写
+				//   retroarch.cfg 之后，光是「进平台设置看一眼再退出」就会把使用者自己在
+				//   RetroArch 里调过的 frontend_log_level 覆盖掉 —— 实机 .198 上真的发生了
+				//   (原本手动设的 "1" 被写成 "3")。故此处自行比对进选单时的初始值。
+				if (logging_enabled != raLogging)
+					ApiSystem::getInstance()->applyArmbianRetroarchLogging(logging_enabled);
 #endif
 			});
 #endif
