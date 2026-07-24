@@ -128,3 +128,14 @@ R 的 locale 是**执行时现编**的（JELOS 继承的设计，为省映像空
 目标：让独立模拟器的键位也跟 ES 侦测到的当前手把布局对齐（至少做到位置对齐由 ES 的 A 键侦测结果驱动），
 两个 target 统一。⚠️ 这块在 EmuELEC 树 / ROCKNIX 树（编译 session 地盘），ES 前端目前只设
 `_auto_gamepad` 默认值与发布 ROCKNIX 的静态 `controls.ini`。
+
+### 6. 按 GPU 决定默认走 libretro 还是独立模拟器（R / E）
+
+重负载平台（PSP、Dreamcast…）在弱 GPU 上，**独立模拟器**（PPSSPP-SA / Flycast-SA）通常比 libretro 核心快
+（libretro 受 Panfrost/GLES 天花板限制）；但在强 GPU 上 libretro 的统一体验（即时存档、金手指、netplay、
+RA 选单）更划算。目前胶水是**无条件写死走独立版**（`002-es4all-glue` 里
+`psp.emulator=ppsspp`/`psp.core=ppsspp-sa`、`dreamcast.emulator=flycast`/`dreamcast.core=flycast-sa`）。
+
+目标：**按 GPU 世代自动选默认**——弱 GPU 默认独立模拟器、强 GPU 默认 libretro，使用者仍可手动覆盖。
+GPU 分级参考各芯片的 GPU 世代（见 memory `retro_firmware_by_chip`）。⚠️ 决策点在胶水/发行版侧
+（写 `system.cfg` 的 `<platform>.emulator`/`.core`），不在 ES 前端；两个 target 统一逻辑。
