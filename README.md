@@ -113,3 +113,18 @@ R 的 locale 是**执行时现编**的（JELOS 继承的设计，为省映像空
 
 → 加一个「接收测试版」开关，**预设关闭**；关闭时跳过 `prerelease=true` 的 release
 （GitHub API 的 release 物件本来就有这个栏位，不必自己解析版本字串）。
+
+### 5. 独立模拟器（PSP=PPSSPP-SA、DC=Flycast-SA）键位改成 ES 透传
+
+现况：这些独立模拟器的键位（选单导航与遊戲內共用同一份映射）**都不是 ES 逐键透传的**，全在韧体树/胶水里：
+
+| target | 现况 |
+|---|---|
+| `emuelec` | 半透传：`<emu>_auto_gamepad=1` 时启动脚本从 ES 拿「用哪支手把」，但「按钮→功能」的对照值**写死在** `set_ppsspp_joy.sh` / `set_flycast_joy.sh` 的表里 |
+| `rocknix` | 全写死：PSP 用静态 `controls.ini`（胶水覆盖）、Flycast 走 SDL 位置自动 + 静态默认 cfg；`start_ppsspp.sh` 根本不读 `ppssppsdl_auto_gamepad` |
+
+问题：换手把（如内建 retrogame_joypad ↔ 外接 Xbox 手把）就可能 ✕○□△ / 选单方向错位，因为映射是按某支手把的 SDL 枚举写死的，没跟着 ES 侦测到的当前手把走。
+
+目标：让独立模拟器的键位也跟 ES 侦测到的当前手把布局对齐（至少做到位置对齐由 ES 的 A 键侦测结果驱动），
+两个 target 统一。⚠️ 这块在 EmuELEC 树 / ROCKNIX 树（编译 session 地盘），ES 前端目前只设
+`_auto_gamepad` 默认值与发布 ROCKNIX 的静态 `controls.ini`。
