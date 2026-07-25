@@ -408,7 +408,10 @@ void InputManager::rebuildAllJoysticks(bool deinit)
 
 		if (!loadInputConfig(mInputConfigs[joyId]))
 		{
-#if !BATOCERA && !_ENABLEEMUELEC
+		// es4all: EMUELEC 原本关掉了 SDL 自动映射 fallback,导致 es_input.cfg 没收录的手柄
+		// 一律要跑设定精灵。这里放行(与 ROCKNIX/Armbian 一致),让 SDL 已识别的手柄插上
+		// 即用,自动生成位置对齐的 Xbox 式映射(_sdlToEsMapping,INVERTEDINPUTCONFIG 关时 a<->b)。
+#if !BATOCERA
 			std::string mappingString;
 			
 			if (SDL_IsGameController(idx))
