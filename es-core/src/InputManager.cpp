@@ -377,10 +377,17 @@ void InputManager::rebuildAllJoysticks(bool deinit)
 		char guid[40];
 		SDL_JoystickGetGUIDString(SDL_JoystickGetGUID(joy), guid, 40);
 
-#if WIN32
+		// SDL 2.26+ 会把「装置名称的 CRC-16」编进 GUID 的第 3~4 个 byte(字串第 4~7 个字元),
+		// 同一颗 VID/PID 会因为名称不同而算出不同的 GUID。上游只在 WIN32 剥掉它,Linux 没剥,
+		// 于是 es_input.cfg 里那些旧格式 GUID(03000000....)全部对不上,15 支出厂手柄一律
+		// 落到设定精灵 —— X98mini 实机坐实:SDL 报 030081b85e04...,名册里是 030000005e04...。
+		//
+		// 为什么剥这里就够: loadInputConfig 的第二关虽然会剥 CRC 再比,但它「同时要求名称相符」,
+		// 而 SDL_JoystickName 对已识别的手柄回传的是映射名(Xbox 360 Controller)、跟名册里的
+		// 核心名(Microsoft X-Box 360 pad)不一样,所以过不了;第三关「只比 GUID」又没剥 CRC。
+		// 在来源就剥掉,第三关便能直接命中,两个洞一次补好。
 		// SDL 2.26 + -> Remove new CRC-16 name hash encoding
 		for (int i = 4; i < 8; i++) guid[i] = '0';
-#endif
 
 		// create the InputConfig
 		auto cfg = mInputConfigs.find(joyId);
