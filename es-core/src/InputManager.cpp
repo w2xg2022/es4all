@@ -417,7 +417,7 @@ void InputManager::rebuildAllJoysticks(bool deinit)
 		{
 		// es4all: EMUELEC 原本关掉了 SDL 自动映射 fallback,导致 es_input.cfg 没收录的手柄
 		// 一律要跑设定精灵。这里放行(与 ROCKNIX/Armbian 一致),让 SDL 已识别的手柄插上
-		// 即用,自动生成位置对齐的 Xbox 式映射(_sdlToEsMapping,INVERTEDINPUTCONFIG 关时 a<->b)。
+		// 即用。产出的映射见 _sdlToEsMapping —— 一律 Xbox 式(A 在南),理由与边界写在该表上方。
 #if !BATOCERA
 			std::string mappingString;
 			
@@ -774,15 +774,26 @@ bool InputManager::tryLoadInputConfig(std::string path, InputConfig* config, boo
 
 static std::map<std::string, std::string> _sdlToEsMapping =
 {
-#ifdef INVERTEDINPUTCONFIG
+   // ★w2xg2022★ 未收录手柄走 SDL 自动映射 fallback 时,一律套「Xbox 式」(A 在南)。
+   //
+   // SDL GameController 的 a/b/x/y 是【位置名】,与面板印刷无关:a=南 b=东 x=西 y=北。
+   // 原本这里把 a<->b、x<->y 对调,产出的是【任天堂式】(A 落在东)。改成一对一直通,
+   // ES 的 a 就落在南 = Xbox 式,与 Xbox 手柄面板印刷一致。
+   //
+   // 理由(使用者拍板):目前淘宝/拼多多在卖的手柄约七成是 Xbox 式(A 在南)、三成任天堂式
+   // (A 在东)。未收录手柄没有别的线索可判断,赌多数。
+   //
+   // ⚠️ 影响范围仅限「SDL 自动映射 fallback」这一条路径 —— 也就是 es_input.cfg 里【查不到】
+   //    的手柄。既有的 15 笔出厂条目【刻意不动】:光看 es_input.cfg 只有「ES 按键名->按钮编号」,
+   //    反推不出该手柄面板究竟印的是 Xbox 式还是任天堂式,乱改会把原本正确的弄坏。
+   //    所以两者会并存:名册内的照旧,名册外的走 Xbox 式。
+   //
+   // 顺带移除 INVERTEDINPUTCONFIG 分支:它只在 WIN32 定义,而它要的正是这里的 a/b 直通,
+   // 现在无条件直通后该分支已无差别(x/y 一并直通,原本连 WIN32 都被对调,属旧有不一致)。
    { "a",             "a" },
    { "b",             "b" },
-#else
-   { "a",             "b" },
-   { "b",             "a" },
-#endif
-   { "x",             "y" },
-   { "y",             "x" },
+   { "x",             "x" },
+   { "y",             "y" },
    { "back",          "select" },
    { "start",         "start" },
    { "leftshoulder",  "pageup" },
