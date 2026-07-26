@@ -7,7 +7,12 @@
 #include "components/SliderComponent.h"
 #include "components/OptionListComponent.h"
 #include "InputManager.h"
-#ifdef _ENABLEEMUELEC
+// es4all: 选单导航音效原本只给 EMUELEC 编译,ROCKNIX 因此完全没有上下移动的音效。
+// 放宽守卫让 ROCKNIX 也编进来(音效档 resources/mscroll.ogg 三边都有,
+// ROCKNIX 上 ~/.emulationstation 是指向 .config/emulationstation 的符号链接,fallback 路径可达)。
+// ⚠️ 只放宽「音效」这三处;下面把翻页键改绑 lefttrigger/righttrigger 的两处【不要动】,
+//    那与音效无关,动了会改掉 ROCKNIX 的翻页操作。
+#if defined(_ENABLEEMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)
 //I am sure this  part should be moved to another file, it is not supposed to be here
 #include "Sound.h"
 #include "SystemConf.h"
@@ -262,7 +267,7 @@ void ComponentList::onCursorChanged(const CursorState& state)
 
 	updateHelpPrompts();
 
-#ifdef _ENABLEEMUELEC
+#if defined(_ENABLEEMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)
 if (mOldCursor != mCursor) 
 {
     if (!scrollSound)
@@ -277,7 +282,7 @@ if (mOldCursor != mCursor)
 	if (state == CURSOR_STOPPED && mOldCursor != mCursor)
 		saySelectedLine();
 
-#ifdef _ENABLEEMUELEC
+#if defined(_ENABLEEMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)
    mOldCursor = mCursor; 
 #endif
 
