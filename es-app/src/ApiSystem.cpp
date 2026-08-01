@@ -15,6 +15,7 @@
 #include "resources/ResourceManager.h"   // parseAudioOutputs 读 :/audio_outputs.cfg
 #include "RetroAchievements.h"
 #include "Es4allUpdate.h"
+#include "Es4allProfiles.h"   // es4all: 机型专属实作委派(setaudio.sh)
 #include "utils/ZipFile.h"
 #include "Paths.h"
 #include "utils/VectorEx.h"
@@ -343,6 +344,27 @@ void ApiSystem::applyEmuelecAudioOutput(const std::string& dev)
 	if (dev.empty() || dev == "auto")
 		return;
 
+	// es4all: ★优先交给 profile 下发的机型专属实作★(见 Es4allProfiles.h)。
+	//   为什么需要这条路: 下面的内建实作带着 **Amlogic 专属的 ALSA 拓扑假设** ——
+	//   `emuelec-utils setauddev` 只 sed 一行 dmix slave, 前提是「HDMI 与 AV 在同一张卡」;
+	//   第 2 步的 `amixer -c 0` 更是写死卡号。这在 MD1000(RK3566)上是错的: 它是【两张独立
+	//   的卡】(card HDMI / card RK809), 只改 dmix 会变成「声音去了 AV、音量却还挂在 HDMI 卡上」。
+	//   这种 per-device 的拓扑知识不该留在三边共用的前端(与蓝牙那套三层架构同理), 故改成:
+	//   profile 有给脚本就用它, 没有才走内建 —— 既有机型零回归, 加新机型不必重编 ES。
+	//   标签一并传入: Amlogic 上 HDMI/AV 同卡, 脚本光看 dev 分不出使用者选的是哪个孔。
+	{
+		const std::string script = Es4allProfiles::scriptPath("setaudio.sh");
+		if (!script.empty())
+		{
+			std::string label;
+			for (auto& o : parseAudioOutputs())
+				if (o.second == dev) { label = o.first; break; }
+
+			Utils::Platform::ProcessStartInfo(script + " '" + dev + "' '" + label + "'").run();
+			return;
+		}
+	}
+
 	// 1) 应用层：改 asound.conf 的默认 PCM。emuelec-utils setauddev 【只】做这一件事
 	//    (实作就一行 sed: `pcm "hw:..."` -> `pcm "hw:<dev>"`)。
 	Utils::Platform::ProcessStartInfo("/usr/bin/emuelec-utils setauddev " + dev).run();
@@ -423,6 +445,20 @@ void ApiSystem::applyArmbianAudioOutput(const std::string& dev)
 		return;
 	std::string card = Utils::String::trim(dev.substr(0, comma));
 	std::string pcm  = Utils::String::trim(dev.substr(comma + 1));
+	if (card.empty() || pcm.empty())
+		return;
+
+	// ★表里还有另一种写法: "CARD=<卡名>,DEV=<号>"★(MD1000 用的就是这种 —— 该板两张
+	// simple-card 的探测顺序不固定, 卡号会在两次开机之间对调, 只能按卡名定址)。
+	// 必须把前缀剥掉再用: 下面组出来的是 `card <值>` 与 `plughw:<卡>,<号>`,
+	// `card` 这个键只接卡名或卡号, 塞 "CARD=HDMI" 进去是**非法语法**, ALSA 解析到这行
+	// 会把【整份 asound.conf 丢弃】-> 全机没有任何音讯装置(aplay -l 都会失败)。
+	// ⚠️ 实机踩过: 未剥前缀时写出 `card CARD=HDMI`, ALSA 报 "may be old or corrupted",
+	//    ES 的 SDLMixer 开不了装置。这不是「音量不对」这种小毛病, 是整条链断掉。
+	if (card.rfind("CARD=", 0) == 0)
+		card = card.substr(5);
+	if (pcm.rfind("DEV=", 0) == 0)
+		pcm = pcm.substr(4);
 	if (card.empty() || pcm.empty())
 		return;
 

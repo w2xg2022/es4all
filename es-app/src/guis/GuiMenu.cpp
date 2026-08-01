@@ -39,6 +39,8 @@
 
 #include <LibretroRatio.h>
 #include "guis/GuiUpdate.h"
+#include "Es4allProfiles.h" // es4all: 机型专属配置下发开关
+#include <cmath>            // es4all: std::ceil(下方 _ENABLEEMUELEC 区块用), libstdc++13 不再传递包含
 #include "Es4allUpdate.h"
 #include "guis/GuiInstallStart.h"
 #include "guis/GuiTextEditPopupKeyboard.h"
@@ -485,7 +487,11 @@ void GuiMenu::openEmuELECSettings()
 		// 不在表内的机型: outs 为空 -> 下面 if 不成立 -> 不显示本选单(保持出厂默认音源, 最安全)。
 		std::vector<std::pair<std::string, std::string>> outs = ApiSystem::getInstance()->parseAudioOutputs();
 
-		if (!outs.empty())
+		// es4all: ★少于两项就不显示★ —— 只有一个选项的选单点进去什么也选不了, 显示它只会让人
+		// 以为坏了。ES **不再内建任何 audio_outputs.cfg**(2026-08-01 删除, 理由见 main.cpp),
+		// 整张表都来自 es4all-profiles 的机型资料夹; 没下载过 profile 的机器这里就是空的,
+		// 音源则维持发行版开机脚本种好的 HDMI。
+		if (outs.size() >= 2)
 		{
 			auto audioout = std::make_shared< OptionListComponent<std::string> >(mWindow, _("AUDIO OUTPUT"), false);
 			std::string cur = SystemConf::getInstance()->get("ee_audio_device");
@@ -2149,6 +2155,16 @@ void GuiMenu::openUpdatesSettings()
 	//     要支援得另写一支 ROCKNIX 版脚本 —— 评估后决定不做。
 	// 边框功能本身仍在：游戏设置 → DEFAULT GLOBAL SETTINGS 的 ENABLE RA BEZELS(global.bezel)，
 	// 使用者自备 bezel 档放 /storage/roms/bezels 即可，不受此处移除影响。
+
+	// es4all: 机型专属配置下发(见 Es4allProfiles.h)。**预设开启**, 预设值由 ensureDefaults()
+	// 在启动时种进 SystemConf —— addSwitch 读的是 getBool(默认 false), 不种就会显示成「关」。
+	//   放在 DOWNLOADS 组、与 SOFTWARE UPDATES 分开: 这条更新的是【数据/脚本】(音源表、
+	//   installtoemmc 板子表…), 与 ES 本体升级是两回事, 两者互不依赖也不同节奏。
+	//   三个 target 都有(配置内容才分 A/E/R), 故不加 target 守卫。
+#ifdef ES4ALL_SELF_UPDATE
+	updateGui->addSwitch(_("DOWNLOAD DEVICE PROFILES"), _("MODEL-SPECIFIC SETTINGS SUCH AS AUDIO OUTPUT"),
+		"system.profiles.enabled", false, nullptr);
+#endif
 
 	if (ApiSystem::getInstance()->isScriptingSupported(ApiSystem::UPGRADE))
 	{
@@ -5118,12 +5134,16 @@ void GuiMenu::openPlatformSettings()
 	// 必须改 PipeWire 默认 sink -> 交给 glue 脚本 es4all-setauddev(按 ALSA card 号解析 sink id，
 	// 因为 wpctl 的数字 id 每次开机会变)。键用 system.audiooutput(开机 glue 重新套用)。
 	//
-	// ⚠️ 机型不在 audio_outputs.cfg 里就不显示本选单。MD1000 未列入 —— 实机验证它只有 HDMI 可用：
-	// 板载 3.5mm 是 AV 孔，但设备树里没有任何模拟 codec 节点(只有 rockchip,rk3568-spdif + spdif-dit
-	// 这个数字 dummy codec)，实听 card1 无声、HDMI 正常。只剩一个可选项的选单没有意义。
+	// ⚠️ 机型不在 audio_outputs.cfg 里、或表内少于两个选项, 就不显示本选单。
+	//    ES **不再内建这份表**(2026-08-01 删除 resources/audio_outputs.cfg, 理由见 main.cpp),
+	//    整张表都来自 es4all-profiles 的机型资料夹 —— 加一台新机型不必动 ES。
+	//
+	// ★旧注解「MD1000 未列入, 实机验证只有 HDMI 可用」已作废★: 那是设备树还没有模拟 codec
+	//   节点时的结论。RK809 + i2s1 TX-only 的 dts 修正做好之后, AV 已可用并实机验证,
+	//   MD1000 现在在 profiles 的机型档里带 HDMI + AV 两项。
 	{
 		std::vector<std::pair<std::string, std::string>> outs = ApiSystem::getInstance()->parseAudioOutputs();
-		if (!outs.empty())
+		if (outs.size() >= 2)
 		{
 			auto audioout = std::make_shared< OptionListComponent<std::string> >(mWindow, _("AUDIO OUTPUT"), false);
 			std::string cur = SystemConf::getInstance()->get("system.audiooutput");
@@ -5507,41 +5527,71 @@ void GuiMenu::openQuitMenu_static(Window *window, bool quickAccessMenu, bool ani
 				pclose(pipe);
 			}
 
-			if (bootedFromEmmc)
+			// es4all: ★「重启到 USB/SD」已移除(2026-08-01)★
+			//   原实作是 Amlogic 专属(fw_setenv bootfromnand=0, 靠 u-boot 依序试 SD→USB→eMMC),
+			//   在别的板子上被 `command -v` 守卫挡下 -> 只是普通重开 -> 又回到原本的媒体,
+			//   也就是「看得到、按了什么也没发生」。
+			//   而在 MD1000(RK3566)这类板子上它**根本做不到**: 原厂 u-boot 扫不到 USB,
+			//   内核一定得从 eMMC 链载; 能变的只有 initramfs 挑哪个 rootfs, 而那由
+			//   boot.scr 里写死的 `boot=LABEL=EMUELEC` 决定 —— 盒子上没有 mkimage, 改不了。
+			//   要切回外接媒体的正解就是**关机、拔掉/插上媒体、再通电**, 软体帮不上忙。
+			//   与其留一个语意含糊、多数机型上无效的按钮, 不如不放。
+			//
+			// 反方向「重启到 eMMC」保留, 但★只在【从外接媒体开机】且 profile 有给实作时才出现★:
+			//   这个动作各家机制完全不同(Amlogic 是 rebootfromnand; RK 链载板是删 TRIGGER),
+			//   没有通用做法, 所以不内建任何机型知识 —— 有脚本才代表这台真的有可用的做法。
+			//   ⚠️ 装进 eMMC 变单系统之后, 原本的 TRIGGER 做法会**让机器开不了机**
+			//      (链载的 fallback 是 Armbian, 而 Armbian 已被抹掉), 那支脚本必须一并撤掉。
+			//      「有 profile 才出现」正好让这件事自动成立: 撤掉脚本, 选单就不见了。
+			if (!bootedFromEmmc)
 			{
-				s->addEntry(_("REBOOT TO USB/SD"), false, [window] {
-					window->pushGui(new GuiMsgBox(window, _("REALLY REBOOT TO USB/SD?"), _("YES"),
-						[] {
-						Scripting::fireEvent("quit", "usb");
-						// es4all: 实际切到外接(USB/SD)开机。Amlogic/EMUELEC u-boot bootcmd:
-						// bootfromnand=0 时依序试 SD→USB→eMMC(外接优先)。原本只 systemctl reboot
-						// 不改 env、fireEvent quit 又无处理器, 于是重启回原媒体(动作无效)。
-						// 带 command -v 守卫: 无 fw_setenv 的平台(非 Amlogic)自动退回普通重启。
-						Utils::Platform::ProcessStartInfo("command -v fw_setenv >/dev/null 2>&1 && fw_setenv bootfromnand 0").run();
-						Utils::Platform::ProcessStartInfo("sync").run();
-						Utils::Platform::ProcessStartInfo("systemctl reboot").run();
-						Utils::Platform::quitES(Utils::Platform::QuitMode::QUIT);
-					}, _("NO"), nullptr));
-				}, "iconAdvanced");
-			}
-			else
-			{
-				s->addEntry(_("REBOOT TO EMMC"), false, [window] {
-					window->pushGui(new GuiMsgBox(window, _("REALLY REBOOT TO EMMC?"), _("YES"),
-						[] {
-						Scripting::fireEvent("quit", "emmc");
-						// es4all: 实际切到内建 eMMC 开机。用 EMUELEC/CoreELEC 自带 rebootfromnand
-						// (设 bootfromnand=1, 并处理 whereToBootFrom / FireTV 特例)。它本身除 FireTV
-						// 外不重启, 故随后 systemctl reboot。带 command -v 守卫, 非 Amlogic 平台退回普通重启。
-						Utils::Platform::ProcessStartInfo("command -v rebootfromnand >/dev/null 2>&1 && rebootfromnand").run();
-						Utils::Platform::ProcessStartInfo("sync").run();
-						Utils::Platform::ProcessStartInfo("systemctl reboot").run();
-						Utils::Platform::quitES(Utils::Platform::QuitMode::QUIT);
-					}, _("NO"), nullptr));
-				}, "iconAdvanced");
+				const std::string rebootEmmc = Es4allProfiles::scriptPath("reboot-to-emmc.sh");
+				if (!rebootEmmc.empty())
+				{
+					s->addEntry(_("REBOOT TO EMMC"), false, [window, rebootEmmc] {
+						window->pushGui(new GuiMsgBox(window, _("REALLY REBOOT TO EMMC?"), _("YES"),
+							[rebootEmmc] {
+							Scripting::fireEvent("quit", "emmc");
+							Utils::Platform::ProcessStartInfo(rebootEmmc).run();
+							Utils::Platform::quitES(Utils::Platform::QuitMode::QUIT);
+						}, _("NO"), nullptr));
+					}, "iconAdvanced");
+				}
 			}
 		}
 }
+
+	// es4all: 写入 eMMC —— ★预设不显示, 由 profile 决定★
+	//   installtoemmc 是**按机型重分区**的操作(分区表、保留哪些分区、u-boot 怎么处理各机不同),
+	//   做错就是开不了机。故 ES 不内建任何机型知识, 也不写死支援清单:
+	//   ★判断依据是【资料】不是【机制】★: 流程脚本 installtoemmc.sh 放在 <T>/_common,
+	//   每台机器都会下载到, 拿它当依据会让选单一律显示; 真正代表「这台做过、验证过」的
+	//   是机型目录里的分区配方 emmc-layout.conf。没有配方就照着别台的分区表砍这台的
+	//   eMMC —— 那正是要避免的事。故两者都具备才显示。
+	//   加一台新机器 = 往 profiles 放一份配方, **不必重编 ES, 更不必重编固件**。
+	//   ⚠️ 与上游的 installtointernal 不是同一支(那支 MD1000 用了开不了机), 别混用。
+	{
+		const std::string emmcScript = Es4allProfiles::scriptPath("installtoemmc.sh");
+		const bool hasLayout = Es4allProfiles::hasFile("storage-config/es4all/emmc-layout.conf");
+		if (!emmcScript.empty() && hasLayout && UIModeController::getInstance()->isUIModeFull())
+		{
+			s->addEntry(_("INSTALL TO EMMC"), false, [window, emmcScript] {
+				window->pushGui(new GuiMsgBox(window,
+					_("THIS WILL ERASE THE INTERNAL STORAGE. CONTINUE?"), _("YES"),
+					[window, emmcScript] {
+						// ★不要同步跑★: 这是【数分钟】的复制作业(SYSTEM 约 1.3G 加上 /storage),
+						// 同步跑会让整个 ES 冻住 —— 画面没反应的机器最容易被使用者当成当机而
+						// 直接拔电, 而这偏偏是最不能被打断的操作。
+						//   脚本自己会做三件事: 搬进独立 systemd scope(脱离 emustation 的 cgroup,
+						//   免得停 ES 时被一起杀掉)→ 停掉 ES 把画面交给 kmscon 终端机, 让使用者
+						//   **全程看得到进度** → 成功后 poweroff(不是 reboot: u-boot 每次开机都
+						//   先试 SD/USB, U 盘还插着就永远开回 U 盘, 软重开不会帮使用者拔 U 盘)。
+						//   全程另写日志到 /storage/.config/es4all/installtoemmc.log。
+						Utils::Platform::ProcessStartInfo(emmcScript + " >/dev/null 2>&1 &").run();
+					}, _("NO"), nullptr));
+			}, "iconAdvanced");
+		}
+	}
 
 	s->setUpdateType(ComponentListFlags::UPDATE_ALWAYS);
 	// AUTO SHUTDOWN TIMEOUT

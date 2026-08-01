@@ -26,6 +26,7 @@
 #include <SystemConf.h>
 #include "ApiSystem.h"
 #include "AudioManager.h"
+#include "Es4allProfiles.h"   // es4all: 机型专属配置下发
 #include "NetworkThread.h"
 #include "scrapers/ThreadedScraper.h"
 #include "ThreadedHasher.h"
@@ -551,12 +552,40 @@ int err = snd_pcm_open(&pcm_handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
 	// Set locale
 	setLocale(argv[0]);
 
+#ifdef ES4ALL_SELF_UPDATE
+	// es4all: 种下「机型专属配置下载」的预设值(**预设开启**)。必须在建选单之前 ——
+	// GuiSettings::addSwitch 读 SystemConf::getBool(默认 false), 键不存在会显示成「关」。
+	Es4allProfiles::ensureDefaults();
+#endif
+
 #if defined(ES4ALL_TARGET_EMUELEC) || defined(ES4ALL_TARGET_ARMBIAN)
 	// es4all: EMUELEC 与 ARMBIAN 都无发行版消费脚本(不像 ROCKNIX 有 autostart 读 system.cpugovernor),
 	// 故开机时由 ES 重新套用保存的 CPU governor 以持久化。空值(AUTO)则不动, 保持内核默认。
 	// ARMBIAN 若因 User=game 写不进 sysfs, setCpuGovernor 内的 `[ -w ]` 会静默跳过(选单那边也不会出现)。
 	ApiSystem::getInstance()->setCpuGovernor(SystemConf::getInstance()->get("system.cpugovernor"));
 #endif
+
+#if defined(ES4ALL_TARGET_ARMBIAN)
+	// es4all: 开机时重新套用使用者选定的音源输出 —— ARMBIAN 没有发行版消费脚本,
+	// 要由 ES 自己重写一次 asound.conf。★未设定过就不动★(见下方说明), 保持出厂预设。
+	ApiSystem::getInstance()->applyArmbianAudioOutput(
+		SystemConf::getInstance()->get("ee_audio_device"));
+#endif
+
+	// es4all: ★这里【刻意】不做「没设定过就种一个 HDMI 预设」★
+	//   曾经做过(seedDefaultAudioOutput, 靠 resources/audio_outputs.cfg 里一份只列 HDMI 的
+	//   保底表取值), 2026-08-01 移除, 连那份保底表一起删掉。两个理由:
+	//   ① **发行版自己在开机早期就种好了**, 而且比 ES 更早、位置更对:
+	//      MD1000 的 md1000-audio-setup.service(Before=emustation.service)在 ee_audio_device
+	//      为空/auto/旧的纯数字写法时填入 CARD=HDMI,DEV=0; Amlogic 的 emuelec_autostart.sh
+	//      同样在无值时设 0,2。ES 再种一次是重复, 还得为此维护一份会漂移的资料档。
+	//   ② **那个缺口本来就不存在**: 一台机型能出全固件, 就代表 HDMI 已经调试通过
+	//      (dts 改好、实机验过才会编固件)。不存在「有固件却没有可用 HDMI 预设」的机器。
+	//   → 于是「加一台新机型」只需要往 es4all-profiles 放机型资料夹, 完全不必动 ES。
+	//   不在表内的机型 parseAudioOutputs() 回空 -> 选单不显示 -> 保持出厂音源, 最安全。
+	//   ⚠️ 别再「顺手」加自动侦测 HDMI: MD1000 的卡就叫 HDMI 好认, 但 X98mini 的 HDMI 是
+	//      hw:0,2 而 aplay -l 显示的名字是 "SPDIF-SPDIF" —— 按名字猜必然挑错孔。
+	//      「有 PCM ≠ 有实体孔」正是这张白名单存在的理由, 自动侦测等于把它绕回去。
 
 #if defined(ES4ALL_TARGET_EMUELEC)
 	// es4all: 同理重新套用音源输出。★这条必须做★ —— 该机**没有 asound.state、也没有 alsa-restore
@@ -695,6 +724,32 @@ int err = snd_pcm_open(&pcm_handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
 
 	NetworkThread* nthread = new NetworkThread(&window);
 	HttpServerThread httpServer(&window);
+
+#ifdef ES4ALL_SELF_UPDATE
+	// es4all: 机型专属配置下发(见 Es4allProfiles.h)。背景执行、**不挡开机**, 失败只写 LOG ——
+	// 没网络是常态(离线玩), 不该为此弹窗打断使用者。
+	//   ⚠️ 套用的档案 ES 本次启动【已经读过】(例如 resources/audio_outputs.cfg), 故本次不生效、
+	//   下次重启 ES 才套上。这是刻意的: 在运行中的 ES 底下换掉它正在读的资源, 就是自我更新
+	//   那边踩过的黑屏坑(见 Es4allUpdate::apply 的说明), 不重蹈。
+	if (Es4allProfiles::isEnabled())
+	{
+		std::thread([] {
+			std::string msg;
+			if (Es4allProfiles::sync(&msg))
+				LOG(LogInfo) << "Es4allProfiles: " << msg << " (下次重启 ES 生效)";
+
+			// es4all: ★通用套用钩子★ —— 同步完(或本来就已是最新)之后跑一次 profile 自带的
+			// bin/apply.sh。ES 只认得「有没有这支脚本」这一件事, 里面做什么全由 profiles 决定,
+			// 于是**以后要新增任何一次性设定(PSP 预设、keylayout、模拟器选择…)都只改 profiles
+			// 仓库, 不必再动 ES、更不必重编固件**。
+			//   幂等由脚本自己负责(各项用标记档把关, 只在第一次套用) —— 放这里每次开机都会跑,
+			//   所以脚本必须能重复执行而不覆盖使用者后来的修改。
+			const std::string apply = Es4allProfiles::scriptPath("apply.sh");
+			if (!apply.empty())
+				Utils::Platform::ProcessStartInfo(apply).run();
+		}).detach();
+	}
+#endif
 
 	// tts
 	TextToSpeech::getInstance()->enable(Settings::getInstance()->getBool("TTS"), false);

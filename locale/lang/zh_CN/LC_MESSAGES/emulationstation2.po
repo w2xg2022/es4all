@@ -4431,3 +4431,20 @@ msgstr "警告"
 
 msgid "ERROR"
 msgstr "错误"
+
+# es4all: 机型专属配置下发(Es4allProfiles)
+msgid "DOWNLOAD DEVICE PROFILES"
+msgstr "下载机型专属配置"
+
+msgid "MODEL-SPECIFIC SETTINGS SUCH AS AUDIO OUTPUT"
+msgstr "音源输出等机型专属配置"
+
+msgid "DEVICE PROFILES UPDATED"
+msgstr "机型专属配置已更新"
+
+# es4all: 写入 eMMC(由 profile 决定是否显示)
+msgid "INSTALL TO EMMC"
+msgstr "写入 eMMC"
+
+msgid "THIS WILL ERASE THE INTERNAL STORAGE. CONTINUE?"
+msgstr "这会清除内建存储空间的数据，确定要继续吗？"
