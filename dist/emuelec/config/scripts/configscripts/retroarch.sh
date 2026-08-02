@@ -75,6 +75,29 @@ function onstart_retroarch_joystick() {
     input_vendor=$(echo $((16#${part1:4})))
     input_product=$(echo $((16#${part2:4})))
 
+    # es4all: 面键要按【位置】写进 autoconfig, 不是按印刷字母。
+    #
+    # ★为什么在这里做, 而不是留给 per-core remap★
+    #   RetroPad 的 A/B/X/Y 本身就是固定方位(A东 B南 X北 Y西)。以前的做法是这里照印刷
+    #   字母抄, 再由 setsettings.sh 写一份 per-core remap 把 A/B 扳回位置 —— 但那是
+    #   「翻转」语意: 正确与否取决于原本是哪一套, 而且它写死只翻 A/B、不翻 X/Y,
+    #   于是四颗面键用了两套规则(A/B 位置对齐、X/Y 标签对齐)。实机就是这样一半对一半错。
+    #   ★「一半对一半错」正是双重错误的徵兆★ —— 别只修露馅的那一半。
+    #   改成这里一次写死方位, 就没有「翻了几次」可以数错, 任天堂式/Xbox 式走同一条路,
+    #   per-core remap 那层整个不需要(已由 override 的 setsettings.sh 移除并清理旧档)。
+    #
+    # ★方位从哪来★: es_input.cfg 的 a/b/x/y 是【印刷字母 → 实体按键编号】,
+    #   ES 的 InvertButtons 记的是【印刷字母在哪个方位】(布局侦测的结果, 精灵只问一次 A):
+    #     InvertButtons=true (Xbox 式)   印刷 A=南 B=东 X=西 Y=北
+    #     InvertButtons=false(任天堂式)  印刷 A=东 B=南 X=北 Y=西
+    #   两者一凑才得到「方位 → 实体编号」。★这是唯一可靠的来源★ ——
+    #   gamecontrollerdb 对山寨手柄常按【字母】写而不是按位置, 拿它当方位用会静默错。
+    ES_SETTINGS="/storage/.config/emulationstation/es_settings.cfg"
+    ES_LAYOUT_XBOX=0
+    if grep -q '<bool name="InvertButtons" value="true"' "${ES_SETTINGS}" 2>/dev/null; then
+        ES_LAYOUT_XBOX=1
+    fi
+
     RA_DEVICE_NAME=$(get_udev_name_from_guid "${DEVICE_GUID}")
     iniSet "input_device" "${RA_DEVICE_NAME}"
     iniSet "input_driver" "${input_joypad_driver}"
@@ -200,6 +223,23 @@ function onstart_retroarch_keyboard() {
     retroarchkeymap["0"]="nul"
 }
 
+# es4all: 印刷字母 -> 该按键实际所在方位对应的 RetroPad 面键。
+#   Xbox 式(印刷 A 在南): 印刷A=南->RetroPad B, 印刷B=东->A, 印刷X=西->Y, 印刷Y=北->X
+#   任天堂式(印刷 A 在东): 印刷与方位本来就一致 -> 原样
+# ES 没有这个设定(旧机器/还没跑过精灵)时走 ES 的预设值 false = 任天堂式, 与原行为相同。
+function face_key() {
+    if [[ "${ES_LAYOUT_XBOX}" -eq 1 ]]; then
+        case "${1}" in
+            a) echo "b" ;;
+            b) echo "a" ;;
+            x) echo "y" ;;
+            y) echo "x" ;;
+        esac
+    else
+        echo "${1}"
+    fi
+}
+
 function map_retroarch_joystick() {
     local input_name="${1}"
     local input_type="${2}"
@@ -220,17 +260,22 @@ function map_retroarch_joystick() {
         right)
             keys=("input_right" "input_state_slot_increase")
             ;;
+        # es4all: 面键分两半处理 ——
+        #   input_<abxy>   = 按【位置】(face_key 换算, 见 onstart 的说明)
+        #   伴生的热键组合 = 按【印刷】不动(input_reset/menu_toggle/fps_toggle)
+        # 这不是不一致, 是三层架构里刻意的分工: 游戏内按位置、组合键按印刷
+        # (使用者记的是手柄上印的字, 而热键提示也都写印刷字母)。
         a)
-            keys=("input_a")
+            keys=("input_$(face_key a)")
             ;;
         b)
-            keys=("input_b" "input_reset")
+            keys=("input_$(face_key b)" "input_reset")
             ;;
         x)
-            keys=("input_x" "input_menu_toggle")
+            keys=("input_$(face_key x)" "input_menu_toggle")
             ;;
         y)
-            keys=("input_y" "input_fps_toggle")
+            keys=("input_$(face_key y)" "input_fps_toggle")
             ;;
         leftbottom|leftshoulder)
             keys=("input_l" "input_load_state")
