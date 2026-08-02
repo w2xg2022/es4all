@@ -37,15 +37,42 @@ namespace
 	const int kSupportedSchema = 1;
 
 	// 本 target 在仓库里的 scope 目录名。
+	// ★仓库第一层用发行版全名, 不用 A/E/R 缩写★(2026-08-02 改):
+	// 缩写省不了几个字, 却让人每次都要回想 A 是 Armbian 还是别的;
+	// 目录名是给人读的, 不是给程式省字元的。
 	std::string targetDir()
 	{
 #if defined(ES4ALL_TARGET_ROCKNIX)
-		return "R";
+		return "rocknix";
 #elif defined(ES4ALL_TARGET_EMUELEC)
-		return "E";
+		return "emuelec";
 #else
-		return "A";
+		return "armbian";
 #endif
+	}
+
+	// 本机的 DEVICE(晶片家族)候选值。★收集成【集合】而不是取单一来源★:
+	// 同一台机器的 DEVICE 在不同地方可能写得不一样 —— MD1000 的云编译 workflow 用
+	// DEVICE=RK3566, 但本地曾用 DEVICE=MD1000 编过, 於是 /ee_arch 里躺的是 MD1000。
+	// 只认一个来源就会「明明是这台却不命中」, 而且是静默的。任一来源对上就算命中。
+	//   EmuELEC/CoreELEC: /etc/os-release 的 COREELEC_DEVICE、以及 /ee_arch
+	//   ROCKNIX/LibreELEC 系: os-release 的 ROCKNIX_DEVICE / LIBREELEC_DEVICE
+	//   Armbian: /etc/armbian-release 的 BOARDFAMILY
+	std::vector<std::string> deviceKeys()
+	{
+		static const char* kCmd =
+			"{ sed -n 's/^\\(COREELEC_DEVICE\\|ROCKNIX_DEVICE\\|LIBREELEC_DEVICE\\)=\"\\?\\([^\"]*\\)\"\\?$/\\2/p' /etc/os-release; "
+			"cat /ee_arch; "
+			"sed -n 's/^BOARDFAMILY=\"\\?\\([^\"]*\\)\"\\?$/\\1/p' /etc/armbian-release; } 2>/dev/null";
+
+		std::vector<std::string> out;
+		for (auto& line : Utils::String::split(Utils::Platform::getShOutput(kCmd), '\n', true))
+		{
+			std::string v = Utils::String::trim(line);
+			if (!v.empty())
+				out.push_back(v);
+		}
+		return out;
 	}
 
 	// 可写暂存基地。与 Es4allUpdate 同一套判断: 唯读平台用 /storage, ARMBIAN 用可写的 home。
@@ -107,10 +134,32 @@ namespace
 	}
 
 	// 仓库路径 -> (scope 优先级, 落点绝对路径)。不适用本机则回 false。
-	//   优先级: 0=common, 1=<T>/_common, 2=<T>/<机型>。数字大的后套用 => 覆盖前者。
+	//
+	// 目录结构(2026-08-02 定案, 与建置系统的 DEVICE/SUBDEVICE 同名同义):
+	//   common/<落点>/…                              rank 0  三个发行版共用(目前空著)
+	//   <target>/_common/<落点>/…                    rank 1  该发行版全机型
+	//   <target>/<DEVICE>/_common/<落点>/…           rank 2  该晶片家族全机型
+	//   <target>/<DEVICE>/<SUBDEVICE>/<落点>/…       rank 3  单一机型
+	// 数字大的后套用 => 覆盖前者。
+	//
+	// ★DEVICE 与 SUBDEVICE 的比对规则【不同】, 是刻意的★:
+	//   DEVICE   = 建置变数, 值本来就是精确字串(RK3566 / Amlogic-no) -> 全等比对
+	//   SUBDEVICE= 拿 /proc/device-tree/model 比, 那是一长串描述 -> 子串比对
+	// 反过来做都会错: DEVICE 用子串会让 "RK3566" 命中 "RK356x";
+	// SUBDEVICE 用全等则永远对不上(model 从来不会刚好等於机型键)。
 	bool resolveDest(const std::string& repoPath, const std::string& model,
+	                 const std::vector<std::string>& devKeys,
 	                 int& outRank, std::string& outAbs, std::string& outRootToken)
 	{
+		auto isDevice = [&](const std::string& s)
+		{
+			return std::find(devKeys.cbegin(), devKeys.cend(), s) != devKeys.cend();
+		};
+		auto isSubDevice = [&](const std::string& s)
+		{
+			return !model.empty() && model.find(s) != std::string::npos;
+		};
+
 		std::vector<std::string> parts = Utils::String::split(repoPath, '/', true);
 		if (parts.size() < 3)          // 至少 <scope>/<dest-root>/<档名>
 			return false;
@@ -125,17 +174,31 @@ namespace
 		}
 		else if (scope == targetDir())
 		{
-			// <T>/_common/... 或 <T>/<机型>/...
 			if (parts.size() < 4)
 				return false;
-			const std::string& sub = parts[1];
-			if (sub == "_common")
+
+			const std::string& lvl2 = parts[1];
+			if (lvl2 == "_common")
+			{
 				outRank = 1;
-			else if (!model.empty() && model.find(sub) != std::string::npos)
-				outRank = 2;          // 机型键是 model 的子串才算命中(与 audio_outputs.cfg 同规则)
+				rootIdx = 2;
+			}
+			else if (isDevice(lvl2))
+			{
+				// <target>/<DEVICE>/_common/… 或 <target>/<DEVICE>/<SUBDEVICE>/…
+				if (parts.size() < 5)
+					return false;
+				const std::string& lvl3 = parts[2];
+				if (lvl3 == "_common")
+					outRank = 2;
+				else if (isSubDevice(lvl3))
+					outRank = 3;
+				else
+					return false;     // 同家族的别台机器
+				rootIdx = 3;
+			}
 			else
-				return false;         // 别的机型 / 别的 target, 不关本机的事
-			rootIdx = 2;
+				return false;         // 别的晶片家族, 不关本机的事
 		}
 		else
 			return false;             // 别的 target
@@ -296,6 +359,10 @@ namespace Es4allProfiles
 
 		// 4) 挑出适用本机的档, 按 scope 优先级排序(小的先套, 大的后套 => 覆盖)。
 		const std::string model = deviceModel();
+		const std::vector<std::string> devKeys = deviceKeys();
+		LOG(LogInfo) << "Es4allProfiles: target=" << targetDir()
+		             << " DEVICE=[" << Utils::String::join(devKeys, ",") << "]"
+		             << " model=\"" << model << "\"";
 		std::vector<PlannedFile> plan;
 
 		for (auto& f : doc["files"].GetArray())
@@ -309,7 +376,7 @@ namespace Es4allProfiles
 			pf.repoPath = f["path"].GetString();
 			pf.md5 = Utils::String::toLower(Utils::String::trim(f["md5"].GetString()));
 
-			if (!resolveDest(pf.repoPath, model, pf.rank, pf.dest, pf.rootToken))
+			if (!resolveDest(pf.repoPath, model, devKeys, pf.rank, pf.dest, pf.rootToken))
 				continue;   // 不适用本机(别的 target / 别的机型 / 不认得的落点)
 
 			plan.push_back(pf);

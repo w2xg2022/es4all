@@ -717,6 +717,27 @@ int err = snd_pcm_open(&pcm_handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
 	// this makes for no delays when accessing content, but a longer startup time
 	ViewController::get()->preload();
 
+	// es4all: ★刷机后第一次进系统一定要跑一次键位精灵★
+	//
+	// 这本身就是**保底机制**, 所以出厂 es_input.cfg 不需要塞一大票手柄的预设键位:
+	// 精灵不依赖任何既有映射(它就是拿来从零配置的), 使用者按哪颗它就记哪颗。
+	// 反过来说, 靠「出厂预设碰巧对上」才能操作的机器, 换一支手柄就没救 ——
+	// 而山寨手柄的按键编号本来就千奇百怪。
+	//
+	// ★用旁档而不是「es_input.cfg 存不存在」当判据★: 刷完机那个档【本来就存在】
+	// (开机时从 /usr/config 复制过来), 拿它判断永远判成「不是第一次」。
+	// 旁档放 /storage, 重刷就没了, 语意刚好是「这份系统跑过没有」。
+	{
+		const std::string stamp = Paths::getUserEmulationStationPath() + "/.es4all-firstboot";
+		if (!Utils::FileSystem::exists(stamp))
+		{
+			SystemConf::getInstance()->setBool("system.input.forcewizard", true);
+			SystemConf::getInstance()->saveSystemConf();
+			Utils::FileSystem::writeAllText(stamp, "1");
+			LOG(LogInfo) << "es4all: 首次开机, 已开启 system.input.forcewizard";
+		}
+	}
+
 	// Initialize input
 	InputConfig::AssignActionButtons();
 	InputManager::getInstance()->init();
