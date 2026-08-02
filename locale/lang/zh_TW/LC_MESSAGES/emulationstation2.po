@@ -4243,6 +4243,10 @@ msgstr "控制器 %i"
 msgid "HOLD ANY BUTTON TO SKIP"
 msgstr "長按任意按鈕跳過"
 
+#: es-core/src/guis/GuiInputConfig.cpp
+msgid "RECOMMENDED: SELECT. ANALOG TRIGGERS (L2/R2) DO NOT WORK AS A HOTKEY."
+msgstr "建議使用 SELECT 鍵。類比扳機（L2/R2）無法作為熱鍵。"
+
 msgid "-NOT DEFINED-"
 msgstr "-未定義-"
 

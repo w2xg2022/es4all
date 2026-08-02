@@ -316,8 +316,25 @@ GuiInputConfig::GuiInputConfig(Window* window, InputConfig* target, bool reconfi
 
 	// only show "HOLD TO SKIP" if this input is skippable
 	mList->setCursorChangedCallback([this](CursorState /*state*/) {
-		bool skippable = GUI_INPUT_CONFIG_LIST[mList->getCursorId()].skippable;
-		mSubtitle2->setOpacity(skippable * 255);
+		const InputConfigStructure& entry = GUI_INPUT_CONFIG_LIST[mList->getCursorId()];
+
+		// es4all: ★热键这一步换成明确的建议文字★
+		//   实机发现使用者可能把热键指到 L2/R2。那两颗在 es_input.cfg 里记成
+		//   type="axis"(类比轴), 而 RetroArch / flycast 的组合键只吃**数位按键编号**,
+		//   拿轴当修饰键做不出来 —— 结果是热键 + 存档/读档/选单**全部失效**,
+		//   而且失败是【静默】的(我们的脚本只能落回 SELECT), 使用者只会觉得
+		//   「热键忽然不管用」, 极难自行联想到原因。与其事后除错, 不如在这一步就讲清楚。
+		//   ⚠️ 这里刻意**不阻挡**使用者这么设(用户裁定), 只给建议。
+		if (entry.name == "HotKeyEnable" || entry.name == "hotkey")
+		{
+			mSubtitle2->setText(_("RECOMMENDED: SELECT. ANALOG TRIGGERS (L2/R2) DO NOT WORK AS A HOTKEY."));
+			mSubtitle2->setOpacity(255);
+		}
+		else
+		{
+			mSubtitle2->setText(_("HOLD ANY BUTTON TO SKIP"));
+			mSubtitle2->setOpacity(entry.skippable * 255);
+		}
 	});
 
 	// make the first one say "PRESS ANYTHING" if we're re-configuring everything

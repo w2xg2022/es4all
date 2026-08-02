@@ -4243,6 +4243,10 @@ msgstr "游戏手柄 %i"
 msgid "HOLD ANY BUTTON TO SKIP"
 msgstr "长按任意键跳过"
 
+#: es-core/src/guis/GuiInputConfig.cpp
+msgid "RECOMMENDED: SELECT. ANALOG TRIGGERS (L2/R2) DO NOT WORK AS A HOTKEY."
+msgstr "推荐使用 SELECT 键。模拟扳机（L2/R2）无法作为热键。"
+
 msgid "-NOT DEFINED-"
 msgstr "-未定义-"
 
