@@ -11,6 +11,7 @@
 #include <iostream>
 #include <assert.h>
 #include "Settings.h"
+#include "SystemConf.h"   // es4all: system.input.forcewizard
 #include <algorithm>
 #include <mutex>
 #include "utils/StringUtil.h"
@@ -420,8 +421,26 @@ void InputManager::rebuildAllJoysticks(bool deinit)
 		// 即用。产出的映射见 _sdlToEsMapping —— 一律 Xbox 式(A 在南),理由与边界写在该表上方。
 #if !BATOCERA
 			std::string mappingString;
-			
-			if (SDL_IsGameController(idx))
+
+			// es4all: ★强制跑一次键位精灵(system.input.forcewizard)★
+			//   上面那条 fallback 是「插上即用」的关键 —— 但它也让**精灵永远不会自己跳出来**:
+			//   SDL 认得的手柄一律被自动配好并 writeDeviceConfig 写回 es_input.cfg,
+			//   isConfigured() 变 true, ViewController::input() 里那条「未设定就跳精灵」永不成立。
+			//
+			//   ⚠️ 试过但行不通的两条路, 别再走一遍:
+			//   ①「把 es_input.cfg 里的 VID/PID 删掉」—— 没用, fallback 会接手自动配好。
+			//   ②「从 gamecontrollerdb 移除该手柄」—— (a) SDL **内建**一份映射表(编进 libSDL2),
+			//      删外部档它照样认得; (b) 就算删成功, PSP/DC 独立模拟器的按键位置**全靠 SDL
+			//      GameController 映射**(joy_common.sh 读的就是它), 手柄不再被认作 GameController
+			//      会让那两个模拟器的佈局整个垮掉 —— 副作用比原问题严重。
+			//
+			//   故改成一个开关:开着就跳过 fallback → 手柄维持未设定 → 使用者按下第一颗键就进
+			//   精灵 → 之后一律走「精灵 → es_input.cfg → 各模拟器」这条**唯一**的透传链,
+			//   不再有「出厂值与实际行为各凭一套来源、碰巧对上」的问题。
+			//   ★配置完成会自动关掉★(见 writeDeviceConfig), 只强制这一次, 日后插新手柄照旧即插即用。
+			bool forceWizard = SystemConf::getInstance()->getBool("system.input.forcewizard");
+
+			if (!forceWizard && SDL_IsGameController(idx))
 				mappingString = SDL_GameControllerMappingForDeviceIndex(idx);
 			
 			if (!mappingString.empty() && loadFromSdlMapping(mInputConfigs[joyId], mappingString))
@@ -984,6 +1003,18 @@ void InputManager::loadDefaultGunConfig()
 void InputManager::writeDeviceConfig(InputConfig* config)
 {
 	assert(initialized());
+
+	// es4all: 强制精灵是**一次性**的 —— 配置一旦写下来就把开关关掉,
+	// 否则每次开机都会再逼使用者跑一次。
+	// ★放在这里而不是精灵的回调里★: 走到这一步就代表「真的产生了一份设定」,
+	// 不管是精灵写的还是别的路径写的, 语意都对; 放回调里则会漏掉其它写入途径。
+	// (开关开着时 fallback 已被跳过, 所以此刻的呼叫来源只会是精灵本身。)
+	if (SystemConf::getInstance()->getBool("system.input.forcewizard"))
+	{
+		SystemConf::getInstance()->setBool("system.input.forcewizard", false);
+		SystemConf::getInstance()->saveSystemConf();
+		LOG(LogInfo) << "es4all: 键位精灵已完成配置, 关闭 system.input.forcewizard";
+	}
 
 	std::string path = getConfigPath();
 
