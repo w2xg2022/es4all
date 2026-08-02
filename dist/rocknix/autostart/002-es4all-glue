@@ -114,4 +114,20 @@ if [ -d "/usr/config/emulationstation/themes/${THEME}" ] && [ ! -e "${THEMES}/${
   cp -a "/usr/config/emulationstation/themes/${THEME}" "${THEMES}/"
 fi
 
+# 10) es4all-profiles 启动挂勾（2026-08-02）
+#     ★这是 ROCKNIX 侧唯一需要随韧体发行的部分，其余膠水都可以搬进 profiles★
+#     selfmount.sh 把 /storage/.config/es4all/override/<名> bind-mount 到 /usr/bin/<同名>，
+#     顺带把自己编的 ES 本体盖上去。有了它，改发行版脚本（例如 start_ppsspp.sh 的选单
+#     热键）只要改 profiles 仓库，**不必重编 ROCKNIX 韧体**。
+#     ⚠️ 必须赶在 ES 起来之前 —— autostart 在 essway/emustation 之前执行，符合。
+#     不存在就跳过：还没下载过 profile 的机器照旧走韧体自带的那份，零影响。
+if [ -x /storage/.config/es4all/bin/selfmount.sh ]; then
+  /storage/.config/es4all/bin/selfmount.sh
+fi
+
+# 11) profile 的一次性套用（PSP/DC 预设等），同样不存在就跳过
+if [ -x /storage/.config/es4all/bin/apply.sh ]; then
+  /storage/.config/es4all/bin/apply.sh
+fi
+
 exit 0
