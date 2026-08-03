@@ -81,6 +81,16 @@ for a in "$@"; do
     *) BOARD="$a" ;;
   esac
 done
+# es4all: 没给板名就读 profile 下发的机型配方(与 EmuELEC 侧同一个契约)。
+#
+# ★为什么不直接 auto-detect 就好★: 那个 conf 的存在与否同时是【选单可见性】的依据
+# —— ES 用 hasFile("storage-config/es4all/emmc-layout.conf") 决定要不要显示
+# 「写入 eMMC」。流程脚本每台都有, 配方才代表这台真的验证过。
+# 让脚本【真的去读它】, 那个档才不会退化成一个没人看的旗标。
+if [ -z "$BOARD" ] && [ -f /storage/.config/es4all/emmc-layout.conf ]; then
+  BOARD=$(sed -n 's/^[[:space:]]*BOARD[[:space:]]*=[[:space:]]*//p' /storage/.config/es4all/emmc-layout.conf | head -1)
+  [ -n "$BOARD" ] && echo "board from profile: $BOARD"
+fi
 [ -n "$BOARD" ] || { echo "Usage: installtoemmc list|auto|<board> [--yes]"; do_list; exit 1; }
 
 if [ "$BOARD" = "auto" ]; then
