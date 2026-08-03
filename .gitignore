@@ -5,3 +5,6 @@ build-*/
 CMakeCache.txt
 CMakeFiles/
 emulationstation
+
+# es4all: .mo 是 make i18n 从 .po 编出来的产物, 不进版本控制
+locale/lang/*/LC_MESSAGES/*.mo

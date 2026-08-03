@@ -922,7 +922,7 @@ void GuiMenu::openExternalMounts(Window* mWindow, std::string configName)
 			emuelec_external_device_def->add(*it, *it, curDev == *it);
 
 		externalMounts->addWithDescription(_("EXTERNAL DEVICE"),
-			_("Pick a drive to merge with the internal storage: its games appear together with the built-in ones. INTERNAL STORAGE shows only the built-in games."),
+			_("Merge a drive with the internal storage - games from both are shown together. Pick INTERNAL STORAGE to show only the games already on this device."),
 			emuelec_external_device_def);
 
 		// ★选中即发动★(2026-08-03): 原本还要再按一次「立即挂载」才生效 ——
@@ -932,9 +932,17 @@ void GuiMenu::openExternalMounts(Window* mWindow, std::string configName)
 				[mWindow, emuelec_external_device_def, curDev](std::string name) {
 			if (name == curDev)
 				return;
-			std::string disp = name.empty() ? _("INTERNAL STORAGE") : name;
-			mWindow->pushGui(new GuiMsgBox(mWindow,
-				(_("Switching the game storage requires a full reboot.") + std::string("\n\n") + disp + std::string("\n\n") + _("Continue?")).c_str(),
+			// 讯息按方向分开写: 「聚合」与「只用内部」是两件不同的事,
+			// 用同一句「切换储存位置」会让人不知道选下去到底会发生什么。
+			std::string msg;
+			if (name.empty())
+				msg = _("Only the internal storage will be used. It will no longer be merged with any external drive.");
+			else
+				msg = Utils::String::format(
+					_("\"%s\" will be MERGED with the internal storage - the games on both will be shown together.").c_str(),
+					name.c_str());
+			msg += std::string("\n\n") + _("This requires a full reboot. Continue?");
+			mWindow->pushGui(new GuiMsgBox(mWindow, msg.c_str(),
 				_("YES"), [name] {
 					SystemConf::getInstance()->set("system.gamesdevice", name);
 					// ★同时把发行版後端钉在内部盘★: 聚合期间内部那一层必须是 EEROMS,
@@ -5387,6 +5395,39 @@ void GuiMenu::openRocknixExternalMount(Window* win)
 }
 #endif
 
+// es4all: 判断【这次是从 eMMC 开机, 还是从 SD/USB 开机】。
+//   原本只写在「重启到 eMMC」那一段里, 现在「写入 eMMC」也要用同一个判断,
+//   所以抽出来共用 —— 两处若各写一份, 将来只改到一边就是最典型的静默不一致。
+//
+//   ★别用 lsblk / findmnt★: EMUELEC 的 busybox 两个都没有, 用了会恒回预设值,
+//   而预设值恰好是「从 eMMC 开机」-> 判断整个反过来还看不出来(实机踩过)。
+//   改用一定存在的 /proc/mounts + /sys/block/<disk>/removable:
+//     取 /flash 的装置(EMUELEC 的 / 是 squashfs loop, 判不出媒体), 退而取 /,
+//     是 loop 就再退 /storage; 剥掉分区号取基础盘, 读 removable(0=eMMC, 1=SD/USB)。
+//
+//   ★只算一次★: 开机媒体在运行期间不会变, 而这是 popen 起一支 shell 的成本,
+//   放在每次开选单都跑没有意义。
+static bool es4allBootedFromEmmc()
+{
+	static int cached = -1;
+	if (cached >= 0)
+		return cached == 1;
+
+	bool result = true;   // 保守预设: 判不出来时当作已在 eMMC -> 相关选项不出现, 不会误导使用者
+	FILE* pipe = popen(
+		R"SH(dev=$(awk '$2=="/flash"{print $1;exit}' /proc/mounts); [ -z "$dev" ] && dev=$(awk '$2=="/"{print $1;exit}' /proc/mounts); case "$dev" in /dev/loop*) dev=$(awk '$2=="/storage"{print $1;exit}' /proc/mounts);; esac; d=$(basename "$dev" 2>/dev/null); case "$d" in mmcblk*) d=${d%p[0-9]*};; *) d=$(echo "$d" | sed 's/[0-9]*$//');; esac; cat "/sys/block/$d/removable" 2>/dev/null)SH", "r");
+	if (pipe != nullptr)
+	{
+		char buf[8] = "";
+		if (fgets(buf, sizeof(buf), pipe) != nullptr)
+			result = (Utils::String::trim(std::string(buf)) == "0");
+		pclose(pipe);
+	}
+
+	cached = result ? 1 : 0;
+	return result;
+}
+
 void GuiMenu::openQuitMenu()
 {
   GuiMenu::openQuitMenu_static(mWindow);
@@ -5558,24 +5599,9 @@ void GuiMenu::openQuitMenu_static(Window *window, bool quickAccessMenu, bool ani
 	{
 		if (SystemConf::getInstance()->getBool("extra_quit_menu.enabled", true))
 		{
-			// es4all: 探测开机媒体(eMMC vs SD/USB)决定显示「重启到 USB/SD」还是「重启到 eMMC」。
-			// 原实现用 lsblk + findmnt —— EMUELEC(busybox)两个命令都没装, 整段失效,
-			// bootedFromEmmc 恒为默认 true → 无论实际从哪开机都显示「重启到USB/SD」(与实际相反)。
-			// 改用纯 busybox 可用的 /proc/mounts + /sys/block/<disk>/removable:
-			//   优先取 /flash 的设备(EMUELEC/CoreELEC 开机分区; / 在 EMUELEC 是 squashfs loop,
-			//   无法直接判开机媒体), 否则取 /; 若是 loop 设备再回退 /storage。
-			//   剥掉分区号得基础盘(sda1→sda, mmcblk0p1→mmcblk0), 读 removable(0=eMMC,1=SD/USB)。
-			bool bootedFromEmmc = true;
-
-			FILE* pipe = popen(
-				R"SH(dev=$(awk '$2=="/flash"{print $1;exit}' /proc/mounts); [ -z "$dev" ] && dev=$(awk '$2=="/"{print $1;exit}' /proc/mounts); case "$dev" in /dev/loop*) dev=$(awk '$2=="/storage"{print $1;exit}' /proc/mounts);; esac; d=$(basename "$dev" 2>/dev/null); case "$d" in mmcblk*) d=${d%p[0-9]*};; *) d=$(echo "$d" | sed 's/[0-9]*$//');; esac; cat "/sys/block/$d/removable" 2>/dev/null)SH", "r");
-			if (pipe != nullptr)
-			{
-				char buf[8] = "";
-				if (fgets(buf, sizeof(buf), pipe) != nullptr)
-					bootedFromEmmc = (Utils::String::trim(std::string(buf)) == "0");
-				pclose(pipe);
-			}
+			// es4all: 开机媒体判断已抽成共用的 es4allBootedFromEmmc()(见 openQuitMenu 前),
+			// 因为「写入 eMMC」也用同一个条件。
+			const bool bootedFromEmmc = es4allBootedFromEmmc();
 
 			// es4all: ★「重启到 USB/SD」已移除(2026-08-01)★
 			//   原实作是 Amlogic 专属(fw_setenv bootfromnand=0, 靠 u-boot 依序试 SD→USB→eMMC),
@@ -5620,14 +5646,21 @@ void GuiMenu::openQuitMenu_static(Window *window, bool quickAccessMenu, bool ani
 	//   eMMC —— 那正是要避免的事。故两者都具备才显示。
 	//   加一台新机器 = 往 profiles 放一份配方, **不必重编 ES, 更不必重编固件**。
 	//   ⚠️ 与上游的 installtointernal 不是同一支(那支 MD1000 用了开不了机), 别混用。
+	//
+	//   ★第三个条件: 必须是【从 U 盘/SD 开机】才显示★
+	//   已经装进 eMMC 之后, 这支脚本会去重分区**自己正在跑的那颗盘** —— 来源与目标
+	//   变成同一个装置。轻则中途失败, 重则把能开机的系统砍掉一半, 而使用者当下看到的
+	//   只是一个跟安装前长得一模一样的选单, 完全没有理由怀疑。
+	//   这不是「按了没作用」那种无害的多余选项, 是**按了会坏事**, 所以直接不给。
 	{
 		const std::string emmcScript = Es4allProfiles::scriptPath("installtoemmc.sh");
 		const bool hasLayout = Es4allProfiles::hasFile("storage-config/es4all/emmc-layout.conf");
-		if (!emmcScript.empty() && hasLayout && UIModeController::getInstance()->isUIModeFull())
+		if (!emmcScript.empty() && hasLayout && !es4allBootedFromEmmc()
+			&& UIModeController::getInstance()->isUIModeFull())
 		{
 			s->addEntry(_("INSTALL TO EMMC"), false, [window, emmcScript] {
 				window->pushGui(new GuiMsgBox(window,
-					_("THIS WILL ERASE THE INTERNAL STORAGE. CONTINUE?"), _("YES"),
+					_("THIS WILL ERASE THE INTERNAL STORAGE.\n\nYour game ROMs will NOT be copied - the ROM folders are created empty and your games stay on the USB drive.\n\nCONTINUE?"), _("YES"),
 					[window, emmcScript] {
 						// ★不要同步跑★: 这是【数分钟】的复制作业(SYSTEM 约 1.3G 加上 /storage),
 						// 同步跑会让整个 ES 冻住 —— 画面没反应的机器最容易被使用者当成当机而

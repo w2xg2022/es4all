@@ -4450,12 +4450,8 @@ msgstr "机型专属配置已更新"
 msgid "INSTALL TO EMMC"
 msgstr "写入eMMC"
 
-msgid "THIS WILL ERASE THE INTERNAL STORAGE. CONTINUE?"
-msgstr "这会清除内建存储空间的数据，确定要继续吗？"
 
 # es4all: 内外部盘聚合(2026-08-03)
-msgid "Pick a drive to merge with the internal storage: its games appear together with the built-in ones. INTERNAL STORAGE shows only the built-in games."
-msgstr "选一颗要与内部储存合并的磁碟：该磁碟的游戏会与内建游戏一起显示。选择内部储存则只显示内建游戏。"
 
 msgid "Switching the game storage requires restarting EmulationStation."
 msgstr "切换游戏储存位置需要重新启动 EmulationStation。"
@@ -4467,16 +4463,33 @@ msgid "STOP MERGING AND WRITE BACK"
 msgstr "停用合并并写回"
 
 msgid "Not enough space on the internal storage to write back the merged data."
-msgstr "内部储存空间不足，无法写回合并期间产生的资料。"
+msgstr "内部存储空间不足，无法写回合并期间产生的数据。"
 
 msgid "Nothing to write back."
 msgstr "没有需要写回的资料。"
 
 msgid "Save files, scraped data and images created while merging will be written back to the internal storage."
-msgstr "合并期间产生的存档、刮削资料与图片将写回内部储存。"
+msgstr "合并期间产生的存档、刮削数据与图片将写回内部存储。"
 
 msgid "This cannot be undone and EmulationStation will restart. Continue?"
 msgstr "此操作无法复原，且 EmulationStation 会重新启动。要继续吗？"
 
 msgid "Switching the game storage requires a full reboot."
 msgstr "切换游戏储存位置需要重新启动系统。"
+
+# es4all: 聚合措辞(2026-08-03)
+msgid "Only the internal storage will be used. It will no longer be merged with any external drive."
+msgstr "将只使用内部存储，不再与任何外接磁盘聚合。"
+
+msgid "\"%s\" will be MERGED with the internal storage - the games on both will be shown together."
+msgstr "「%s」将与内部存储【聚合】——两边的游戏会一起显示。"
+
+msgid "This requires a full reboot. Continue?"
+msgstr "此操作需要重新启动系统。要继续吗？"
+
+# es4all: 聚合/eMMC 措辞(2026-08-03)
+msgid "Merge a drive with the internal storage - games from both are shown together. Pick INTERNAL STORAGE to show only the games already on this device."
+msgstr "选择一块磁盘与内部存储合并，两边的游戏会一起显示。选择「内部存储」则只显示机内的游戏。"
+
+msgid "THIS WILL ERASE THE INTERNAL STORAGE.\n\nYour game ROMs will NOT be copied - the ROM folders are created empty and your games stay on the USB drive.\n\nCONTINUE?"
+msgstr "这会清除内建存储空间的数据。\n\n★游戏 ROM 不会被复制★——ROM 文件夹只会建成空的，你的游戏仍留在 U 盘上，装好后再自行复制过去。\n\n确定要继续吗？"

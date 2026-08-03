@@ -273,8 +273,9 @@ void VolumeControl::init()
 
 #ifdef _ENABLE_PULSE_
 	// Read initial volume from systemconf
+	// es4all: 没存过音量时用出厂预设(不是 100) —— 与下面 ALSA 那条路径同一个数字。
 	std::string volume = SystemConf::getInstance()->get("audio.volume");
-	PulseAudio.setVolume(volume.empty() ? 100 : Utils::String::toInteger(volume), false);
+	PulseAudio.setVolume(volume.empty() ? ES4ALL_DEFAULT_VOLUME : Utils::String::toInteger(volume), false);
 	return;
 #endif
 
@@ -585,11 +586,14 @@ int VolumeControl::getVolume() const
 	return volume;
 }
 
-#ifdef _ENABLEEMUELEC
+// es4all: 开机时套用音量 —— 有存过就用存过的, 没存过用出厂预设。
+//   ★以前这支被 #ifdef _ENABLEEMUELEC 包住★, 于是 armbian 版没有任何预设音量,
+//   开机音量完全看驱动/混音器留下来什么值(常见是 0 或 100, 都不是好体验)。
+//   预设音量与发行版无关, 故解除门控, 三个 target 一致。
 void VolumeControl::applyInitialVolumeFromConfig()
 {
 	std::string volumeStr = SystemConf::getInstance()->get("audio.volume");
-	int volume = 80;
+	int volume = ES4ALL_DEFAULT_VOLUME;
 
 	if (!volumeStr.empty())
 	{
@@ -600,7 +604,6 @@ void VolumeControl::applyInitialVolumeFromConfig()
 
 	setVolume(volume);
 }
-#endif
 
 
 void VolumeControl::setVolume(int volume)

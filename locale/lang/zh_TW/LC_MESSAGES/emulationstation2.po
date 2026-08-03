@@ -4450,12 +4450,8 @@ msgstr "機型專屬設定檔已更新"
 msgid "INSTALL TO EMMC"
 msgstr "寫入eMMC"
 
-msgid "THIS WILL ERASE THE INTERNAL STORAGE. CONTINUE?"
-msgstr "這會清除內建儲存空間的資料，確定要繼續嗎？"
 
 # es4all: 内外部盘聚合(2026-08-03)
-msgid "Pick a drive to merge with the internal storage: its games appear together with the built-in ones. INTERNAL STORAGE shows only the built-in games."
-msgstr "選一顆要與內部儲存合併的磁碟：該磁碟的遊戲會與內建遊戲一起顯示。選擇內部儲存則只顯示內建遊戲。"
 
 msgid "Switching the game storage requires restarting EmulationStation."
 msgstr "切換遊戲儲存位置需要重新啟動 EmulationStation。"
@@ -4480,3 +4476,20 @@ msgstr "此操作無法復原，且 EmulationStation 會重新啟動。要繼續
 
 msgid "Switching the game storage requires a full reboot."
 msgstr "切換遊戲儲存位置需要重新啟動系統。"
+
+# es4all: 聚合措辞(2026-08-03)
+msgid "Only the internal storage will be used. It will no longer be merged with any external drive."
+msgstr "將只使用內部儲存，不再與任何外接磁碟聚合。"
+
+msgid "\"%s\" will be MERGED with the internal storage - the games on both will be shown together."
+msgstr "「%s」將與內部儲存【聚合】——兩邊的遊戲會一起顯示。"
+
+msgid "This requires a full reboot. Continue?"
+msgstr "此操作需要重新啟動系統。要繼續嗎？"
+
+# es4all: 聚合/eMMC 措辞(2026-08-03)
+msgid "Merge a drive with the internal storage - games from both are shown together. Pick INTERNAL STORAGE to show only the games already on this device."
+msgstr "選擇一顆磁碟與內部儲存合併，兩邊的遊戲會一起顯示。選擇「內部儲存」則只顯示機內的遊戲。"
+
+msgid "THIS WILL ERASE THE INTERNAL STORAGE.\n\nYour game ROMs will NOT be copied - the ROM folders are created empty and your games stay on the USB drive.\n\nCONTINUE?"
+msgstr "這會清除內建儲存空間的資料。\n\n★遊戲 ROM 不會被複製★——ROM 資料夾只會建成空的，你的遊戲仍留在隨身碟上，裝好後再自行複製過去。\n\n確定要繼續嗎？"

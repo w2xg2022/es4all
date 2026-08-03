@@ -36,9 +36,13 @@ class VolumeControl
 	IAudioEndpointVolume * endpointVolume;
 #endif
 
-#ifdef _ENABLEEMUELEC
+// es4all: ★出厂预设音量, 三个 target(armbian/emuelec/rocknix)共用★
+//   刻意写死在程式里、不走 profile: 这跟机型无关(是「第一次开机听到多大声」的
+//   通用体验), 放进 profile 只会变成每台都要重复写一份的样板。
+//   使用者调过音量之后 audio.volume 就有值了, 这个数字从此不再参与。
+#define ES4ALL_DEFAULT_VOLUME 80
+
 void applyInitialVolumeFromConfig();
-#endif
 	
 	int internalVolume;
 
