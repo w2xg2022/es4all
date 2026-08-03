@@ -1397,13 +1397,13 @@ msgid "AUTOMATICALLY CREATE LOBBY"
 msgstr "自動建立大廳"
 
 msgid "Automatically creates a Netplay lobby when starting a game."
-msgstr "開始遊戲時自動建立 Netplay 大廳"
+msgstr "開始遊戲時自動建立 Netplay 大廳。"
 
 msgid "SHOW RELAY SERVER GAMES ONLY"
 msgstr "僅顯示中繼伺服器遊戲"
 
 msgid "Relay server games have a higher chance of successful entry."
-msgstr "中繼伺服器遊戲有更高的成功進入機會"
+msgstr "中繼伺服器遊戲有更高的成功進入機會。"
 
 msgid "SHOW UNAVAILABLE GAMES"
 msgstr "顯示無法使用的遊戲"
@@ -2383,7 +2383,7 @@ msgid "VIDEO OUTPUT"
 msgstr "影像輸出"
 
 msgid "Sets the display's resolution."
-msgstr "設定顯示解析度"
+msgstr "設定顯示解析度。"
 
 msgid "ROTATION"
 msgstr "旋轉"
@@ -2465,7 +2465,7 @@ msgid "CLEAN GAMELISTS & REMOVE UNUSED MEDIA"
 msgstr "清理遊戲清單 & 移除未使用的媒體"
 
 msgid "Remove unused entries, and clean references to missing medias."
-msgstr "刪除未使用的條目，並清除遺失媒體的引用"
+msgstr "刪除未使用的條目，並清除遺失媒體的引用。"
 
 msgid "Cleaning"
 msgstr "清理中"
@@ -2603,7 +2603,7 @@ msgid "ENABLE PS3 CONTROLLER SUPPORT"
 msgstr "啟用PS3控制器支援"
 
 msgid "Might have negative impact on security."
-msgstr "可能會對安全性產生負面影響"
+msgstr "可能會對安全性產生負面影響。"
 
 msgid "ENABLE HID JOYSTICK DRIVERS"
 msgstr "啟用HID搖桿驅動程式"
@@ -2738,7 +2738,7 @@ msgid "HARDWARE"
 msgstr "硬體"
 
 msgid "Sets the display's resolution for emulationstation."
-msgstr "設定模擬器的顯示器像素"
+msgstr "設定模擬器的顯示器像素。"
 
 msgid "AUDIO OUTPUT"
 msgstr "聲音輸出"
@@ -4441,7 +4441,7 @@ msgid "DOWNLOAD DEVICE PROFILES"
 msgstr "下載機型專屬設定檔"
 
 msgid "MODEL-SPECIFIC SETTINGS SUCH AS AUDIO OUTPUT"
-msgstr "音源輸出等機型專屬設定"
+msgstr "音源輸出等機型專屬設定。"
 
 msgid "DEVICE PROFILES UPDATED"
 msgstr "機型專屬設定檔已更新"

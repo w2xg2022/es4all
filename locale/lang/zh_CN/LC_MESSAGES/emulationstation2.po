@@ -883,7 +883,7 @@ msgid "UNOFFICIAL ACHIEVEMENTS"
 msgstr "非官方成就"
 
 msgid "Enable unlocking of unofficial achievements."
-msgstr "允许解锁非官方成就."
+msgstr "允许解锁非官方成就。"
 
 msgid "RETROACHIEVEMENT UNLOCK SOUND"
 msgstr "成就解锁声音"
@@ -1396,13 +1396,13 @@ msgid "AUTOMATICALLY CREATE LOBBY"
 msgstr "自动创建大厅"
 
 msgid "Automatically creates a Netplay lobby when starting a game."
-msgstr "开始游戏时自动创建网络游戏大厅."
+msgstr "开始游戏时自动创建网络游戏大厅。"
 
 msgid "SHOW RELAY SERVER GAMES ONLY"
 msgstr "仅显示中继服务器游戏"
 
 msgid "Relay server games have a higher chance of successful entry."
-msgstr "中继服务器游戏有更高机会成功进入."
+msgstr "中继服务器游戏有更高机会成功进入。"
 
 msgid "SHOW UNAVAILABLE GAMES"
 msgstr "显示不可用的游戏"
@@ -2382,7 +2382,7 @@ msgid "VIDEO OUTPUT"
 msgstr "视频输出"
 
 msgid "Sets the display's resolution."
-msgstr "设置显示器的分辨率."
+msgstr "设置显示器的分辨率。"
 
 msgid "ROTATION"
 msgstr "旋转"
@@ -4441,7 +4441,7 @@ msgid "DOWNLOAD DEVICE PROFILES"
 msgstr "下载机型专属配置"
 
 msgid "MODEL-SPECIFIC SETTINGS SUCH AS AUDIO OUTPUT"
-msgstr "音源输出等机型专属配置"
+msgstr "音源输出等机型专属配置。"
 
 msgid "DEVICE PROFILES UPDATED"
 msgstr "机型专属配置已更新"
