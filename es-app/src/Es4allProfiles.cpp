@@ -60,16 +60,25 @@ namespace
 	//   Armbian: /etc/armbian-release 的 BOARDFAMILY
 	std::vector<std::string> deviceKeys()
 	{
-		static const char* kCmd =
-			"{ sed -n 's/^\\(COREELEC_DEVICE\\|ROCKNIX_DEVICE\\|LIBREELEC_DEVICE\\)=\"\\?\\([^\"]*\\)\"\\?$/\\2/p' /etc/os-release; "
-			"cat /ee_arch; "
-			"sed -n 's/^BOARDFAMILY=\"\\?\\([^\"]*\\)\"\\?$/\\1/p' /etc/armbian-release; } 2>/dev/null";
+		// ★每个来源【各呼叫一次】, 不要串成一条多行命令★(实机踩过 2026-08-03)
+		//   getShOutput 会把**每一行的换行剥掉再串接**(那是为了修 /proc/device-tree/model
+		//   没有尾随换行、旧写法会吃掉一个真实字元的坑, 见 Platform.cpp 的註解)。
+		//   於是多行输出会黏成一坨 —— 两个来源都回 RK3566 时拿到的是 "RK3566RK3566",
+		//   split('\n') 分不出来, 比对当然不命中。而且**完全静默**: 机型层的档一个都没套用,
+		//   log 看起来还很正常(只有那个黏在一起的字串是唯一线索)。
+		static const char* kCmds[] = {
+			"sed -n 's/^\\(COREELEC_DEVICE\\|ROCKNIX_DEVICE\\|LIBREELEC_DEVICE\\)=\"\\?\\([^\"]*\\)\"\\?$/\\2/p' /etc/os-release 2>/dev/null | head -1",
+			"cat /ee_arch 2>/dev/null | head -1",
+			"sed -n 's/^BOARDFAMILY=\"\\?\\([^\"]*\\)\"\\?$/\\1/p' /etc/armbian-release 2>/dev/null | head -1",
+		};
 
 		std::vector<std::string> out;
-		for (auto& line : Utils::String::split(Utils::Platform::getShOutput(kCmd), '\n', true))
+		for (auto cmd : kCmds)
 		{
-			std::string v = Utils::String::trim(line);
-			if (!v.empty())
+			std::string v = Utils::String::trim(Utils::Platform::getShOutput(cmd));
+			if (v.empty())
+				continue;
+			if (std::find(out.cbegin(), out.cend(), v) == out.cend())
 				out.push_back(v);
 		}
 		return out;
