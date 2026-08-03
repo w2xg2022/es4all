@@ -4452,3 +4452,28 @@ msgstr "写入 eMMC"
 
 msgid "THIS WILL ERASE THE INTERNAL STORAGE. CONTINUE?"
 msgstr "这会清除内建存储空间的数据，确定要继续吗？"
+
+# es4all: 内外部盘聚合(2026-08-03)
+msgid "Pick a drive to merge with the internal storage: its games appear together with the built-in ones. INTERNAL STORAGE shows only the built-in games."
+msgstr "选一颗要与内部储存合并的磁碟：该磁碟的游戏会与内建游戏一起显示。选择内部储存则只显示内建游戏。"
+
+msgid "Switching the game storage requires restarting EmulationStation."
+msgstr "切换游戏储存位置需要重新启动 EmulationStation。"
+
+msgid "Continue?"
+msgstr "要继续吗？"
+
+msgid "STOP MERGING AND WRITE BACK"
+msgstr "停用合并并写回"
+
+msgid "Not enough space on the internal storage to write back the merged data."
+msgstr "内部储存空间不足，无法写回合并期间产生的资料。"
+
+msgid "Nothing to write back."
+msgstr "没有需要写回的资料。"
+
+msgid "Save files, scraped data and images created while merging will be written back to the internal storage."
+msgstr "合并期间产生的存档、刮削资料与图片将写回内部储存。"
+
+msgid "This cannot be undone and EmulationStation will restart. Continue?"
+msgstr "此操作无法复原，且 EmulationStation 会重新启动。要继续吗？"

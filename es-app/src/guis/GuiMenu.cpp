@@ -893,52 +893,66 @@ void GuiMenu::openExternalMounts(Window* mWindow, std::string configName)
 	GuiSettings* externalMounts = new GuiSettings(mWindow, _("EXTERNAL MOUNT OPTIONS").c_str());
     std::string a;
     
+		// es4all(2026-08-03 改版): ★聚合模型 —— 选中一颗外接盘就代表「它与内部盘合并」★
+		//
+		//   INTERNAL STORAGE  -> system.gamesdevice = ""      只用内部盘
+		//   某颗盘的 LABEL    -> system.gamesdevice = <LABEL>  该盘与内部盘聚合
+		//
+		// ★为什么拿掉 AUTO★: 旧的 AUTO 存的是空字串、而字面值 "auto" 又是禁忌值
+		//   (eemount 会去找一颗名叫 auto 的碟), 这套语意本来就绕。
+		//   在聚合模型下更糟 —— 「自动扫描」会让**哪些盘参与合并变得不可预期**,
+		//   插一颗备份碟上去整个清单就变了。单选具体碟最明确。
+		//
+		// ★为什么改用 blkid 而不是扫 /var/media★: /var/media 是 udevil 挂好之后才有,
+		//   依赖开机时序(ROCKNIX 那个「automount 比 USB 列举早 56 秒」的坑就是这样来的),
+		//   而且与 es4all-storage.sh 的来源不同 —— 两边不同源就会出现
+		//   「选单列得出来、脚本却挂不上」。现在两边都用 blkid, 同一份真相。
 		auto emuelec_external_device_def = std::make_shared< OptionListComponent<std::string> >(mWindow, _("EXTERNAL DEVICE"), false);
-		// es4all: ★global.externalmount 的真实语义(核对 eemount 源码 drive.c + mount_romfs.sh)★
-		//   - 空字串        → 扫描任意「带标记档(roms/emuelecroms)」的外接碟, 无则用内部 /storage/roms。
-		//                     ★这才是真正的「自动」★: 两个挂载后端(eemount / mount_romfs.sh)都只把【空】当自动。
-		//   - "INTERNAL"    → 哨兵值, 没有任何 /var/media 下的碟叫这名字 → 扫描匹配不到 → 强制用内部
-		//                     /storage/roms(=本机 eMMC 的 ROMS)。用于「插着外接碟也要切回本机」。
-		//   - 具体 LABEL    → 只挂那颗。
-		// 注意: ★绝不能存 "auto" 字串★ —— eemount(本机默认后端)没有 auto 特判, 会去找【名叫 auto 的碟】,
-		//   找不到反而变纯内部, 且与 mount_romfs.sh 行为不一致。历史上的 "auto" 值在此迁移成空字串。
-		const std::string kIntl = "INTERNAL";
+		const std::string kIntl = "";   // 内部盘 = 空值(与脚本的判断一致)
 		std::vector<std::string> devLabels;
-		// es4all: ★排除系统盘自己的分区★ —— 原本只 prune 掉 EEROMS，但系统盘的其他分区
-		// (EMUELEC=开机分区、STORAGE、CE_FLASH、CE_STORAGE)若也被挂到 /var/media/ 就会列出来，
-		// 使用者误选当 ROM 盘就变 0 个游戏(实机遇到过)。这些 LABEL 一并 prune 掉。
-		  for(std::stringstream ss(Utils::Platform::getShOutput(R"(find /var/media/ -mindepth 1 -maxdepth 1 -type d \( -iname EEROMS -o -iname EMUELEC -o -iname STORAGE -o -iname CE_FLASH -o -iname CE_STORAGE \) -prune -o -type d -exec basename {} \; | sed "s/$/,/g")")); getline(ss, a, ','); ) {
-            if (!a.empty()) devLabels.push_back(a);
-	    }
+		// 排除系统盘自己的分区: 使用者误选当 ROM 盘就变 0 个游戏(实机遇到过)。
+		for (std::stringstream ss(Utils::Platform::getShOutput(
+				R"(blkid -s LABEL -o value 2>/dev/null | grep -vxE 'EEROMS|EMUELEC|STORAGE|CE_FLASH|CE_STORAGE|BOOT|ROOTFS' | sort -u | sed "s/$/,/g")")); getline(ss, a, ','); ) {
+			if (!a.empty()) devLabels.push_back(a);
+		}
 
-		auto extdevoptionsS = SystemConf::getInstance()->get("global.externalmount");
-		if (extdevoptionsS == "auto")   // 迁移旧值: "auto" 其实等价于「自动」= 空字串。
-			extdevoptionsS = "";
-
-		// 自动(空值) + 本机(哨兵) + 各外接碟(LABEL)。前两项显示走 _() 中文化, LABEL 无法翻译。
-		emuelec_external_device_def->add(_("AUTO"), "", extdevoptionsS.empty());
-		emuelec_external_device_def->add(_("INTERNAL STORAGE"), kIntl, extdevoptionsS == kIntl);
+		std::string curDev = SystemConf::getInstance()->get("system.gamesdevice");
+		emuelec_external_device_def->add(_("INTERNAL STORAGE"), kIntl, curDev.empty());
 		for (auto it = devLabels.cbegin(); it != devLabels.cend(); it++)
-			emuelec_external_device_def->add(*it, *it, extdevoptionsS == *it);
+			emuelec_external_device_def->add(*it, *it, curDev == *it);
 
-        externalMounts->addWithDescription(_("EXTERNAL DEVICE"), _("Select where ROMS are read from: AUTO scans external drives, INTERNAL STORAGE forces the built-in storage, or pick a specific drive."), emuelec_external_device_def);
+		externalMounts->addWithDescription(_("EXTERNAL DEVICE"),
+			_("Pick a drive to merge with the internal storage: its games appear together with the built-in ones. INTERNAL STORAGE shows only the built-in games."),
+			emuelec_external_device_def);
 
-        emuelec_external_device_def->setSelectedChangedCallback([emuelec_external_device_def, kIntl](std::string name) {
-       		if (SystemConf::getInstance()->set("global.externalmount", name)) {
-			   // 只有选「具体外接碟」才需要打标记档(roms/emuelecroms), 让 eemount 认得它可当 ROM 盘。
-			   // 自动(空)与本机(INTERNAL 哨兵)都不打标记。
-			   const std::string sel = emuelec_external_device_def->getSelected();
-			   if (!sel.empty() && sel != kIntl) {
-                    std::string path = ("/var/media/" + sel + "/roms/emuelecroms").c_str();
-                        if (!Utils::FileSystem::exists(path)) {
-                            system((std::string("mkdir -p \"/var/media/") + sel + std::string("/roms\"")).c_str());
-                            system((std::string("touch \"/var/media/") + sel + std::string("/roms/emuelecroms\"")).c_str());
-                        }
-                }
-            SystemConf::getInstance()->saveSystemConf();
-        }
-        });
-       
+		// ★选中即发动★(2026-08-03): 原本还要再按一次「立即挂载」才生效 ——
+		// 选了却没生效, 使用者只会觉得设定坏了。改成选完就问、确认後直接套用并重启 ES。
+		// 取消的话把选择拨回原值, 否则画面显示的状态与实际不符。
+		emuelec_external_device_def->setSelectedChangedCallback(
+				[mWindow, emuelec_external_device_def, curDev](std::string name) {
+			if (name == curDev)
+				return;
+			std::string disp = name.empty() ? _("INTERNAL STORAGE") : name;
+			mWindow->pushGui(new GuiMsgBox(mWindow,
+				(_("Switching the game storage requires restarting EmulationStation.") + std::string("\n\n") + disp + std::string("\n\n") + _("Continue?")).c_str(),
+				_("YES"), [name] {
+					SystemConf::getInstance()->set("system.gamesdevice", name);
+					// ★同时把发行版後端钉在内部盘★: 聚合期间内部那一层必须是 EEROMS,
+					// 若让 eemount 自己去挂外接碟, /storage/roms 上的就不是内部盘了,
+					// 聚合脚本会把「外接盘」当成内部那一层 —— 两边各挂各的必然打架。
+					SystemConf::getInstance()->set("global.externalmount", "INTERNAL");
+					SystemConf::getInstance()->saveSystemConf();
+					// 重启 ES —— 聚合是由 emustation.service 的 ExecStartPre 做的,
+					// 所以「重启 ES」就等於「重新套用挂载」, 不需要另一个按钮。
+					Utils::Platform::ProcessStartInfo("systemctl restart emustation").run();
+				},
+				// ★取消时刻意什么都不做★: OptionListComponent 没有「选回某个值」的 API,
+				// 而 selectFirstItem() 选的是第 0 项(不一定是原值)、还会再触发一次本回调 ->
+				// 递回。所以取消 = 不写入、不重启; 画面上的选择会停在使用者刚选的那一项,
+				// 直到重新进入本选单才显示真实值。宁可如此, 也不要为了画面好看而做出递回。
+				_("NO"), nullptr));
+		});
+
 		auto emuelec_external_device_retry = std::make_shared< OptionListComponent<std::string> >(mWindow, _("RETRY TIMES"), false);
 		emuelec_external_device_retry->addRange({ { _("AUTO"), "" },{ "1", "1" },{ "2", "2" },{ "3", "3" },{ "4", "4" },{ "5", "5" },{ "6", "6" },{ "7", "7" },{ "8", "8" },{ "9", "9" },{ "10", "10" },{ "11", "11" },{ "12", "12" },{ "13", "13" },{ "14", "14" },{ "15", "15" },{ "16", "16" },{ "17", "17" },{ "18", "18" },{ "19", "19" },{ "20", "20" },{ "21", "21" },{ "22", "22" },{ "23", "23" },{ "24", "24" },{ "25", "25" },{ "26", "26" },{ "27", "27" },{ "28", "28" },{ "29", "29" },{ "30", "30" } }, SystemConf::getInstance()->get("ee_mount.retry"));
         externalMounts->addWithDescription(_("RETRY TIMES"), _("How many times to retry the mount on boot."), emuelec_external_device_retry);
@@ -955,30 +969,60 @@ void GuiMenu::openExternalMounts(Window* mWindow, std::string configName)
                 SystemConf::getInstance()->saveSystemConf();
             });
 
-        externalMounts->addEntry(_("FORCE MOUNT NOW"), true, [mWindow, emuelec_external_device_def, kIntl] {
-            // es4all: 直接读选单当前选中的【值】(空=自动 / INTERNAL=本机 / LABEL=指定碟), 不再读 SystemConf
-            // ——原本读 SystemConf 会因「默认自动没被持久化」而拿到空字串, 警告框显示 ""(实机遇到)。
-            std::string selectedExternalDrive = emuelec_external_device_def->getSelected();
-            // 显示名中文化: 空→自动、INTERNAL→本机、其余→原 LABEL。
-            std::string disp = selectedExternalDrive.empty() ? _("AUTO")
-                             : (selectedExternalDrive == kIntl ? _("INTERNAL STORAGE") : selectedExternalDrive);
-            mWindow->pushGui(new GuiMsgBox(mWindow, (_("WARNING THIS WILL RESTART EMULATIONSTATION!\n\nSystem will try to mount the ROMS source selected ") + "\""+ disp + "\"" + _(". Make sure you have all the settings saved before running this.\n\nMOUNT AND RESTART?")).c_str(), _("YES"),
-				[selectedExternalDrive] {
-				// 把当前选中的值落盘, 确保后端(eemount/mount_romfs.sh)读到的与选单一致。
-				SystemConf::getInstance()->set("global.externalmount", selectedExternalDrive);
-				SystemConf::getInstance()->saveSystemConf();
+		// es4all(2026-08-03): ★「立即挂载」已移除★ —— 选中装置就会问要不要套用,
+		// 再放一个按钮只会让人以为「选了还没生效」。套用 = 重启 ES(聚合挂在 ES 的
+		// ExecStartPre 上, 所以重启 ES 就等於重新套用挂载)。
 
-                auto mountH = SystemConf::getInstance()->get("ee_mount.handler");
-                if (mountH == "eemount" || mountH.empty()) {
-                   Utils::Platform::ProcessStartInfo("eemount --esrestart " + selectedExternalDrive).run();
-                } else if (mountH == "mount_romfs.sh") {
-                   Utils::Platform::ProcessStartInfo("mount_romfs.sh yes " + selectedExternalDrive).run();
-                } else {
-                   Utils::Platform::ProcessStartInfo(mountH + selectedExternalDrive).run();
-                }
-				
-                }, _("NO"), nullptr));
-		});
+		// ★停用聚合并回写★ —— 只在【合并层里真的有资料】时才出现。
+		//
+		// 为什么是一个动作而不是装置清单里的一个选项: 它会复制几 GB、不可逆、可能失败,
+		// 与其他「选了就是那样、随时可切回来」的选项不是同一种东西。
+		// 混进 OptionList 的话, 使用者滚过去就触发了。
+		//
+		// 显示条件与脚本的判断同源(upper 非空)。没启用过的机器根本看不到这一项。
+		if (Utils::FileSystem::exists("/storage/.es4all-roms/upper") &&
+			!Utils::FileSystem::getDirContent("/storage/.es4all-roms/upper").empty())
+		{
+			externalMounts->addEntry(_("STOP MERGING AND WRITE BACK"), true, [mWindow] {
+				// 先问脚本要不要得起(--check 只估算、不动任何东西), 把数字放进确认框 ——
+				// ★内部 ROM 分区是 vfat 而且通常不大, 复制到一半空间爆掉会卡在
+				// 「upper 不能清、overlay 不能拆」的中间状态★, 所以宁可先算再问。
+				std::string out = Utils::Platform::getShOutput(
+					"/storage/.config/es4all/bin/es4all-storage-detach.sh --check 2>&1");
+
+				if (out.find("NOT_ENOUGH_SPACE") != std::string::npos)
+				{
+					mWindow->pushGui(new GuiMsgBox(mWindow,
+						_("Not enough space on the internal storage to write back the merged data."),
+						_("OK"), nullptr));
+					return;
+				}
+				if (out.find("NOTHING_TO_DO") != std::string::npos)
+				{
+					mWindow->pushGui(new GuiMsgBox(mWindow, _("Nothing to write back."), _("OK"), nullptr));
+					return;
+				}
+
+				long needKb = 0, freeKb = 0;
+				auto grab = [&out](const std::string& key) -> long {
+					size_t p = out.find(key);
+					return (p == std::string::npos) ? 0 : atol(out.c_str() + p + key.size());
+				};
+				needKb = grab("NEED_KB=");
+				freeKb = grab("FREE_KB=");
+
+				char msg[512];
+				snprintf(msg, sizeof(msg), "%s\n\n%ld MB / %ld MB\n\n%s",
+					_("Save files, scraped data and images created while merging will be written back to the internal storage.").c_str(),
+					needKb / 1024, freeKb / 1024,
+					_("This cannot be undone and EmulationStation will restart. Continue?").c_str());
+
+				mWindow->pushGui(new GuiMsgBox(mWindow, msg, _("YES"), [] {
+					Utils::Platform::ProcessStartInfo(
+						"/storage/.config/es4all/bin/es4all-storage-detach.sh && systemctl restart emustation").run();
+				}, _("NO"), nullptr));
+			});
+		}
 
 mWindow->pushGui(externalMounts);
 }
