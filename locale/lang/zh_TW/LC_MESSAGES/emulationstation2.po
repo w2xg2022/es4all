@@ -4446,9 +4446,9 @@ msgstr "音源輸出等機型專屬設定。"
 msgid "DEVICE PROFILES UPDATED"
 msgstr "機型專屬設定檔已更新"
 
-# es4all: 寫入 eMMC(由 profile 決定是否顯示)
+# es4all: 寫入eMMC(由 profile 決定是否顯示)
 msgid "INSTALL TO EMMC"
-msgstr "寫入 eMMC"
+msgstr "寫入eMMC"
 
 msgid "THIS WILL ERASE THE INTERNAL STORAGE. CONTINUE?"
 msgstr "這會清除內建儲存空間的資料，確定要繼續嗎？"
@@ -4477,3 +4477,6 @@ msgstr "合併期間產生的存檔、刮削資料與圖片將寫回內部儲存
 
 msgid "This cannot be undone and EmulationStation will restart. Continue?"
 msgstr "此操作無法復原，且 EmulationStation 會重新啟動。要繼續嗎？"
+
+msgid "Switching the game storage requires a full reboot."
+msgstr "切換遊戲儲存位置需要重新啟動系統。"

@@ -934,7 +934,7 @@ void GuiMenu::openExternalMounts(Window* mWindow, std::string configName)
 				return;
 			std::string disp = name.empty() ? _("INTERNAL STORAGE") : name;
 			mWindow->pushGui(new GuiMsgBox(mWindow,
-				(_("Switching the game storage requires restarting EmulationStation.") + std::string("\n\n") + disp + std::string("\n\n") + _("Continue?")).c_str(),
+				(_("Switching the game storage requires a full reboot.") + std::string("\n\n") + disp + std::string("\n\n") + _("Continue?")).c_str(),
 				_("YES"), [name] {
 					SystemConf::getInstance()->set("system.gamesdevice", name);
 					// ★同时把发行版後端钉在内部盘★: 聚合期间内部那一层必须是 EEROMS,
@@ -944,7 +944,13 @@ void GuiMenu::openExternalMounts(Window* mWindow, std::string configName)
 					SystemConf::getInstance()->saveSystemConf();
 					// 重启 ES —— 聚合是由 emustation.service 的 ExecStartPre 做的,
 					// 所以「重启 ES」就等於「重新套用挂载」, 不需要另一个按钮。
-					Utils::Platform::ProcessStartInfo("systemctl restart emustation").run();
+					// ★整机重开, 不是只重启 ES★(实机 2026-08-03 定案)
+					//   挂载是**系统层**的东西, 重启 ES 完全不会动到它 ——
+					//   使用者切回内部储存、ES 重启完, /storage/roms 却还挂着上一轮的
+					//   mergerfs, 画面上照样是两颗盘的游戏, 看起来就是「设定没生效」。
+					//   脚本那边虽然也补了拆除逻辑当保险, 但重开机才是真正乾净的作法:
+					//   所有挂载归零, 由开机流程按当前设定重新建立一次, 没有残留可言。
+					Utils::Platform::ProcessStartInfo("reboot").run();
 				},
 				// ★取消时刻意什么都不做★: OptionListComponent 没有「选回某个值」的 API,
 				// 而 selectFirstItem() 选的是第 0 项(不一定是原值)、还会再触发一次本回调 ->
