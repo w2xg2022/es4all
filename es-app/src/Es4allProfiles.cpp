@@ -115,6 +115,13 @@ namespace
 		if (token == "bin")
 			return binDir();
 
+		// 使用者资料根本身(E/R 是 /storage, A 是 home)。
+		// ★为什么需要它★: 不是所有落点都在 .config 底下 —— ROCKNIX 的 RA autoconfig
+		// 出厂档要落 /storage/joypads(那是 /tmp/joypads 这个 overlay 的 upper, 写入即持久)。
+		// 硬塞进 storage-config/ 会变成 /storage/.config/joypads, RA 根本不看那里, 静默失效。
+		if (token == "storage")
+			return storeBase();
+
 		return "";   // 不认得
 	}
 
@@ -216,6 +223,26 @@ namespace
 
 		outAbs = root + "/" + rel;
 		return true;
+	}
+
+	// 仓库路径 -> 可直接用的 URL 路径。★逐段编码★:
+	// HttpReq::urlEncode 会把 '/' 也编成 %2F, 整条丢进去会变成一个巨大的档名而不是路径。
+	//
+	// ★为什么非编不可★: 档名真的会有空格 —— RetroArch 的 autoconfig 按手柄名命名,
+	// 而手柄名本来就带空格("Microsoft X-Box 360 pad.cfg")。没编码的话 GitHub raw
+	// 直接回 404, 表现是「这一档下载失败 -> 整批放弃」, 而其他档看起来都好好的。
+	std::string urlPath(const std::string& repoPath)
+	{
+		std::string out;
+		for (auto& seg : Utils::String::split(repoPath, '/', true))
+		{
+			if (seg.empty())
+				continue;
+			if (!out.empty())
+				out += "/";
+			out += HttpReq::urlEncode(seg);
+		}
+		return out;
 	}
 
 	// 记「已套用的内容版本」的旁档。放可写使用者目录, 三个 target 都指得到。
@@ -404,7 +431,7 @@ namespace Es4allProfiles
 		{
 			pf.tmp = tmpDir + "/" + std::to_string(idx++);
 
-			HttpReq dl(kRepoRaw + pf.repoPath, pf.tmp);
+			HttpReq dl(kRepoRaw + urlPath(pf.repoPath), pf.tmp);
 			if (!dl.wait() || dl.status() != HttpReq::REQ_SUCCESS)
 			{
 				Utils::FileSystem::deleteDirectoryFiles(tmpDir, true);

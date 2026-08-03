@@ -15,8 +15,6 @@ log(){ echo "[es4all] $*"; }
 
 RA_CFG="/storage/.config/retroarch/retroarch.cfg"
 SYS_CFG="/storage/.config/system/configs/system.cfg"
-PSP_CTRL="/storage/.config/ppsspp/PSP/SYSTEM/controls.ini"
-JOYPADS="/tmp/joypads"
 
 # 通用：设置一个 key=value(无空格等号)到某 cfg，存在则替换否则追加
 set_kv(){ local f="$1" k="$2" v="$3"
@@ -86,21 +84,12 @@ log "系统: Dreamcast 用独立模拟器(flycast standalone, 性能)"
 set_kv "${SYS_CFG}" dreamcast.emulator flycast
 set_kv "${SYS_CFG}" dreamcast.core flycast-sa
 
-### 6) PSP 独立模拟器手柄(controls.ini) ###################################
-# 修正 □/△ 与物理位置对齐(西=□ 北=△); ✕/○ 本就正确
-if [ -f "${PSP_CTRL}" ] && [ -f "${ASSETS}/controls.ini" ]; then
-  log "PSP: 安装 controls.ini"
-  cp -f "${ASSETS}/controls.ini" "${PSP_CTRL}"
-fi
-
-### 7) 手柄 autoconfig 标准对齐 ###########################################
-# /tmp/joypads 是 overlay(upper=/storage/joypads 持久)，写入即持久。
-# 注意：以下为「Microsoft X-Box 360 pad」测试手柄的标准对齐档(印刷字母=RetroPad字母,
-#       dpad=hat h0)。换其它手柄需按该手柄的实际按钮号另做一份(见 README)。
-if [ -d "${JOYPADS}" ] && [ -f "${ASSETS}/Microsoft X-Box 360 pad.cfg" ]; then
-  log "手柄: 安装标准对齐 autoconfig(Microsoft X-Box 360 pad)"
-  cp -f "${ASSETS}/Microsoft X-Box 360 pad.cfg" "${JOYPADS}/Microsoft X-Box 360 pad.cfg"
-fi
+### 6-7) 手柄相关(controls.ini / autoconfig) —— 已搬到 es4all-profiles ##########
+# PSP 的 controls.ini 与 "Microsoft X-Box 360 pad" 的 RA autoconfig 出厂档,
+# 现在由 es4all-profiles 在运行期下发(rocknix/_common/storage-config/ppsspp/... 与
+# rocknix/_common/storage/joypads/...), 本脚本不再复制。
+# ★为什么搬★: 那是【资料】不是部署流程 —— 换一支手柄就要改一份档, 而改档不该
+# 需要重跑部署脚本、更不该等发一包 ES。落点与本脚本原本写的完全相同。
 
 ### 8) 确保隐藏 pico-8 平台 ###############################################
 # pico-8 需 Lexaloffle 付费本体才能玩，且 es4all 主题无 pico-8 图；ROCKNIX 出厂
