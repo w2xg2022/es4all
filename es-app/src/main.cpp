@@ -785,6 +785,25 @@ int err = snd_pcm_open(&pcm_handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
 
 	window.closeSplashScreen();
 
+	// es4all: ★首次开机自动跳出键位精灵★
+	//
+	// 上面(InputManager::init 之前)那段只是把开关打开, 而开关本身只做一件事:
+	// **跳过 SDL 的自动 fallback**, 让手柄维持「未设定」。真正让精灵出现的是
+	// ViewController::input —— 也就是**使用者得先按一颗键**。
+	// 对首刷来说那不够: 画面上没有任何提示, 使用者不知道要按; 而这一步恰恰是
+	// 「精灵 -> es_input.cfg -> RA/PSP/DC」整条透传链的起点, 漏掉它后面全部落空。
+	// 所以这里主动推出来。
+	//
+	// ★firstRun 传 false★: true 会让 GuiDetectDevice 无法用 ESC 退出(见其 input()),
+	// 而万一手柄不通(线松了、驱动没起来), 那就是把人锁死在这个画面。
+	// 我们要的是「自动跳出来」, 不是「不准离开」—— 强制性已经由开关保证:
+	// 没跑完就不会关掉, 下次开机照样跳。
+	// ★不能在这里直接 push★(实机 2026-08-03 看画面才发现):
+	// 这一刻主画面【还没画出第一帧】—— 主题的贴图/字体都还在载入, 精灵框会浮在
+	// 一片全黑上面, 看起来像当机而不是引导。改成先标记, 等主迴圈真的渲染过几帧再推。
+	bool pendingInputWizard =
+		(errorMsg == NULL && SystemConf::getInstance()->getBool("system.input.forcewizard"));
+
 #if defined(ES4ALL_TARGET_EMUELEC)
 	// es4all: 视频模式【试用确认】(防呆的后半，前半在上面 window.init() 之前)。
 	// 逻辑很简单：**看得到这个框，就代表这个模式在这台电视上真的能显示**。
@@ -913,6 +932,22 @@ int err = snd_pcm_open(&pcm_handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
 
 		TRYCATCH("Window.update" ,window.update(deltaTime))	
 		TRYCATCH("Window.render", window.render())
+
+		// es4all: 首次开机的键位精灵 —— 等主题真的画出来之后再推。
+		// ★为什么要等而且要等【好几帧】★: 第一帧只是把画面清掉, 主题的贴图与字体是
+		// 非同步载入的, 太早推出去使用者看到的是「全黑背景上一个对话框」, 像当机。
+		// 等几帧之后系统清单已经在背景显示, 精灵才像是引导流程的一部分。
+		// (用帧数而不是计时器: 慢的机器帧率低, 计时器会在画面还没好的时候就到期。)
+		if (pendingInputWizard)
+		{
+			static int wizardDelayFrames = 0;
+			if (++wizardDelayFrames >= 30)
+			{
+				pendingInputWizard = false;
+				LOG(LogInfo) << "es4all: 首次开机, 自动跳出键位精灵";
+				window.pushGui(new GuiDetectDevice(&window, false, nullptr));
+			}
+		}
 
 /*
 #ifdef WIN32		
