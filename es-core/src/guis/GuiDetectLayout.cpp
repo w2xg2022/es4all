@@ -143,8 +143,19 @@ void GuiDetectLayout::handlePhysBtn(int btnCode)
 	// A 在南=Xbox 式、A 在东=任天堂式，就足以确定第一层（界面 A=确认/B=返回跟印刷走）。
 	// 原本还问「按 X」是为了第三层的 X/Y 透传——第三层已改成写死位置对齐、不透传，
 	// 故 X 那一步连同 InvertGameButtons/InvertXYButtons 一并废除，精灵只按一次 A 即完成。
-	if (btnCode == BTN_SOUTH)      mABInverted = false; // 印刷A在南 → Xbox 式
-	else if (btnCode == BTN_EAST)  mABInverted = true;  // 印刷A在东 → 任天堂式
+	// ★2026-08-03 修正极性: 这两行原本是【反的】★
+	//   消费端(InputConfig::buttonDisplayName / buttonImage)的语意是:
+	//     InvertButtons=false → a=东 b=南 x=北 y=西  ← ES 的**默认值**, 即任天堂式
+	//     InvertButtons=true  → a=南 b=东 x=西 y=北  ← 「反转」= Xbox 式
+	//   而这里原本写 BTN_SOUTH→false / BTN_EAST→true, 与消费端**完全相反**。
+	//   後果不只是界面显示: configscripts/retroarch.sh 用这个旗标决定要不要把面键
+	//   换算成方位, 极性反了就是把对的翻成错的 —— 四颗面键全歪。
+	//   ★实机坐实(MD1000 + 一支印刷 A东/B南/X北/Y西 的山寨「Xbox」手柄)★:
+	//   按印刷 A(东, 报 BTN_EAST) → 旧码存 true(=Xbox式) → retroarch.sh 做了翻转 →
+	//   autoconfig 变成 RetroPad A 接南键、X 接西键。
+	//   ⚠️ 这种错看单边设定档看不出来: 两边各自都自洽, 只有跨过边界比对才露馅。
+	if (btnCode == BTN_SOUTH)      mABInverted = true;  // 印刷A在南 → Xbox 式 → 相对默认是「反转」
+	else if (btnCode == BTN_EAST)  mABInverted = false; // 印刷A在东 → 任天堂式 = ES 默认, 不反转
 	else return;                                        // 上/左不是 A 该在的位置，忽略等重按
 	applyAndFinish();
 #endif
