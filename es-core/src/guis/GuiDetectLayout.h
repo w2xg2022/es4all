@@ -26,7 +26,10 @@ public:
 
 private:
 	void setPrompt(const std::string& msg);
-	void handlePhysBtn(int btnCode);   // btnCode = BTN_SOUTH/EAST/NORTH/WEST
+	// btnCode = BTN_SOUTH/EAST/NORTH/WEST。
+	// ★回 true 代表本物件已經自我銷毀(applyAndFinish 裡 delete this)，呼叫端必須立刻 return，
+	//   一個成員都不准再碰★ —— 否則就是 use-after-free。
+	bool handlePhysBtn(int btnCode);
 	void applyAndFinish();
 	void finishSkip();
 

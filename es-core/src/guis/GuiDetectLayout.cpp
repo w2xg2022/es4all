@@ -101,13 +101,11 @@ static bool guidVidPid(const std::string& guid, unsigned short& vid, unsigned sh
 //   原本用全等比對 -> 永遠不成立 -> 開不到節點 -> ★佈局偵測從頭到尾沒在偵測★，
 //   而且完全靜默：畫面照樣問「請按 A」，按下去卻只會走「跳過」那條路。
 //
-//   所以改成按【身分】而不是按名字找，依可靠度排序：
+//   所以改成按【身分】而不是按名字找，只留三條都站得住的路：
 //     ① SDL 給的路徑本身就是 event 節點 —— 最準，直接開
 //     ② SDL 給的是 jsN —— 用 sysfs 把它對到同一個實體裝置的 eventN(不是猜, 是核心的對應)
 //     ③ 比對 GUID 裡的 vendor/product 與 EVIOCGID —— 名字可以被改寫，VID/PID 不會
-//     ④ 名字寬鬆比對(忽略大小寫的子串)當退路
-//     ⑤ 全機只有一顆手把時就用它
-//   ②③⑤ 都會先用 BTN_SOUTH 的能力位確認「這是手把」，免得開到紅外線接收器。
+//   三條都不成立就放棄(回 -1，按任意鍵繼續)，★不猜★ —— 理由見 ③ 那段。
 static int openEvdev(const std::string& devPath, const std::string& devName, const std::string& devGuid)
 {
 	// ① SDL 給的路徑本身就是 event 節點
@@ -140,72 +138,45 @@ static int openEvdev(const std::string& devPath, const std::string& devName, con
 		}
 	}
 
-	// ③④⑤ 掃描 /dev/input/event*
+	// ③ 掃描 /dev/input/event*，比對 GUID 裡的 vendor/product 與 EVIOCGID
+	//
+	// ★只認 VID/PID，不做名字的模糊比對★
+	//   名字是會被改寫的(SDL 一套、核心一套)，模糊比對只是把「對不上」換成「可能對錯」——
+	//   在只有一顆手把時看似能用，插兩顆就開始賭。VID/PID 來自同一顆晶片的硬體描述，
+	//   兩邊必然一致，是這裡唯一站得住的判據。
+	//
+	// ★也不做「全機只有一顆手把就用它」的保底★
+	//   使用者會走到這個畫面，就代表他要【重新設定】這顆手把；
+	//   猜錯裝置比不偵測更糟(會把別顆手把的佈局寫進設定)。
+	//   找不到就大方放棄：mEvFd = -1 -> 按任意鍵即可繼續，走原本的手動設定，
+	//   代價只是少一次自動判斷，不會留下錯的結果。
 	unsigned short wantVid = 0, wantPid = 0;
-	bool haveIds = guidVidPid(devGuid, wantVid, wantPid);
-
-	std::string lowerWanted;
-	for (char c : devName) lowerWanted += (char) tolower((unsigned char) c);
+	if (!guidVidPid(devGuid, wantVid, wantPid))
+		return -1;
 
 	DIR* d = opendir("/dev/input");
 	if (d == nullptr) return -1;
 
-	int byName = -1, onlyPad = -1;
-	int padCount = 0;
+	int found = -1;
 	struct dirent* e;
 	while ((e = readdir(d)) != nullptr)
 	{
 		if (strncmp(e->d_name, "event", 5) != 0) continue;
-		std::string p = std::string("/dev/input/") + e->d_name;
-		int fd = openEvdevNode(p);
+		int fd = openEvdevNode(std::string("/dev/input/") + e->d_name);
 		if (fd < 0) continue;
-		if (!evdevIsGamepad(fd)) { close(fd); continue; }
 
-		// ③ VID/PID
-		if (haveIds)
+		struct input_id id;
+		memset(&id, 0, sizeof(id));
+		if (ioctl(fd, EVIOCGID, &id) >= 0 && id.vendor == wantVid && id.product == wantPid
+			&& evdevIsGamepad(fd))
 		{
-			struct input_id id;
-			memset(&id, 0, sizeof(id));
-			if (ioctl(fd, EVIOCGID, &id) >= 0 && id.vendor == wantVid && id.product == wantPid)
-			{
-				if (byName >= 0) close(byName);
-				if (onlyPad >= 0) close(onlyPad);
-				closedir(d);
-				return fd;
-			}
+			found = fd;
+			break;
 		}
-
-		// ④ 名字寬鬆比對(兩邊互為子串即可, 忽略大小寫)
-		char name[256] = {0};
-		if (byName < 0 && !lowerWanted.empty() &&
-			ioctl(fd, EVIOCGNAME(sizeof(name) - 1), name) >= 0)
-		{
-			std::string lowerHave;
-			for (char* c = name; *c; c++) lowerHave += (char) tolower((unsigned char) *c);
-			if (lowerHave.find(lowerWanted) != std::string::npos ||
-				lowerWanted.find(lowerHave) != std::string::npos)
-			{
-				byName = fd;
-				continue;   // 先留著, 說不定後面還有 VID/PID 完全命中的
-			}
-		}
-
-		// ⑤ 保底候選
-		padCount++;
-		if (onlyPad < 0) { onlyPad = fd; continue; }
 		close(fd);
 	}
 	closedir(d);
-
-	if (byName >= 0)
-	{
-		if (onlyPad >= 0) close(onlyPad);
-		return byName;
-	}
-	if (padCount == 1 && onlyPad >= 0)
-		return onlyPad;
-	if (onlyPad >= 0) close(onlyPad);
-	return -1;
+	return found;
 }
 #endif
 
@@ -219,10 +190,19 @@ GuiDetectLayout::GuiDetectLayout(Window* window, InputConfig* target, const std:
 	std::string devGuid = (mTarget != nullptr) ? mTarget->getDeviceGUIDString() : "";
 #ifdef __linux__
 	mEvFd = openEvdev(devPath, devName, devGuid);
+	// ★一律記錄拿到的 fd 號碼★: 曾經 mEvFd 是 0(= stdin/tty1)害整個 ES 凍住,
+	// 而當時只在失敗時寫 log, 於是「自認成功」的錯誤路徑完全無跡可循, 最後只能靠 gdb。
+	LOG(LogInfo) << "GuiDetectLayout: evdev fd=" << mEvFd
+	             << " (path='" << devPath << "' name='" << devName << "' guid='" << devGuid << "')";
+	// 最後一道保險: 標準描述子絕不可能是手把。走到這裡代表上面的防護有漏,
+	// 寧可放棄偵測(按任意鍵即可繼續)也不要拿 tty 當手把讀 —— 那會凍住主迴圈。
+	if (mEvFd >= 0 && mEvFd <= 2)
+	{
+		LOG(LogError) << "GuiDetectLayout: ★拿到標準描述子 fd=" << mEvFd << "★, 拒絕使用";
+		mEvFd = -1;
+	}
 	if (mEvFd < 0)
-		LOG(LogWarning) << "GuiDetectLayout: 找不到手把的 evdev 節點(path='" << devPath
-		                << "' name='" << devName << "' guid='" << devGuid
-		                << "') -> 佈局偵測跳過, 按任意鍵繼續";
+		LOG(LogWarning) << "GuiDetectLayout: 找不到手把的 evdev 節點 -> 佈局偵測跳過, 按任意鍵繼續";
 #endif
 
 	auto theme = ThemeData::getMenuTheme();
@@ -313,58 +293,70 @@ void GuiDetectLayout::update(int deltaTime)
 	//   O_NONBLOCK 照理已經保證不會阻塞, 但那是「fd 真的是我們開的那個」才成立 ——
 	//   萬一它是別的東西(例如被誤當成手把的 tty), O_NONBLOCK 就不在了。
 	//   poll(timeout=0) 是與那個前提無關的保險: 沒資料就直接回, 永遠不會卡住畫面。
-	struct pollfd pfd;
-	pfd.fd = mEvFd;
-	pfd.events = POLLIN;
-	pfd.revents = 0;
-	int pr = poll(&pfd, 1, 0);
-	if (pr == 0)
-		return;                       // 這一格沒資料, 下一格再看
-	if (pr < 0 && errno != EINTR)
+	// ★每一圈都要先 poll，不是只擋第一次★
+	//   之前只在進迴圈【前】poll 一次 —— 第一次 read 是安全的，但迴圈會繼續讀，
+	//   第二圈就直接撞上阻塞。要嘛整個迴圈都在 poll 的保護下，要嘛等於沒保護。
+	auto dropFd = [this](const char* why, int detail)
 	{
-		LOG(LogWarning) << "GuiDetectLayout: poll 失敗(errno=" << errno << "), 收掉 fd";
+		LOG(LogWarning) << "GuiDetectLayout: " << why << "(" << detail << "), 收掉 fd 並開始定期重試";
 		close(mEvFd);
 		mEvFd = -1;
 		mReopenAccum = 0;
-		return;
-	}
-	// 裝置被拔掉時 poll 會回 POLLERR/POLLHUP, 不會有 POLLIN —— 這是最直接的「裝置沒了」訊號。
-	if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL))
-	{
-		LOG(LogWarning) << "GuiDetectLayout: 裝置已消失(revents=" << pfd.revents << "), 收掉 fd 並開始重試";
-		close(mEvFd);
-		mEvFd = -1;
-		mReopenAccum = 0;
-		return;
-	}
+	};
 
-	struct input_event ev;
-	ssize_t n;
-	errno = 0;   // 下面要靠 errno 判斷「沒資料」還是「裝置沒了」, 先清乾淨免得讀到上一次的殘值
-	while ((n = read(mEvFd, &ev, sizeof(ev))) == (ssize_t)sizeof(ev))
+	for (int guard = 0; guard < 64; guard++)   // 上限只是防呆, 正常一格不會有這麼多事件
 	{
+		struct pollfd pfd;
+		pfd.fd = mEvFd;
+		pfd.events = POLLIN;
+		pfd.revents = 0;
+
+		int pr = poll(&pfd, 1, 0);
+		if (pr == 0)
+			return;                                   // 沒資料了, 下一格再看
+		if (pr < 0)
+		{
+			if (errno == EINTR) return;
+			dropFd("poll 失敗 errno=", errno);
+			return;
+		}
+		// 裝置被拔掉時 poll 會回 POLLERR/POLLHUP —— 這是最直接的「裝置沒了」訊號。
+		if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL))
+		{
+			dropFd("裝置已消失 revents=", pfd.revents);
+			return;
+		}
+		if (!(pfd.revents & POLLIN))
+			return;
+
+		struct input_event ev;
+		errno = 0;
+		ssize_t n = read(mEvFd, &ev, sizeof(ev));
+		if (n != (ssize_t) sizeof(ev))
+		{
+			if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+				return;                               // 正常: 這一格剛好沒東西
+			dropFd("evdev 讀取失敗 errno=", (int) errno);
+			return;
+		}
+
 		if (ev.type != EV_KEY || ev.value != 1)
-			continue; // 只看按下(value==1)的按鍵
+			continue;                                 // 只看按下(value==1)的按鍵
 		if (ev.code == BTN_SOUTH || ev.code == BTN_EAST || ev.code == BTN_NORTH || ev.code == BTN_WEST)
-			handlePhysBtn(ev.code);
-		if (mFinished)
-			break;
-	}
-
-	// n < 0 且 errno 不是 EAGAIN/EWOULDBLOCK(那只是「這輪沒資料」的正常情形) => 裝置沒了。
-	// n == 0 同樣不正常(evdev 不會回 EOF)，一併當作裝置消失處理。
-	if (!mFinished && n <= 0 && errno != EAGAIN && errno != EWOULDBLOCK)
-	{
-		LOG(LogWarning) << "GuiDetectLayout: evdev 讀取失敗(errno=" << errno << "), 裝置可能已被移除; "
-		                << "收掉 fd 以恢復「按任意鍵跳過」, 並開始定期重試";
-		close(mEvFd);
-		mEvFd = -1;
-		mReopenAccum = 0;
+		{
+			// ★回 true = 本物件已 delete this，之後一個成員都不准碰★
+			//   舊寫法是呼叫完再看 mFinished —— 那已經是讀已釋放的記憶體(use-after-free)。
+			//   平常「看起來正常」是因為剛釋放的記憶體多半還沒被覆寫, 這種 bug 會在
+			//   完全無關的地方隨機爆掉, 極難追。
+			if (handlePhysBtn(ev.code))
+				return;
+		}
 	}
 #endif
 }
 
-void GuiDetectLayout::handlePhysBtn(int btnCode)
+// 回 true = 已判定完成並 delete this，呼叫端必須立刻 return。
+bool GuiDetectLayout::handlePhysBtn(int btnCode)
 {
 #ifdef __linux__
 	// es4all（2026-07 手柄三层架构定案）：只需问「按 A」这一步。
@@ -373,8 +365,12 @@ void GuiDetectLayout::handlePhysBtn(int btnCode)
 	// 故 X 那一步连同 InvertGameButtons/InvertXYButtons 一并废除，精灵只按一次 A 即完成。
 	if (btnCode == BTN_SOUTH)      mABInverted = false; // 印刷A在南 → Xbox 式
 	else if (btnCode == BTN_EAST)  mABInverted = true;  // 印刷A在东 → 任天堂式
-	else return;                                        // 上/左不是 A 该在的位置，忽略等重按
-	applyAndFinish();
+	else return false;                                  // 上/左不是 A 该在的位置，忽略等重按
+	applyAndFinish();                                   // ★裡面 delete this★
+	return true;
+#else
+	(void) btnCode;
+	return false;
 #endif
 }
 
