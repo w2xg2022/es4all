@@ -56,8 +56,18 @@ namespace
 	// DEVICE=RK3566, 但本地曾用 DEVICE=MD1000 编过, 於是 /ee_arch 里躺的是 MD1000。
 	// 只认一个来源就会「明明是这台却不命中」, 而且是静默的。任一来源对上就算命中。
 	//   EmuELEC/CoreELEC: /etc/os-release 的 COREELEC_DEVICE、以及 /ee_arch
-	//   ROCKNIX/LibreELEC 系: os-release 的 ROCKNIX_DEVICE / LIBREELEC_DEVICE
+	//   ROCKNIX/LibreELEC 系: os-release 的 HW_DEVICE / DISTRO_DEVICE /
+	//                          ROCKNIX_DEVICE / LIBREELEC_DEVICE
 	//   Armbian: /etc/armbian-release 的 BOARDFAMILY
+	//
+	// ★HW_DEVICE / DISTRO_DEVICE 是 2026-08-04 实机 MD1000/ROCKNIX 补的★
+	//   那台的 /etc/os-release 里【没有】ROCKNIX_DEVICE, 只有
+	//       HW_DEVICE="RK3566"   DISTRO_DEVICE="RK3566"
+	//   於是 deviceKeys() 回空集合, log 印的是 `DEVICE=[]` —— 机型层
+	//   (rocknix/RK3566/MD1000/…)的档案一个都不会落地, 而 common 与 _common 照样成功,
+	//   所以看起来「同步成功了」却独缺机型专属的东西。连带 emmc-layout.conf 也到不了,
+	//   而 ES 正是拿它当「写入 eMMC」选单的显示条件 -> 那个选单永远不出现。
+	//   ⚠️ 多认几个键名不会误命中: 这些值本来就是彼此不同的晶片家族名。
 	std::vector<std::string> deviceKeys()
 	{
 		// ★每个来源【各呼叫一次】, 不要串成一条多行命令★(实机踩过 2026-08-03)
@@ -67,7 +77,7 @@ namespace
 		//   split('\n') 分不出来, 比对当然不命中。而且**完全静默**: 机型层的档一个都没套用,
 		//   log 看起来还很正常(只有那个黏在一起的字串是唯一线索)。
 		static const char* kCmds[] = {
-			"sed -n 's/^\\(COREELEC_DEVICE\\|ROCKNIX_DEVICE\\|LIBREELEC_DEVICE\\)=\"\\?\\([^\"]*\\)\"\\?$/\\2/p' /etc/os-release 2>/dev/null | head -1",
+			"sed -n 's/^\\(COREELEC_DEVICE\\|ROCKNIX_DEVICE\\|LIBREELEC_DEVICE\\|HW_DEVICE\\|DISTRO_DEVICE\\)=\"\\?\\([^\"]*\\)\"\\?$/\\2/p' /etc/os-release 2>/dev/null | head -1",
 			"cat /ee_arch 2>/dev/null | head -1",
 			"sed -n 's/^BOARDFAMILY=\"\\?\\([^\"]*\\)\"\\?$/\\1/p' /etc/armbian-release 2>/dev/null | head -1",
 		};

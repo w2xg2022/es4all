@@ -168,6 +168,15 @@ public:
     // 空 = 本机型不在表内 -> 调用方不显示 AUDIO OUTPUT 选单(保持出厂默认音源，最安全)。
     std::vector<std::pair<std::string, std::string>> parseAudioOutputs();
 
+    // es4all: ★套用音源输出的统一入口(三边共用)★(2026-08-04)
+    //   选单只呼叫这一支, 由它决定实际走哪条后端:
+    //     ① profile 有给 bin/setaudio.sh 就用它 —— 这是唯一「加机型不必重编 ES」的路径,
+    //        ROCKNIX 就靠它(要换 PipeWire 的 default sink, 与另外两边的机制都不同);
+    //     ② 没有的话才退回各 target 的内建实作(ARMBIAN 改 asound.conf / EMUELEC 走硬件路由)。
+    //   为什么不让选单自己分支: 那会把 per-device 的拓扑知识散在前端, 每加一个发行版
+    //   就得改一次 GuiMenu —— 与蓝牙那套三层架构同理, 前端只该认得「一个动作」。
+    void applyAudioOutput(const std::string& dev);
+
 #if defined(ES4ALL_TARGET_EMUELEC)
     // es4all: 套用 EMUELEC 音源输出 —— 切换时与开机还原共用同一条路径。
     // ★不能只呼叫 emuelec-utils setauddev★：它【只】改 asound.conf 的默认 PCM，不动硬件路由，

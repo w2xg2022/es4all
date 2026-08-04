@@ -475,7 +475,15 @@ void GuiMenu::openEmuELECSettings()
 //     EMUELEC = emuelec-utils setauddev + HDMI 硬件静音(同一张卡两个 device, 会一起出声)
 //     ARMBIAN = 直接改写 /etc/asound.conf(裸 ALSA, 无 PipeWire/PulseAudio)
 //   (ROCKNIX 有自己的 openPlatformSettings, 走 es4all-setauddev/PipeWire, 不在这块。)
-#if defined(ES4ALL_CAP_EMUELEC_PLATFORM) || defined(ES4ALL_TARGET_ARMBIAN)
+// es4all: ★AUDIO OUTPUT 已升为三边共用★(2026-08-04)
+//   原本关在 ES4ALL_CAP_EMUELEC_PLATFORM 底下, 理由是 CMakeLists 那段注解写的
+//   「这些在 armbian/rocknix 上显示得出来但按了没用」—— 当时确实没有后端实作。
+//   现在 ROCKNIX 的后端有了(profiles 的 bin/setaudio.sh, 走 PipeWire 换 default sink,
+//   实机 MD1000 切到类比 RK809 后 AV 孔实际出声), 正是那段注解说的
+//   「未来若为其它 target 补上后端实作, 再把对应项升为共用」的时候。
+//
+//   ⚠️ 显示与否仍由【资料】把关: 机型没有 audio_outputs.cfg -> outs 为空 -> 不显示。
+//   所以没验证过的机型不会冒出一个按了没用的选单, 与升为共用前一样安全。
 	// es4all: AUDIO OUTPUT —— 按机型只列该盒【实际有实体孔】的音源输出。
 	//
 	// 为什么要机型白名单(不纯动态): card,device 各机型编号不同, 且 ALSA 列出某 PCM ≠ 盒子有那个
@@ -504,19 +512,10 @@ void GuiMenu::openEmuELECSettings()
 			audioout->setSelectedChangedCallback([audioout](std::string dev) {
 				if (SystemConf::getInstance()->set("ee_audio_device", dev))
 					SystemConf::getInstance()->saveSystemConf();
-#if defined(ES4ALL_TARGET_ARMBIAN)
-				// ARMBIAN: 裸 ALSA -> 直接改写 /etc/asound.conf 的默认装置。
-				ApiSystem::getInstance()->applyArmbianAudioOutput(dev);
-#else
-				// es4all: 走 applyEmuelecAudioOutput 而不是直接呼叫 setauddev ——
-				// setauddev 只改 asound.conf 的默认 PCM，不动硬件路由，会造成
-				// 「选了 AV，HDMI 还在同时出声」(实机 .165 确认)。见该函式说明。
-				ApiSystem::getInstance()->applyEmuelecAudioOutput(dev);
-#endif
+				ApiSystem::getInstance()->applyAudioOutput(dev);
 			});
 		}
 	}
-#endif
 
 	// es4all: START AT BOOT 为 EmuELEC 专属 —— 只写 ee_boot 这个键，
 	// 实际生效靠 EmuELEC 的开机脚本读取；armbian/rocknix 不读它 → 选了没作用。
@@ -4975,7 +4974,7 @@ void GuiMenu::openSoundSettings()
 		musicVolume->setOnValueChanged([](const float &newVal) { Settings::getInstance()->setInt("MusicVolume", (int)round(newVal)); });
 		s->addWithLabel(_("MUSIC VOLUME"), musicVolume);
 
-		s->addSwitch(_("SHOW OVERLAY WHEN VOLUME CHANGES"), "VolumePopup", true);
+		s->addSwitch(_("SHOW OVERLAY WHEN VOLUME CHANGES"), "VolumePopup", false);
 	}
 
 	s->addGroup(_("MUSIC"));

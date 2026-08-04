@@ -338,6 +338,43 @@ std::vector<std::pair<std::string, std::string>> ApiSystem::parseAudioOutputs()
 	return outs;
 }
 
+// es4all: 套用音源输出的统一入口 —— 选单与开机还原都只呼叫这一支。
+//
+// ★优先用 profile 给的 bin/setaudio.sh★
+//   三个发行版的音源机制根本不同: ARMBIAN 是裸 ALSA(改 asound.conf)、EMUELEC 也是裸 ALSA
+//   但还要动硬件路由、ROCKNIX 走 PipeWire(得换 default sink, 写 asound.conf 完全没用)。
+//   把这些塞进 ES 等於每加一个发行版就要重编一次前端, 所以真正的实作放 profiles,
+//   ES 只认得「有没有这支脚本」。加机型 = 往 profiles 放一份, 不必动 ES。
+//
+// 标签一并传入: Amlogic 上 HDMI/AV 同卡, 脚本光看 card,device 分不出使用者选的是哪个孔。
+void ApiSystem::applyAudioOutput(const std::string& dev)
+{
+	if (dev.empty() || dev == "auto")
+		return;
+
+	const std::string script = Es4allProfiles::scriptPath("setaudio.sh");
+	if (!script.empty())
+	{
+		std::string label;
+		for (auto& o : parseAudioOutputs())
+			if (o.second == dev) { label = o.first; break; }
+
+		Utils::Platform::ProcessStartInfo(script + " '" + dev + "' '" + label + "'").run();
+		return;
+	}
+
+	// 没有 profile 脚本时的退路: 各 target 的内建实作。
+#if defined(ES4ALL_TARGET_ARMBIAN)
+	applyArmbianAudioOutput(dev);
+#elif defined(ES4ALL_TARGET_EMUELEC)
+	applyEmuelecAudioOutput(dev);
+#else
+	// ROCKNIX 没有内建实作 —— 它的后端【只有】profiles 那支(PipeWire 换 sink)。
+	// 走到这里代表 profile 还没同步下来, 静静跳过就好: 音源维持发行版开机脚本种好的那个。
+	LOG(LogWarning) << "applyAudioOutput: 没有 profile 的 setaudio.sh, 本 target 无内建实作, 跳过";
+#endif
+}
+
 #if defined(ES4ALL_TARGET_EMUELEC)
 void ApiSystem::applyEmuelecAudioOutput(const std::string& dev)
 {
@@ -349,21 +386,11 @@ void ApiSystem::applyEmuelecAudioOutput(const std::string& dev)
 	//   `emuelec-utils setauddev` 只 sed 一行 dmix slave, 前提是「HDMI 与 AV 在同一张卡」;
 	//   第 2 步的 `amixer -c 0` 更是写死卡号。这在 MD1000(RK3566)上是错的: 它是【两张独立
 	//   的卡】(card HDMI / card RK809), 只改 dmix 会变成「声音去了 AV、音量却还挂在 HDMI 卡上」。
-	//   这种 per-device 的拓扑知识不该留在三边共用的前端(与蓝牙那套三层架构同理), 故改成:
-	//   profile 有给脚本就用它, 没有才走内建 —— 既有机型零回归, 加新机型不必重编 ES。
-	//   标签一并传入: Amlogic 上 HDMI/AV 同卡, 脚本光看 dev 分不出使用者选的是哪个孔。
-	{
-		const std::string script = Es4allProfiles::scriptPath("setaudio.sh");
-		if (!script.empty())
-		{
-			std::string label;
-			for (auto& o : parseAudioOutputs())
-				if (o.second == dev) { label = o.first; break; }
-
-			Utils::Platform::ProcessStartInfo(script + " '" + dev + "' '" + label + "'").run();
-			return;
-		}
-	}
+	//   这种 per-device 的拓扑知识不该留在三边共用的前端(与蓝牙那套三层架构同理)。
+	//
+	//   ★「profile 有给脚本就用它」那段已上移到 applyAudioOutput★(2026-08-04):
+	//   本函式现在只是它的【EMUELEC 退路】, 呼叫得到就代表 profile 没给脚本,
+	//   所以这里不必再查一次 —— 留着只会让人以为有两条路。
 
 	// 1) 应用层：改 asound.conf 的默认 PCM。emuelec-utils setauddev 【只】做这一件事
 	//    (实作就一行 sed: `pcm "hw:..."` -> `pcm "hw:<dev>"`)。
