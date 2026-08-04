@@ -343,6 +343,12 @@ msgstr ""
 msgid "Extracting"
 msgstr ""
 
+msgid "NO UPDATE AVAILABLE"
+msgstr ""
+
+msgid "DEVICE PROFILES UPDATED"
+msgstr ""
+
 msgid "all games"
 msgstr ""
 
@@ -409,6 +415,18 @@ msgid_plural "This collection contains %i games, including:%s"
 msgstr[0] ""
 msgstr[1] ""
 
+msgid "DOWNLOADING"
+msgstr ""
+
+msgid "EXTRACTING"
+msgstr ""
+
+msgid "INSTALLING"
+msgstr ""
+
+msgid "UPDATE IS READY"
+msgstr ""
+
 msgid "SCANNING BLUETOOTH"
 msgstr ""
 
@@ -443,6 +461,13 @@ msgid "QUIT"
 msgstr ""
 
 msgid "Loading theme"
+msgstr ""
+
+#, c-format
+msgid ""
+"Display mode is now %s.\n"
+"Keep this mode?\n"
+"If not confirmed, it will be restored automatically on next boot."
 msgstr ""
 
 msgid "SAVING METADATA. PLEASE WAIT..."
@@ -699,9 +724,6 @@ msgid "HAVING MEDIAS"
 msgstr ""
 
 msgid "MISSING MEDIAS"
-msgstr ""
-
-msgid "DOWNLOADING"
 msgstr ""
 
 msgid "THEME INSTALLED SUCCESSFULLY"
@@ -1833,6 +1855,9 @@ msgctxt "game_options"
 msgid "RGA SCALING"
 msgstr ""
 
+msgid "GRAPHICS API"
+msgstr ""
+
 msgid "VENDOR"
 msgstr ""
 
@@ -1881,22 +1906,10 @@ msgstr ""
 msgid "NETWORK SETTINGS"
 msgstr ""
 
-msgid "CONFIGURE INPUT"
-msgstr ""
-
-msgid "EMULATOR SETTINGS"
-msgstr ""
-
 msgid "UPDATES & DOWNLOADS"
 msgstr ""
 
 msgid "SYSTEM SETTINGS"
-msgstr ""
-
-msgid "INFORMATION"
-msgstr ""
-
-msgid "UNLOCK USER INTERFACE MODE"
 msgstr ""
 
 msgid "LOADING SPLASH OPTION"
@@ -1920,64 +1933,58 @@ msgstr ""
 msgid "PLAY CUSTOM SPLASH"
 msgstr ""
 
-msgid "VIDEO MODE"
-msgstr ""
-
-msgid "You are about to set EmuELEC resolution to:"
-msgstr ""
-
-msgid "Do you want to proceed ?"
-msgstr ""
-
-msgid "A REBOOT OF THE SYSTEM IS REQUIRED TO APPLY THE NEW CONFIGURATION"
-msgstr ""
-
-msgid "BUTTON LED COLOR"
-msgstr ""
-
-msgid "STATUS LED"
-msgstr ""
-
 msgid "AUDIO DEVICE"
 msgstr ""
 
 msgid "Changes will need an EmulationStation restart."
 msgstr ""
 
+msgid "AUDIO OUTPUT"
+msgstr ""
+
 msgid "START AT BOOT"
+msgstr ""
+
+msgid "CPU GOVERNOR"
+msgstr ""
+
+msgid "CPU frequency scaling policy."
 msgstr ""
 
 msgid "RETROARCH LOGGING"
 msgstr ""
 
-msgid "SHOW RETROARCH FPS"
+msgid "OFF"
 msgstr ""
 
-msgid "ENABLE RA SPLASH"
+msgid "DEBUG"
 msgstr ""
 
-msgid "ALWAYS SHOW BOOT VIDEO"
+msgid "INFO"
 msgstr ""
 
-msgid "RANDOMIZE BOOT VIDEO"
+msgid "WARNING"
 msgstr ""
 
-msgid "CONFIGURE SPLASH OPTIONS"
+msgid "ERROR"
 msgstr ""
 
-msgid "GAMEPAD CONFIG"
+msgid "RetroArch logs; enable when you need to debug."
 msgstr ""
 
-msgid "RETROARCH MENU"
+msgid "BOOT VIDEO"
 msgstr ""
 
-msgid "EXTERNAL MOUNT OPTIONS"
+msgid "FIXED"
 msgstr ""
 
-msgid "DANGER ZONE"
+msgid "Play a video at boot: a fixed one, or a random pick."
 msgstr ""
 
 msgid "SPLASH SETTINGS"
+msgstr ""
+
+msgid "EXTERNAL MOUNT OPTIONS"
 msgstr ""
 
 msgid "ENABLE LOADING SPLASH SCREEN"
@@ -2016,86 +2023,30 @@ msgstr ""
 msgid "PUT RANDOM MEDIA IN '/storage/roms/splash/random'."
 msgstr ""
 
-msgid "SETTING DURATION 0 WILL MAKE VIDEOS DEFAULT TO PLAY 3 SECONDS."
-msgstr ""
-
-msgid "SETTING DURATIONS GREATER THAN 0 WILL ADD TO LOADING/EXIT SPLASH TIMES."
-msgstr ""
-
-msgid "CONNECT WIIMOTE(S)"
-msgstr ""
-
-msgid ""
-"Please ensure your Wiimote is in pairing mode (press buttons 1+2).\n"
-"\n"
-"When all the LED's are blinking,\n"
-"press OK to start the connection.\n"
-"\n"
-"This process can take a while, be patient!\n"
-"\n"
-"If the LED's stop blinking before the wiimote has been successfully paired, "
-"press buttons 1+2 again."
-msgstr ""
-
-msgid ""
-"SCANNING FOR WIIMOTE...If Wiimote stops blinking before a successfull "
-"pairing, hold 1+2 again."
-msgstr ""
-
-msgid "Wiimote successfully connected."
-msgstr ""
-
-msgid "Connection failed."
-msgstr ""
-
-msgid "ACTIVATE WIIMOTE WITH IR-SENSORBAR"
-msgstr ""
-
-msgid ""
-"Wiimote IR activated.\n"
-"\n"
-"Instructions:\n"
-"Set mouse index in retroarch to Wiimote IR to use the wiimote like a "
-"lightgun."
-msgstr ""
-
-msgid ""
-"Error while running script.\n"
-"\n"
-"Wiimote IR not started."
-msgstr ""
-
-msgid "AUTO CONFIG ADVANCEMAME GAMEPAD"
-msgstr ""
-
-msgid "INVERT AXIS FOR ADVANCEMAME "
-msgstr ""
-
-msgid "AUTO CONFIG DOLPHIN GAMEPAD"
-msgstr ""
-
-msgid "AUTO CONFIG DUCKSTATION GAMEPAD"
-msgstr ""
-
-msgid "AUTO CONFIG FLYCAST GAMEPAD"
-msgstr ""
-
-msgid "AUTO CONFIG MUPEN64PLUS GAMEPAD"
-msgstr ""
-
-msgid "AUTO CONFIG YABASANSHIRO GAMEPAD"
-msgstr ""
-
-msgid "AUTO CONFIG PPSSPPSDL GAMEPAD"
-msgstr ""
-
-msgid "RUMBLE STRENGTH"
-msgstr ""
-
 msgid "EXTERNAL DEVICE"
 msgstr ""
 
-msgid "Select the mounted drive to be used for ROMS."
+msgid "INTERNAL STORAGE"
+msgstr ""
+
+msgid ""
+"Merge a drive with the internal storage - games from both are shown "
+"together. Pick INTERNAL STORAGE to show only the games already on this "
+"device."
+msgstr ""
+
+msgid ""
+"Only the internal storage will be used. It will no longer be merged with any "
+"external drive."
+msgstr ""
+
+#, c-format
+msgid ""
+"\"%s\" will be MERGED with the internal storage - the games on both will be "
+"shown together."
+msgstr ""
+
+msgid "This requires a full reboot. Continue?"
 msgstr ""
 
 msgid "RETRY TIMES"
@@ -2110,19 +2061,21 @@ msgstr ""
 msgid "How much delay in seconds between each retry."
 msgstr ""
 
-msgid "FORCE MOUNT NOW"
+msgid "STOP MERGING AND WRITE BACK"
+msgstr ""
+
+msgid "Not enough space on the internal storage to write back the merged data."
+msgstr ""
+
+msgid "Nothing to write back."
 msgstr ""
 
 msgid ""
-"WARNING THIS WILL RESTART EMULATIONSTATION!\n"
-"\n"
-"System will try to mount the external drive selected "
+"Save files, scraped data and images created while merging will be written "
+"back to the internal storage."
 msgstr ""
 
-msgid ""
-". Make sure you have all the settings saved before running this.\n"
-"\n"
-"TRY TO MOUNT EXTERNAL AND RESTART?"
+msgid "This cannot be undone and EmulationStation will restart. Continue?"
 msgstr ""
 
 msgid "INTERNAL RESOLUTION DIMENSIONS"
@@ -2149,127 +2102,7 @@ msgstr ""
 msgid "BOTTOM BORDER"
 msgstr ""
 
-msgid "OVERCLOCK"
-msgstr ""
-
-msgid "Off"
-msgstr ""
-
-msgid "1.4ghz"
-msgstr ""
-
-msgid ""
-"OGA OC is HIGHLY experimental, you may encounter random lockups or your "
-"device might not boot anymore. \n"
-msgstr ""
-
-msgid ""
-"In case you cannot boot anymore, create an empty file called \"no_oc.oga\" "
-"on the boot (EMUELEC) partition.\n"
-"\n"
-msgstr ""
-
-msgid ""
-"There is also the posibility of SD card file corruption!!! Only enable OC if "
-"you agree to the risks!\n"
-"\n"
-msgstr ""
-
-msgid "INTERNAL VIDEO OPTIONS"
-msgstr ""
-
-msgid "CLOUD BACKUP SETTINGS AND GAME SAVES"
-msgstr ""
-
-msgid ""
-"WARNING THIS WILL RESTART EMULATIONSTATION!\n"
-"\n"
-"This will backup your game saves, savestates and emuelec configs to the "
-"cloud service configured on rclone.conf\n"
-"\n"
-"BACKUP TO CLOUD AND RESTART?"
-msgstr ""
-
-msgid "CLOUD RESTORE SETTINGS AND GAME SAVES"
-msgstr ""
-
-msgid ""
-"WARNING THIS WILL RESTART EMULATIONSTATION!\n"
-"\n"
-"This will restore your game saves, savestates and emuelec configs from the "
-"cloud service configured on rclone.conf, it will overwrite any existing "
-"file!!\n"
-"\n"
-"RESTORE FROM CLOUD AND RESTART?"
-msgstr ""
-
-msgid "ADD EMUSTATION ARGUMENTS"
-msgstr ""
-
-msgid "ADD RETROARCH ARGUMENTS"
-msgstr ""
-
-msgid "LOCAL BACKUP EMUELEC CONFIGS"
-msgstr ""
-
-msgid ""
-"WARNING THIS WILL RESTART EMULATIONSTATION!\n"
-"\n"
-"AFTER THE SCRIPT IS DONE REMEMBER TO COPY THE FILE /storage/roms/backup/"
-"ee_backup_config.tar.gz TO SOME PLACE!\n"
-"\n"
-"BACKUP CURRENT CONFIG AND RESTART?"
-msgstr ""
-
-msgid "RESET EMUELEC SCRIPTS AND BINARIES TO DEFAULT"
-msgstr ""
-
-msgid ""
-"WARNING: SYSTEM WILL RESET SCRIPTS AND BINARIES !\n"
-"UPDATE, DOWNLOADS, THEMES, BLUETOOTH PAIRINGS AND ROMS FOLDER WILL NOT BE "
-"AFFECTED.\n"
-"\n"
-"RESET SCRIPTS AND BINARIES TO DEFAULT AND RESTART?"
-msgstr ""
-
-msgid "RESET RETROARCH CONFIG TO DEFAULT"
-msgstr ""
-
-msgid ""
-"WARNING: RETROARCH CONFIG WILL RESET TO DEFAULT\n"
-"\n"
-"PER-CORE CONFIGURATIONS WILL NOT BE AFFECTED BUT NO BACKUP WILL BE CREATED!\n"
-"\n"
-"RESET RETROARCH CONFIG TO DEFAULT?"
-msgstr ""
-
-msgid "RESET SYSTEM TO DEFAULT CONFIG"
-msgstr ""
-
-msgid ""
-"WARNING: ALL CONFIGURATIONS WILL BE RESET AND NO BACKUP WILL BE CREATED!\n"
-"\n"
-"IF YOU WANT TO KEEP YOUR SETTINGS MAKE A BACKUP AND SAVE IT ON AN EXTERNAL "
-"DRIVE BEFORE RUNING THIS OPTION!\n"
-"\n"
-"RESET SYSTEM TO DEFAULT CONFIG AND RESTART?"
-msgstr ""
-
-msgid "FORCE UPDATE"
-msgstr ""
-
-msgid ""
-"WARNING: A FORCE UPDATE WILL DOWNLOAD WHATEVER VERSION IS AVAILABLE FOR "
-"UPDATE REGARDLESS OF VERSION BASED ON THE TYPE YOU HAVE SELECTED IN THE "
-"UPDATE & DOWNLOADS (beta or stable)\n"
-"\n"
-"SYSTEM WILL RESET SCRIPTS AND BINARIES !\n"
-"DOWNLOADS, THEMES, BLUETOOTH PAIRINGS AND ROMS FOLDER WILL NOT BE AFFECTED.\n"
-"\n"
-"CONTINUE WITH FORCE UPDATE?"
-msgstr ""
-
-msgid "ARE YOU SURE YOU WANT TO CONFIGURE THE INPUT?"
+msgid "UNLOCK USER INTERFACE MODE"
 msgstr ""
 
 msgid "ENTER THE CODE NOW TO UNLOCK"
@@ -2323,6 +2156,9 @@ msgstr ""
 msgid "VIDEO OUTPUT"
 msgstr ""
 
+msgid "VIDEO MODE"
+msgstr ""
+
 msgid "Sets the display's resolution."
 msgstr ""
 
@@ -2359,7 +2195,7 @@ msgstr ""
 msgid "SHOW FRAMERATE"
 msgstr ""
 
-msgid "Also turns on the emulator's native FPS counter, if available."
+msgid "Display EmulationStation's own framerate. Does not affect games."
 msgstr ""
 
 msgid "VSYNC"
@@ -2384,7 +2220,10 @@ msgstr ""
 msgid "Allow public web access API using %s"
 msgstr ""
 
-msgid "LOG LEVEL"
+msgid "ES LOG LEVEL"
+msgstr ""
+
+msgid "Log verbosity of EmulationStation itself (es_log.txt); not games."
 msgstr ""
 
 msgid "CREATE A SUPPORT FILE"
@@ -2584,7 +2423,10 @@ msgstr ""
 msgid "THEMES"
 msgstr ""
 
-msgid "THE BEZEL PROJECT"
+msgid "DOWNLOAD DEVICE PROFILES"
+msgstr ""
+
+msgid "MODEL-SPECIFIC SETTINGS SUCH AS AUDIO OUTPUT"
 msgstr ""
 
 msgid "SOFTWARE UPDATES"
@@ -2603,6 +2445,9 @@ msgid "START UPDATE"
 msgstr ""
 
 msgid "UPDATER IS ALREADY RUNNING"
+msgstr ""
+
+msgid "INFORMATION"
 msgstr ""
 
 msgid "TIMEZONE"
@@ -2638,21 +2483,6 @@ msgstr ""
 msgid "SCREEN READER (TEXT TO SPEECH)"
 msgstr ""
 
-msgid "USER INTERFACE MODE"
-msgstr ""
-
-msgid "Lock down certain config menus for use with guest users/kids."
-msgstr ""
-
-msgid ""
-"You are changing the user interface to a restricted mode:\n"
-"This will hide most menu options to prevent changes to the system.\n"
-"To unlock and return to the full user interface, enter this code:"
-msgstr ""
-
-msgid "Do you want to proceed?"
-msgstr ""
-
 msgid "KODI SETTINGS"
 msgstr ""
 
@@ -2666,9 +2496,6 @@ msgid "HARDWARE"
 msgstr ""
 
 msgid "Sets the display's resolution for emulationstation."
-msgstr ""
-
-msgid "AUDIO OUTPUT"
 msgstr ""
 
 msgid "AUDIO PROFILE"
@@ -2704,7 +2531,7 @@ msgstr ""
 msgid "ON"
 msgstr ""
 
-msgid "OFF"
+msgid "BUTTON LED COLOR"
 msgstr ""
 
 msgid "off"
@@ -2738,6 +2565,9 @@ msgid "heartbeat"
 msgstr ""
 
 msgid "on"
+msgstr ""
+
+msgid "OVERCLOCK"
 msgstr ""
 
 msgid "LED HARDWARE"
@@ -2864,6 +2694,12 @@ msgid "Display savestate manager before launching a game."
 msgstr ""
 
 msgid "DEFAULT GLOBAL SETTINGS"
+msgstr ""
+
+msgid "SHOW RETROARCH FPS"
+msgstr ""
+
+msgid "Display the framerate on-screen in RetroArch games."
 msgstr ""
 
 msgid "GAME ASPECT RATIO"
@@ -3203,6 +3039,54 @@ msgstr ""
 msgid "WIFI CONFIGURATION ERROR"
 msgstr ""
 
+msgid "PERFORMANCE"
+msgstr ""
+
+msgid "SCHEDUTIL"
+msgstr ""
+
+msgid "ONDEMAND"
+msgstr ""
+
+msgid "POWERSAVE"
+msgstr ""
+
+msgid "VERBOSE"
+msgstr ""
+
+msgid "AUTOMOUNT EXTERNAL"
+msgstr ""
+
+msgid "Auto-detect and mount an external drive for games at boot."
+msgstr ""
+
+msgid "GAMES DEVICE"
+msgstr ""
+
+msgid "Force a specific partition for /storage/roms (else auto-detect)."
+msgstr ""
+
+msgid "PRIMARY STORAGE"
+msgstr ""
+
+msgid "EXTERNAL"
+msgstr ""
+
+msgid "Which storage is primary when merging internal + external."
+msgstr ""
+
+msgid "MERGED STORAGE"
+msgstr ""
+
+msgid "Overlay internal and external ROMs together."
+msgstr ""
+
+msgid "REBOOT TO APPLY"
+msgstr ""
+
+msgid "Storage changes are applied at boot. Reboot now?"
+msgstr ""
+
 msgid "QUICK ACCESS"
 msgstr ""
 
@@ -3236,16 +3120,22 @@ msgstr ""
 msgid "REALLY RESTART EMULATIONSTATION?"
 msgstr ""
 
-msgid "REBOOT TO USB/SD"
-msgstr ""
-
-msgid "REALLY REBOOT TO USB/SD?"
-msgstr ""
-
 msgid "REBOOT TO EMMC"
 msgstr ""
 
 msgid "REALLY REBOOT TO EMMC?"
+msgstr ""
+
+msgid "INSTALL TO EMMC"
+msgstr ""
+
+msgid ""
+"THIS WILL ERASE THE INTERNAL STORAGE.\n"
+"\n"
+"Your game ROMs will NOT be copied - the ROM folders are created empty and "
+"your games stay on the USB drive.\n"
+"\n"
+"CONTINUE?"
 msgstr ""
 
 msgid "SHUTDOWN AFTER INACTIVITY"
@@ -3424,6 +3314,9 @@ msgstr ""
 msgid "LAUNCH THIS GAME AT STARTUP"
 msgstr ""
 
+msgid "INTERNAL VIDEO OPTIONS"
+msgstr ""
+
 msgid "RETROARCH MIDI"
 msgstr ""
 
@@ -3516,6 +3409,9 @@ msgstr ""
 msgid "CURRENTLY IN DOWNLOAD QUEUE"
 msgstr ""
 
+msgid "UPDATING ES4All"
+msgstr ""
+
 msgid "UPDATING EMUELEC"
 msgstr ""
 
@@ -3523,10 +3419,10 @@ msgstr ""
 msgid "UPDATING %s"
 msgstr ""
 
-msgid "UPDATE IS READY"
+msgid "Please reboot to finish updating."
 msgstr ""
 
-msgid "REBOOT TO APPLY"
+msgid "UPDATE DOWNLOADED. RESTART NOW TO APPLY?"
 msgstr ""
 
 msgid "REALLY UPDATE?"
@@ -3546,9 +3442,6 @@ msgid ""
 msgstr ""
 
 msgid "NETWORK CONNECTION NEEDED"
-msgstr ""
-
-msgid "NO UPDATE AVAILABLE"
 msgstr ""
 
 msgid "COLLECTIONS TO DISPLAY"
@@ -3642,6 +3535,9 @@ msgid "DYNAMIC COLLECTIONS"
 msgstr ""
 
 msgid "CUSTOM GAME COLLECTIONS"
+msgstr ""
+
+msgid "THE BEZEL PROJECT"
 msgstr ""
 
 msgid "SELECT BEZELS TO INSTALL/REMOVE"
@@ -3986,6 +3882,9 @@ msgstr[1] ""
 msgid "WELCOME"
 msgstr ""
 
+msgid "CONFIGURE INPUT"
+msgstr ""
+
 #, c-format
 msgid "%i GAMEPAD DETECTED"
 msgid_plural "%i GAMEPADS DETECTED"
@@ -4002,6 +3901,12 @@ msgid "PRESS ESC TO CANCEL."
 msgstr ""
 
 msgid "PRESS ESC OR A HOTKEY TO CANCEL."
+msgstr ""
+
+msgid "DETECT CONTROLLER LAYOUT"
+msgstr ""
+
+msgid "PRESS THE BUTTON LABELED \"A\" (by its printed letter)."
 msgstr ""
 
 msgid "DISCARD CHANGES"
@@ -4136,6 +4041,9 @@ msgid "HOLD ANY BUTTON TO SKIP"
 msgstr ""
 
 msgid "-NOT DEFINED-"
+msgstr ""
+
+msgid "RECOMMENDED: SELECT. ANALOG TRIGGERS (L2/R2) DO NOT WORK AS A HOTKEY."
 msgstr ""
 
 msgid ""

@@ -700,22 +700,21 @@ void GuiMenu::openEmuELECSettings()
 	// 与「前端开发人员选项」里的 RETROARCH MENU DRIVER 是同一个键、重复。保留开发者选项那份
 	// (面向进阶用户, 一般用户不易误触), 平台设置不再出现。
 
-// es4all: ★ARMBIAN 不出「外部挂载选项」★(2026-07-23 实机 MD1000/Armbian 192.168.8.198 查证)
-//   这整组功能是 EmuELEC 专属，只因 armbian 也带 -DENABLE_EMUELEC=1 才被顺带编进来，是个空壳:
-//     ① 碟的列举写死 `find /var/media/ ...`，而 Armbian 上**没有 /var/media 这个目录** -> 恒为空，
-//        选单永远只剩「自动 / 内部存储」两项；
-//     ② 挂载后端 eemount / mount_romfs.sh 在 Armbian 上不存在；
-//     ③ ROM 根是 /home/game/ROMs，不是 EmuELEC 的 /storage/roms，语义对不上。
-//   而且该机**根本没有任何自动挂载机制**(udisks2/usbmount/pmount 都没装，fstab 也没写)，
-//   插上的 USB 碟连挂都不会挂。给个点进去什么也做不到的选单只会误导，故直接不出。
-//   ARMBIAN 的外接存储支持列为待办(见 [[es4all_features_todo]])，要做得连 es4all-1key 一起改。
-#if !defined(ES4ALL_TARGET_ARMBIAN)
+// es4all: ★ARMBIAN 的门控已拆除★(2026-08-03)
+//   旧结论(2026-07-23)是「ARMBIAN 不出这个选单」, 当时是对的 —— 那时这整组功能确实是
+//   EmuELEC 专属的空壳: 碟的列举写死扫 /var/media(Armbian 没这目录 -> 恒为空)、
+//   挂载后端 eemount / mount_romfs.sh 在 Armbian 不存在、ROM 根也对不上。
+//
+//   ★现在三个前提都不成立了★, 所以门控跟着废除:
+//     ① 列举改用 blkid, 与挂载脚本同一份真相, 不再依赖 /var/media;
+//     ② 挂载后端换成 es4all-storage.sh(mergerfs 聚合), 该脚本本来就有 armbian 分支;
+//     ③ ROM 根由 ES4ALL_ROMS 传入(A 版是 /home/game/ROMs), 语义对得上。
+//   A 版这边由 es4all-1key 负责把 mergerfs、ExecStartPre 与 profiles 首次下载铺好。
 if (UIModeController::getInstance()->isUIModeFull())
 	{
         //External Mount Options
         s->addEntry(_("EXTERNAL MOUNT OPTIONS"), true, [this] { openExternalMounts(mWindow, "global"); });
     }
-#endif
 
     mWindow->pushGui(s);
 }

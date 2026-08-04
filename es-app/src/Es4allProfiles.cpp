@@ -163,13 +163,24 @@ namespace
 	//   SUBDEVICE= 拿 /proc/device-tree/model 比, 那是一长串描述 -> 子串比对
 	// 反过来做都会错: DEVICE 用子串会让 "RK3566" 命中 "RK356x";
 	// SUBDEVICE 用全等则永远对不上(model 从来不会刚好等於机型键)。
+	//
+	// ★DEVICE 的全等比对要【忽略大小写】★(2026-08-03 实机 Armbian/MD1000 查证):
+	//   仓库目录名沿用建置变数的写法 RK3566(大写), 但 Armbian 的来源是
+	//   /etc/armbian-release 的 BOARDFAMILY, 那里写的是**小写 rk3566** ——
+	//   纯全等的话 A 版的机型层【一个档都不会命中】, 而且完全静默:
+	//   同步显示成功、log 也正常, 只有机型专属的设定神秘地没出现。
+	//   放宽成忽略大小写不会引入误命中: 这些值本来就是彼此不同的晶片家族名。
 	bool resolveDest(const std::string& repoPath, const std::string& model,
 	                 const std::vector<std::string>& devKeys,
 	                 int& outRank, std::string& outAbs, std::string& outRootToken)
 	{
 		auto isDevice = [&](const std::string& s)
 		{
-			return std::find(devKeys.cbegin(), devKeys.cend(), s) != devKeys.cend();
+			const std::string lower = Utils::String::toLower(s);
+			for (auto it = devKeys.cbegin(); it != devKeys.cend(); it++)
+				if (Utils::String::toLower(*it) == lower)
+					return true;
+			return false;
 		};
 		auto isSubDevice = [&](const std::string& s)
 		{
