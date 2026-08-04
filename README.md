@@ -1,5 +1,7 @@
 # es4all — EmulationStation for Armbian / ROCKNIX / EmuELEC
 
+<p align="center"><img src="screenshot.png" alt="ES4All 主菜单" width="100%"></p>
+
 统一维护的 EmulationStation 前端源码。同一份代码、多个 build profile，用
 `ES4ALL_TARGET` 切换平台差异，覆盖三个 target：
 
@@ -56,12 +58,14 @@ ROCKNIX / EmuELEC 版同上，改 `-DES4ALL_TARGET=rocknix`（或 `emuelec`）�
 
 | 分支 | 用途 |
 |---|---|
-| `v1.2-stable` | **当前开发线**（default）。1.2 已定版发布，后续修正也先进这里 |
+| `v1.2-stable` | **当前稳定线**（default）。1.2 已定版发布（tag `v1.2`），1.2 的修正进这里 |
+| `v1.3-dev` | **下一版开发线**（待建立：从 `v1.2-stable` 复制出来、不改名） |
 | `v1.1-stable` | 1.1 维护线 |
 | `v1.0-stable` | 1.0 维护线 |
 
-> `v1.2-dev` 在 2026-08-04 转正为 `v1.2-stable`（**从它复制出来、不改名**，理由见下方 tag 规则），
-> 版本字串同时由 `1.2pre` 改为 `1.2`，CI 於是发出正式版 tag `v1.2` 与 Release。
+> 惯例：开发在 `vX.Y-dev`，定版时**从 dev 复制出 `vX.Y-stable`（不改名）**并把版本字串由
+> `X.Ypre` 改为 `X.Y`，CI 於是发出正式版 tag 与 Release，default 分支跟着切到新的 stable。
+> `v1.2` 就是这样在 2026-08-04 由 `v1.2-dev` 转正的。
 
 Release 由版本字串（`es-app/src/EmulationStation.h` 的 `PROGRAM_VERSION_STRING`）自动推导：
 tag 为 `v<版本>`，含 `pre` 发预览版、不含则发正式版（Latest）。
@@ -71,23 +75,9 @@ tag 为 `v<版本>`，含 `pre` 发预览版、不含则发正式版（Latest）
 > 两份参考副本，以及 `w2xg2022/rocknix` 与 EmuELEC 树里的两份真源），否则固件树 clone 不到分支、
 > 编译直接失败。
 
-## 待办（v1.2）
+## 待办（v1.3）
 
-1.1 收敛时刻意砍掉或藏起来的功能，都是**因为后端做不到、留着只会误导使用者**。
-这里记下现况与要补的东西：
-
-### 1. 外部存储：三个 target 统一做成「内外部盘聚合」
-
-| target | 现况 |
-|---|---|
-| `armbian` | **入口已藏**。整组功能是空壳：碟的枚举写死 `find /var/media/`（该目录在 Armbian 上不存在）、挂载后端 `eemount`/`mount_romfs.sh` 也不存在、ROM 根是 `/home/game/ROMs` 而非 `/storage/roms`。更底层的是该机**没有任何自动挂载机制**，插上的 USB 碟连挂都不会挂 |
-| `rocknix` | **入口已藏**。ES 侧四个键都对得上 `automount`，但上游韧体有两个 bug：①`rocknix-automount` 跑得比 USB 枚举早（实测系统碟 +3.9s、外接碟 **+65.4s**），永远扫不到；②之后 udevil 把碟挂到 `/var/media`，而 `find_games` 把「已挂载」当成「不可用」而跳过。另外「合并储存」在 FAT/exFAT/NTFS 碟上必定无效（overlayfs 要求 upperdir 支援 xattr，脚本只认 ext4/btrfs），UI 却显示已开启 |
-| `emuelec` | 可用，但语义是「二选一」（内部 / 外接碟择一），不是聚合 |
-
-目标：三边统一成 ROCKNIX 那种 overlay 叠加（内部 ROM 与外接碟 ROM 合并呈现）。
-韧体侧那两个 bug 归 `w2xg2022/rocknix`；ARMBIAN 的挂载层归 `es4all-1key`。
-
-### 2. 视频模式（分辨率切换）
+### 1. 视频模式（分辨率切换）
 
 1.1 三个 target 一律移除选单，**后端保留**、接回来即可：
 
@@ -99,47 +89,11 @@ tag 为 `v<版本>`，含 `pre` 发预览版、不含则发正式版（Latest）
 > **看到异常不一定是程式的错**（1.1 期间为此误判过一次）。要嘛接真电视验，
 > 要嘛先做好防呆（试用确认对话框那套机制已写过）。
 
-### 3. ROCKNIX：把 zh_CN 预编进映像
+### 2. 「用户界面设置」首次进入即退出时的闪烁
 
-R 的 locale 是**执行时现编**的（JELOS 继承的设计，为省映像空间）：`es_settings` 开机检查
-`zh_CN.UTF-8/LC_NAME` 不在就跑 `localedef`，在 RK3566 上要 **约 28 秒**，期间画面全黑、
-没有任何提示。上游只预编了 `en_US.UTF-8`（`dist/rocknix/package.mk` 的注解自己写着
-「在 RK3326 上省下一两分钟、代价约 1MB」），而我们预设语言是 zh_CN。
-→ 比照办理，把 zh_CN 也预编进去，连全新安装第一次开机的 28 秒也省掉。
+进入「用户界面设置」后不做任何修改、直接按退出键，会有约 0.5 秒的画面闪烁。
+尚未定位根因并修复。
 
-（**A 与 E 没有这个问题**：A 靠 Debian 发行版自带、E 映像里就备妥。）
+### 3. 简体中文、繁体中文翻译精校
 
-### 4. 自我更新加「接收测试版」开关
-
-`Es4allUpdate::findLatestApplicable()` 抓 releases 清单挑**版本号最高的**，**完全不过滤 prerelease**。
-开发分支持续发 `vX.Ypre` 预览版，于是**所有开着自我更新的设备——包括跑稳定版的——都会看到「有新版」**
-并被推送开发中的版本。
-
-→ 加一个「接收测试版」开关，**预设关闭**；关闭时跳过 `prerelease=true` 的 release
-（GitHub API 的 release 物件本来就有这个栏位，不必自己解析版本字串）。
-
-### 5. 独立模拟器（PSP=PPSSPP-SA、DC=Flycast-SA）键位改成 ES 透传
-
-现况：这些独立模拟器的键位（选单导航与遊戲內共用同一份映射）**都不是 ES 逐键透传的**，全在韧体树/胶水里：
-
-| target | 现况 |
-|---|---|
-| `emuelec` | 半透传：`<emu>_auto_gamepad=1` 时启动脚本从 ES 拿「用哪支手把」，但「按钮→功能」的对照值**写死在** `set_ppsspp_joy.sh` / `set_flycast_joy.sh` 的表里 |
-| `rocknix` | 全写死：PSP 用静态 `controls.ini`（胶水覆盖）、Flycast 走 SDL 位置自动 + 静态默认 cfg；`start_ppsspp.sh` 根本不读 `ppssppsdl_auto_gamepad` |
-
-问题：换手把（如内建 retrogame_joypad ↔ 外接 Xbox 手把）就可能 ✕○□△ / 选单方向错位，因为映射是按某支手把的 SDL 枚举写死的，没跟着 ES 侦测到的当前手把走。
-
-目标：让独立模拟器的键位也跟 ES 侦测到的当前手把布局对齐（至少做到位置对齐由 ES 的 A 键侦测结果驱动），
-两个 target 统一。⚠️ 这块在 EmuELEC 树 / ROCKNIX 树（编译 session 地盘），ES 前端目前只设
-`_auto_gamepad` 默认值与发布 ROCKNIX 的静态 `controls.ini`。
-
-### 6. 按 GPU 决定默认走 libretro 还是独立模拟器（R / E）
-
-重负载平台（PSP、Dreamcast…）在弱 GPU 上，**独立模拟器**（PPSSPP-SA / Flycast-SA）通常比 libretro 核心快
-（libretro 受 Panfrost/GLES 天花板限制）；但在强 GPU 上 libretro 的统一体验（即时存档、金手指、netplay、
-RA 选单）更划算。目前胶水是**无条件写死走独立版**（`002-es4all-glue` 里
-`psp.emulator=ppsspp`/`psp.core=ppsspp-sa`、`dreamcast.emulator=flycast`/`dreamcast.core=flycast-sa`）。
-
-目标：**按 GPU 世代自动选默认**——弱 GPU 默认独立模拟器、强 GPU 默认 libretro，使用者仍可手动覆盖。
-GPU 分级参考各芯片的 GPU 世代（见 memory `retro_firmware_by_chip`）。⚠️ 决策点在胶水/发行版侧
-（写 `system.cfg` 的 `<platform>.emulator`/`.core`），不在 ES 前端；两个 target 统一逻辑。
+部分词条术语/语序未翻译，或在两种译文间不一致，需要逐项校对统一。
