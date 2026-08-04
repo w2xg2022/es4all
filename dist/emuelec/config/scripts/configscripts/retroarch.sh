@@ -468,6 +468,32 @@ function onend_retroarch_joystick() {
         [[ -n "${ini_value}" ]] && iniSet "input_enable_hotkey_${_retroarch_select_type}" "${ini_value}"
     fi
 
+    # es4all: ★退出键与热键键撞在同一颗时, 改用另一颗★(2026-08-04 实机 MD1000)
+    #
+    # 上游把退出键写死绑 start(见 map_retroarch_joystick 的 start 分支:
+    # keys=("input_start" "input_exit_emulator"))。使用者若【刻意】把 hotkeyenable
+    # 设成 START(没有 Guide 键的手柄很常这样), 热键键与退出键就是同一颗按钮 ——
+    # 「热键+退出」这个组合永远按不出来, 而且没有任何提示, 只会觉得「退不出游戏」。
+    #
+    # 意图本来就是「SELECT+START 退出」, 只是哪一颗当热键由使用者决定。
+    # 所以撞号时把退出键换成 select 那一颗: 不论他挑哪一颗当热键, 组合都成立;
+    # 一般情形(热键=SELECT)则完全不动, 与上游行为相同。
+    # ★推不出另一颗就把退出键删掉★ —— 绑到同一颗只会让人以为「按了没反应」,
+    # 比明白地没有更难查。
+    # (A/R 侧的 es-input-to-retroarch.sh 用同一套规则, 三边行为一致。)
+    local _hk_val _ex_key _ex_val _sel_val
+    _hk_val="$(sed -n 's/^input_enable_hotkey_[a-z]* *= *//p' /tmp/tempconfig.cfg | head -1)"
+    _ex_key="$(sed -n 's/^\(input_exit_emulator_[a-z]*\) *=.*/\1/p'  /tmp/tempconfig.cfg | head -1)"
+    _ex_val="$(sed -n 's/^input_exit_emulator_[a-z]* *= *//p'        /tmp/tempconfig.cfg | head -1)"
+    if [[ -n "${_hk_val}" && "${_hk_val}" == "${_ex_val}" ]]; then
+        _sel_val="$(sed -n 's/^input_select_[a-z]* *= *//p' /tmp/tempconfig.cfg | head -1)"
+        if [[ -n "${_sel_val}" && "${_sel_val}" != "${_hk_val}" ]]; then
+            sed -i "s|^${_ex_key} *=.*|${_ex_key} = ${_sel_val}|" /tmp/tempconfig.cfg
+        else
+            sed -i "/^input_exit_emulator_/d" /tmp/tempconfig.cfg
+        fi
+    fi
+
     # hotkey sanity check
     # remove hotkeys if there is no hotkey enable button
     if ! grep -q "input_enable_hotkey" /tmp/tempconfig.cfg; then
