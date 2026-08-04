@@ -50,7 +50,21 @@ void GuiInputConfig::initInputConfigStructure(InputConfig* target)
 {
 // es4all: ROCKNIX 也用这份表（D-PAD 先、脸键 BUTTON A/SOUTH 字母+位置标签），
 // 让 GuiDetectLayout 布局侦测 + swapPos 生效（靠切 " / " 分字母/位置）。与 EmuELEC 同码。
-#if defined(_ENABLEEMUELEC) || defined(ES4ALL_TARGET_ROCKNIX)
+//
+// ★ARMBIAN 也收进来★(2026-08-04 实机 MD1000/Armbian 看画面才发现)
+//   A 版原本落到下面的 #else（batocera 那张表），三个症状其实同一个根:
+//     ① 精灵先问【面键】才问十字键 —— 而多数人一上来就推方向键,
+//        于是「南按钮」被指派成 AXIS 1-、「东按钮」AXIS 1+，后面的键全乱;
+//     ② 那张表的标签只有方位没有字母(SOUTH/EAST…), 而 swapPos 是靠切 " / "
+//        分出「字母 / 位置」来互换的 -> ★布局侦测的结果对 A 版完全没作用★:
+//        侦测到 A 在东(任天堂式)之后，顺序与图示照旧不变;
+//     ③ 那张表的键名是 pageup / pagedown / hotkey / l2 / joystick1up，
+//        而 es-input-to-retroarch.py 认的是 leftshoulder / hotkeyenable /
+//        lefttrigger / leftanalogup（本表这套）-> ★肩键、扳机、摇杆、热键
+//        整批翻译不到 RetroArch★，而且不会报错，只是那些键在游戏里没反应。
+//   换成本表之后三个都消失，且与 E/R 完全同一套语意，不必再各自维护。
+//   (键名大小写无所谓: InputConfig::mapInput 存进去时一律 toLower。)
+#if defined(_ENABLEEMUELEC) || defined(ES4ALL_TARGET_ROCKNIX) || defined(ES4ALL_TARGET_ARMBIAN)
 	GUI_INPUT_CONFIG_LIST =
 	{
 	{ "Up",               false, "D-PAD UP",           ":/help/dpad_up.svg" },
