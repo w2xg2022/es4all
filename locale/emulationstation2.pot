@@ -2061,23 +2061,6 @@ msgstr ""
 msgid "How much delay in seconds between each retry."
 msgstr ""
 
-msgid "STOP MERGING AND WRITE BACK"
-msgstr ""
-
-msgid "Not enough space on the internal storage to write back the merged data."
-msgstr ""
-
-msgid "Nothing to write back."
-msgstr ""
-
-msgid ""
-"Save files, scraped data and images created while merging will be written "
-"back to the internal storage."
-msgstr ""
-
-msgid "This cannot be undone and EmulationStation will restart. Continue?"
-msgstr ""
-
 msgid "INTERNAL RESOLUTION DIMENSIONS"
 msgstr ""
 

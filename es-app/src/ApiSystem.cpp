@@ -369,9 +369,9 @@ void ApiSystem::applyAudioOutput(const std::string& dev)
 #elif defined(ES4ALL_TARGET_EMUELEC)
 	applyEmuelecAudioOutput(dev);
 #else
-	// ROCKNIX 没有内建实作 —— 它的后端【只有】profiles 那支(PipeWire 换 sink)。
-	// 走到这里代表 profile 还没同步下来, 静静跳过就好: 音源维持发行版开机脚本种好的那个。
-	LOG(LogWarning) << "applyAudioOutput: 没有 profile 的 setaudio.sh, 本 target 无内建实作, 跳过";
+	// ROCKNIX: 退回固件里的 glue 脚本。★它可能是旧版★ —— 固件唯读、只能靠 profile 覆盖,
+	// 所以 profile 没同步下来时只好用它(实机 MD1000 上 7/27 那份切不动 PipeWire 的 sink)。
+	Utils::Platform::ProcessStartInfo("/usr/bin/es4all-setauddev " + dev).run();
 #endif
 }
 

@@ -475,15 +475,14 @@ void GuiMenu::openEmuELECSettings()
 //     EMUELEC = emuelec-utils setauddev + HDMI 硬件静音(同一张卡两个 device, 会一起出声)
 //     ARMBIAN = 直接改写 /etc/asound.conf(裸 ALSA, 无 PipeWire/PulseAudio)
 //   (ROCKNIX 有自己的 openPlatformSettings, 走 es4all-setauddev/PipeWire, 不在这块。)
-// es4all: ★AUDIO OUTPUT 已升为三边共用★(2026-08-04)
-//   原本关在 ES4ALL_CAP_EMUELEC_PLATFORM 底下, 理由是 CMakeLists 那段注解写的
-//   「这些在 armbian/rocknix 上显示得出来但按了没用」—— 当时确实没有后端实作。
-//   现在 ROCKNIX 的后端有了(profiles 的 bin/setaudio.sh, 走 PipeWire 换 default sink,
-//   实机 MD1000 切到类比 RK809 后 AV 孔实际出声), 正是那段注解说的
-//   「未来若为其它 target 补上后端实作, 再把对应项升为共用」的时候。
-//
-//   ⚠️ 显示与否仍由【资料】把关: 机型没有 audio_outputs.cfg -> outs 为空 -> 不显示。
-//   所以没验证过的机型不会冒出一个按了没用的选单, 与升为共用前一样安全。
+// es4all: ★本选单【刻意不含 ROCKNIX】★(2026-08-04 实机踩过)
+//   R 在「系统设置」里【早就有】自己的一个 AUDIO OUTPUT(键用 system.audiooutput)。
+//   若这里也升为共用, R 上就会同时出现两个同名选单, 而且各写各的键
+//   (ee_audio_device vs system.audiooutput)、各呼叫各的后端 —— 使用者在其中一个选 HDMI,
+//   另一条路径与开机还原仍认为是 AV, 表现就是「切了没用」。
+//   实机 2026-08-04 正是如此: system.audiooutput=AV, 而 ee_audio_device 根本不存在。
+//   R 走它自己那份即可(后端已改指 profiles 的 setaudio.sh, 见 openSystemSettings)。
+#if defined(ES4ALL_CAP_EMUELEC_PLATFORM) || defined(ES4ALL_TARGET_ARMBIAN)
 	// es4all: AUDIO OUTPUT —— 按机型只列该盒【实际有实体孔】的音源输出。
 	//
 	// 为什么要机型白名单(不纯动态): card,device 各机型编号不同, 且 ALSA 列出某 PCM ≠ 盒子有那个
@@ -516,6 +515,7 @@ void GuiMenu::openEmuELECSettings()
 			});
 		}
 	}
+#endif
 
 	// es4all: START AT BOOT 为 EmuELEC 专属 —— 只写 ee_boot 这个键，
 	// 实际生效靠 EmuELEC 的开机脚本读取；armbian/rocknix 不读它 → 选了没作用。
@@ -908,9 +908,33 @@ void GuiMenu::openExternalMounts(Window* mWindow, std::string configName)
 		auto emuelec_external_device_def = std::make_shared< OptionListComponent<std::string> >(mWindow, _("EXTERNAL DEVICE"), false);
 		const std::string kIntl = "";   // 内部盘 = 空值(与脚本的判断一致)
 		std::vector<std::string> devLabels;
-		// 排除系统盘自己的分区: 使用者误选当 ROM 盘就变 0 个游戏(实机遇到过)。
+		// ★排除系统盘自己的分区★ —— 误选当 ROM 盘就变 0 个游戏(实机遇到过)。
+		//
+		// ★不能只靠「名字黑名单」★(2026-08-04 实机): 原本的名单
+		//   EEROMS|EMUELEC|STORAGE|CE_FLASH|CE_STORAGE|BOOT|ROOTFS 少了 ROCKNIX ——
+		//   写入 eMMC 之后, 系统自己的 /flash 分区(标签 ROCKNIX)就大剌剌地出现在
+		//   「外部设备」清单里, 选下去等於拿系统碟当 ROM 盘。
+		//   而补一个名字只是治标: 下一台叫别的名字照样中, 而且是【静默】的 ——
+		//   清单看起来很正常, 只有选下去才炸。
+		//
+		// 改成【问系统】: 从 /proc/mounts 找出 /flash 与 /storage 的来源装置, 去掉分区号
+		// 得基础装置(mmcblk0p2 -> mmcblk0、sda2 -> sda), 那颗碟的所有分区一律不列。
+		// 名字黑名单保留当第二道(涵盖「装着但没挂载」的同类碟, 例如另一支 EmuELEC U 盘)。
+		// ★分隔符用 R"SH(...)SH"★: 脚本里的正则含 `)"` 序列, 用 R"(...)" 会提前结束。
 		for (std::stringstream ss(Utils::Platform::getShOutput(
-				R"(blkid -s LABEL -o value 2>/dev/null | grep -vxE 'EEROMS|EMUELEC|STORAGE|CE_FLASH|CE_STORAGE|BOOT|ROOTFS' | sort -u | sed "s/$/,/g")")); getline(ss, a, ','); ) {
+				R"SH(
+				bases=""
+				for mp in /flash /storage; do
+				  d=$(awk -v m="$mp" '$2==m{print $1; exit}' /proc/mounts)
+				  [ -n "$d" ] && bases="$bases $(echo "$d" | sed -E 's#p?[0-9]+$##')"
+				done
+				pat="__nomatch__"
+				for b in $bases; do pat="$pat|^${b}(p?[0-9]+)?$"; done
+				blkid -s LABEL 2>/dev/null | sed 's/:.*LABEL="/ /; s/"$//' \
+				  | awk -v p="$pat" '$1 !~ p {print $2}' \
+				  | grep -vxE 'EEROMS|EMUELEC|STORAGE|ROCKNIX|CE_FLASH|CE_STORAGE|BOOT|ROOTFS' \
+				  | sort -u | sed "s/$/,/g"
+				)SH")); getline(ss, a, ','); ) {
 			if (!a.empty()) devLabels.push_back(a);
 		}
 
@@ -965,6 +989,12 @@ void GuiMenu::openExternalMounts(Window* mWindow, std::string configName)
 				_("NO"), nullptr));
 		});
 
+		// ★这两项三边都是活的, 别看到 ee_ 前缀就当成 EmuELEC 专属★(2026-08-04 更正)
+		//   我一度把它们关进 ES4ALL_CAP_EMUELEC_PLATFORM, 理由是「ee_mount.retry /
+		//   ee_load.delay 只有 eemount 会读」。★那是错的★ —— es4all-storage.sh(A/R 的
+		//   后端)从一开始就读同样两个键(RETRY/DELAY, 预设 10 次 / 每次 2 秒),
+		//   而且是必要的: ★USB 列举比开机慢, 第一次挂不到就会被当成「没有外接碟」★,
+		//   然后静默地不聚合。键名沿用 EmuELEC 是刻意的 —— 同一件事只留一份真相。
 		auto emuelec_external_device_retry = std::make_shared< OptionListComponent<std::string> >(mWindow, _("RETRY TIMES"), false);
 		emuelec_external_device_retry->addRange({ { _("AUTO"), "" },{ "1", "1" },{ "2", "2" },{ "3", "3" },{ "4", "4" },{ "5", "5" },{ "6", "6" },{ "7", "7" },{ "8", "8" },{ "9", "9" },{ "10", "10" },{ "11", "11" },{ "12", "12" },{ "13", "13" },{ "14", "14" },{ "15", "15" },{ "16", "16" },{ "17", "17" },{ "18", "18" },{ "19", "19" },{ "20", "20" },{ "21", "21" },{ "22", "22" },{ "23", "23" },{ "24", "24" },{ "25", "25" },{ "26", "26" },{ "27", "27" },{ "28", "28" },{ "29", "29" },{ "30", "30" } }, SystemConf::getInstance()->get("ee_mount.retry"));
         externalMounts->addWithDescription(_("RETRY TIMES"), _("How many times to retry the mount on boot."), emuelec_external_device_retry);
@@ -977,7 +1007,7 @@ void GuiMenu::openExternalMounts(Window* mWindow, std::string configName)
 		emuelec_external_device_retry_delay->addRange({ { _("AUTO"), "" },{ "1", "1" },{ "2", "2" },{ "3", "3" },{ "4", "4" },{ "5", "5" },{ "6", "6" },{ "7", "7" },{ "8", "8" },{ "9", "9" },{ "10", "10" },{ "11", "11" },{ "12", "12" },{ "13", "13" },{ "14", "14" },{ "15", "15" },{ "16", "16" },{ "17", "17" },{ "18", "18" },{ "19", "19" },{ "20", "20" },{ "21", "21" },{ "22", "22" },{ "23", "23" },{ "24", "24" },{ "25", "25" },{ "26", "26" },{ "27", "27" },{ "28", "28" },{ "29", "29" },{ "30", "30" } }, SystemConf::getInstance()->get("ee_load.delay"));
         externalMounts->addWithDescription(_("DELAY BETWEEN TRIES"), _("How much delay in seconds between each retry."), emuelec_external_device_retry_delay);
 		emuelec_external_device_retry_delay->setSelectedChangedCallback([emuelec_external_device_retry_delay](std::string name) { 
-            if (SystemConf::getInstance()->set("ee_load.delay", name)) 
+            if (SystemConf::getInstance()->set("ee_load.delay", name))
                 SystemConf::getInstance()->saveSystemConf();
             });
 
@@ -985,56 +1015,26 @@ void GuiMenu::openExternalMounts(Window* mWindow, std::string configName)
 		// 再放一个按钮只会让人以为「选了还没生效」。套用 = 重启 ES(聚合挂在 ES 的
 		// ExecStartPre 上, 所以重启 ES 就等於重新套用挂载)。
 
-		// ★停用聚合并回写★ —— 只在【合并层里真的有资料】时才出现。
+		// ★「停用聚合并回写」整块移除★(2026-08-04)
 		//
-		// 为什么是一个动作而不是装置清单里的一个选项: 它会复制几 GB、不可逆、可能失败,
-		// 与其他「选了就是那样、随时可切回来」的选项不是同一种东西。
-		// 混进 OptionList 的话, 使用者滚过去就触发了。
+		//   ①【回写】这个概念在 mergerfs 下不存在。overlayfs 时代所有写入堆在 upperdir,
+		//     拆掉前必须回写, 否则存档与刮削资料会「凭空消失」。mergerfs 是写入直接落在
+		//     各分支的真实档案上 —— 内盘的东西本来就在内盘, 外接盘的本来就在外接盘,
+		//     拆掉 union 只是不再合并显示, ★没有任何资料需要搬★。
+		//     实机 2026-08-04 的画面就是证据: 对话框问「要不要写回」, 数字是 0 MB / 0 MB。
 		//
-		// 显示条件与脚本的判断同源(upper 非空)。没启用过的机器根本看不到这一项。
-		if (Utils::FileSystem::exists("/storage/.es4all-roms/upper") &&
-			!Utils::FileSystem::getDirContent("/storage/.es4all-roms/upper").empty())
-		{
-			externalMounts->addEntry(_("STOP MERGING AND WRITE BACK"), true, [mWindow] {
-				// 先问脚本要不要得起(--check 只估算、不动任何东西), 把数字放进确认框 ——
-				// ★内部 ROM 分区是 vfat 而且通常不大, 复制到一半空间爆掉会卡在
-				// 「upper 不能清、overlay 不能拆」的中间状态★, 所以宁可先算再问。
-				std::string out = Utils::Platform::getShOutput(
-					"/storage/.config/es4all/bin/es4all-storage-detach.sh --check 2>&1");
-
-				if (out.find("NOT_ENOUGH_SPACE") != std::string::npos)
-				{
-					mWindow->pushGui(new GuiMsgBox(mWindow,
-						_("Not enough space on the internal storage to write back the merged data."),
-						_("OK"), nullptr));
-					return;
-				}
-				if (out.find("NOTHING_TO_DO") != std::string::npos)
-				{
-					mWindow->pushGui(new GuiMsgBox(mWindow, _("Nothing to write back."), _("OK"), nullptr));
-					return;
-				}
-
-				long needKb = 0, freeKb = 0;
-				auto grab = [&out](const std::string& key) -> long {
-					size_t p = out.find(key);
-					return (p == std::string::npos) ? 0 : atol(out.c_str() + p + key.size());
-				};
-				needKb = grab("NEED_KB=");
-				freeKb = grab("FREE_KB=");
-
-				char msg[512];
-				snprintf(msg, sizeof(msg), "%s\n\n%ld MB / %ld MB\n\n%s",
-					_("Save files, scraped data and images created while merging will be written back to the internal storage.").c_str(),
-					needKb / 1024, freeKb / 1024,
-					_("This cannot be undone and EmulationStation will restart. Continue?").c_str());
-
-				mWindow->pushGui(new GuiMsgBox(mWindow, msg, _("YES"), [] {
-					Utils::Platform::ProcessStartInfo(
-						"/storage/.config/es4all/bin/es4all-storage-detach.sh && systemctl restart emustation").run();
-				}, _("NO"), nullptr));
-			});
-		}
+		//   ②★更糟的是它光是被点开就会把聚合拆掉★: 这里拿 --check 去「估算」,
+		//     但 es4all-storage-detach.sh ★根本没有 --check 这个模式★ ——
+		//     它忽略参数、一律直接拆。於是「我只是想看看要花多少空间」= 聚合没了。
+		//     (那支脚本的 usage 也只写了不带参数的用法; --check 是上一版留下的幽灵。)
+		//
+		//   ③ 它本来就是多余的: 停用聚合 = 在上面那个装置清单里选回「内部储存」,
+		//     那条路会问确认、会整机重开, 语意与其他选项一致。
+		//     EmuELEC 一直没出现这一项(旧的显示条件永远不成立)不是缺功能 ——
+		//     没有人少了它, 正说明它不该存在。上一版我把显示条件「修好」,
+		//     等於把一颗早就该拆的地雷挖出来装上。
+		//
+		//   脚本本体保留(不重开机套用 / 救援用), 只是不再从选单呼叫。
 
 mWindow->pushGui(externalMounts);
 }
@@ -5212,7 +5212,11 @@ void GuiMenu::openPlatformSettings()
 			audioout->setSelectedChangedCallback([audioout](std::string dev) {
 				if (SystemConf::getInstance()->set("system.audiooutput", dev))
 					SystemConf::getInstance()->saveSystemConf();
-				Utils::Platform::ProcessStartInfo("/usr/bin/es4all-setauddev " + dev).run();
+				// ★后端改走统一入口(2026-08-04)★: 它会优先用 profile 的 bin/setaudio.sh,
+				//   没有才退回 /usr/bin/es4all-setauddev。
+				//   实机 MD1000/ROCKNIX: 固件里那份(7/27)切不动 default sink, profiles 那份可以 ——
+				//   而固件是唯读的, 只能靠 profile 覆盖过去。这样修一支脚本不必重刷固件。
+				ApiSystem::getInstance()->applyAudioOutput(dev);
 			});
 		}
 	}
@@ -5284,9 +5288,13 @@ void GuiMenu::openPlatformSettings()
 	//
 	//   与 ARMBIAN 同样处置(那边是彻底的空壳)。1.2 会连同 A/E 一起重做成真正的内外部聚合，
 	//   届时恢复本入口；韧体侧那两个 bug 归 w2xg2022/rocknix。函式本体保留不删。
-#if 0
-	s->addEntry(_("EXTERNAL MOUNT OPTIONS"), true, [this, window] { openRocknixExternalMount(window); });
-#endif
+	// es4all: ★改接 A/E 共用的聚合选单★(2026-08-04)
+	//   上面那段停用的理由讲的是 ROCKNIX **自己那套** automount / merged storage 的两个固件
+	//   bug —— 那套东西现在完全不用了: 后端换成 es4all-storage.sh(mergerfs), 挂在
+	//   essway.service 的 ExecStartPre 上(由 profiles 下发 drop-in), 与 A 版同一支脚本、
+	//   列举也同样用 blkid, 所以三边共用同一个选单即可。
+	//   openRocknixExternalMount 本体保留不删, 但已无呼叫点 —— 它包的是那两个坏掉的固件功能。
+	s->addEntry(_("EXTERNAL MOUNT OPTIONS"), true, [this] { openExternalMounts(mWindow, "global"); });
 	(void)window;
 
 	mWindow->pushGui(s);
