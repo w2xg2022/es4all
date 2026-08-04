@@ -130,7 +130,15 @@ jobs:
           # 而 ROCKNIX 实机根本没有这个 so(固件烤入的 ES 是静态链 pugixml) →
           # OTA zip 部署到实机会 `error while loading shared libraries: libpugixml.so.1` 起不来。
           # 保持默认 OFF 用内建 external/pugixml 静态编入，zip 才自足(armbian/emuelec 两个 job 也是这样)。
+          # ★必须带 -DENABLE_EMUELEC=1★(2026-08-04 补)
+          #   漏了不会警告, 而是编出一个【跟固件里那份不一样】的 ES:
+          #   权威的 dist/rocknix/package.mk 一直带着它, 本 job 却没有 ——
+          #   於是 CI 产出的 OTA zip 与云编译进固件的二进制分岔。
+          #   本次是因为编译失败才暴露(openExternalMounts 声明在 _ENABLEEMUELEC 里);
+          #   在那之前它只是【静默地】换掉整个前端(主选单/键位精灵/网络蓝牙选单)。
+          #   A 版踩过一模一样的坑 —— 旗标一律以各自的 package.mk 为准, CI 要跟紧。
           cmake .. -DGLES=OFF -DGLES2=ON -DES4ALL_TARGET=rocknix \
+                   -DENABLE_EMUELEC=1 \
                    -DROCKNIX=1 -DDISABLE_KODI=1 -DENABLE_FILEMANAGER=0 -DCEC=0 \
                    -DENABLE_PULSE=1
 
