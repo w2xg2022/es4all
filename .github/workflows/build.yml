@@ -8,7 +8,7 @@ on:
     # 要开 1.2 时再从它切出 v1.2-dev、把 default 换过去、版本字串改 1.2pre。
     # 名字不叫 v1.1 是因为 `v1.1` 已被 tag 占用(GitHub Release「es4all v1.1」绑在该 tag 上)，
     # branch 与 tag 同名会让 git 报 refname ambiguous。
-    branches: [ v1.0-stable, v1.1-stable ]
+    branches: [ v1.0-stable, v1.1-stable, v1.2-stable ]
   workflow_dispatch:
 
 permissions:

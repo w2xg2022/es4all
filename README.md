@@ -56,8 +56,12 @@ ROCKNIX / EmuELEC 版同上，改 `-DES4ALL_TARGET=rocknix`（或 `emuelec`）�
 
 | 分支 | 用途 |
 |---|---|
-| `v1.1-stable` | **当前开发线**（default）。1.1 已定版发布，后续修正也先进这里 |
+| `v1.2-stable` | **当前开发线**（default）。1.2 已定版发布，后续修正也先进这里 |
+| `v1.1-stable` | 1.1 维护线 |
 | `v1.0-stable` | 1.0 维护线 |
+
+> `v1.2-dev` 在 2026-08-04 转正为 `v1.2-stable`（**从它复制出来、不改名**，理由见下方 tag 规则），
+> 版本字串同时由 `1.2pre` 改为 `1.2`，CI 於是发出正式版 tag `v1.2` 与 Release。
 
 Release 由版本字串（`es-app/src/EmulationStation.h` 的 `PROGRAM_VERSION_STRING`）自动推导：
 tag 为 `v<版本>`，含 `pre` 发预览版、不含则发正式版（Latest）。
