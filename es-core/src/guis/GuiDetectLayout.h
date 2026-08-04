@@ -33,7 +33,8 @@ private:
 	InputConfig* mTarget;
 	std::function<void()> mDoneCallback;
 
-	int  mEvFd;        // /dev/input/eventN 檔案描述子(-1=開失敗→跳過偵測)
+	int  mEvFd;        // /dev/input/eventN 檔案描述子(-1=開不到→按任意鍵可跳過, 且會定期重試)
+	int  mReopenAccum; // mEvFd<0 時累積的毫秒數, 到門檻就重開一次(手把熱插拔自癒)
 	int  mPhase;       // 0=等按印刷A, 1=等按印刷X
 	bool mABInverted;  // 印刷A在東(任天堂式)=true；在南(Xbox式)=false
 	bool mXYInverted;  // 印刷X在北(任天堂式)=true；在西(Xbox式)=false
