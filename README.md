@@ -58,8 +58,8 @@ ROCKNIX / EmuELEC 版同上，改 `-DES4ALL_TARGET=rocknix`（或 `emuelec`）�
 
 | 分支 | 用途 |
 |---|---|
-| `v1.2-stable` | **当前稳定线**（default）。1.2 已定版发布（tag `v1.2`），1.2 的修正进这里 |
 | `v1.3-dev` | **下一版开发线**（待建立：从 `v1.2-stable` 复制出来、不改名） |
+| `v1.2-stable` | **当前稳定线**（default）。1.2 已定版发布（tag `v1.2`），1.2 的修正进这里 |
 | `v1.1-stable` | 1.1 维护线 |
 | `v1.0-stable` | 1.0 维护线 |
 
