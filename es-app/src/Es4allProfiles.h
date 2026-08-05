@@ -56,6 +56,21 @@ namespace Es4allProfiles
 	// outMsg 填人类可读的结果说明(成功/无更新/失败原因), 可为 nullptr。
 	// 阻塞式, 请在背景线程调用。
 	bool sync(std::string* outMsg = nullptr);
+
+	// es4all(2026-08-05): 首刷 baseline —— 从映像里烤好的那份【离线】套用一次。
+	//
+	// ★为什么非做不可★: profiles 是运行期下发的, 前提是「已开机、已联网、ES 跑过一轮」。
+	//   刚刷完机的第一次开机因此是裸的 —— 音量回出厂值、跑完键位精灵没有任何东西被翻译
+	//   给 RA/PSP/DC、聚合的 ExecStartPre 指向不存在的档、「写入 eMMC」选单不出现,
+	//   ★而且全都是静默的★, 使用者只会觉得「这固件不对劲」。
+	//
+	// ★为什么放在 ES 而不是写成脚本★: 落点规则(scope 解析 + dest-root 对照)只有这里知道。
+	//   在 CI 或 shell 里再写一份, 分岔不会报错, 只会让同一个档在首开与联网後落在不同地方。
+	//   所以这两个函式与 sync() 共用 resolveDest()/resolveDestRoot(), 差别只在【档案从哪来】。
+	bool applyFromLocal(const std::string& dir, std::string* outMsg = nullptr);
+
+	// 没套用过任何 profiles 且映像带了 baseline 时, 套用它。开机时呼叫一次。
+	void applyBaselineIfNeeded();
 }
 
 #endif // ES_APP_ES4ALL_PROFILES_H

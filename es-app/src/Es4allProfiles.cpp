@@ -513,6 +513,115 @@ namespace Es4allProfiles
 			*outMsg = _("DEVICE PROFILES UPDATED");
 		return true;
 	}
+
+	// ---------------------------------------------------------------------
+	// 首刷 baseline: 从映像里烤好的那份离线套用
+	// ---------------------------------------------------------------------
+	// 与 sync() 走【完全同一套】scope 解析与 dest-root 对照(resolveDest),
+	// 差别只有三点: manifest 从本地读、档案从本地拷、不需要备份(本来就没东西可覆盖)。
+	bool applyFromLocal(const std::string& dir, std::string* outMsg)
+	{
+		auto fail = [&](const std::string& m) -> bool
+		{
+			LOG(LogWarning) << "Es4allProfiles(baseline): " << m;
+			if (outMsg) *outMsg = m;
+			return false;
+		};
+
+		const std::string manifest = dir + "/manifest.json";
+		if (!Utils::FileSystem::exists(manifest))
+			return fail("找不到 " + manifest);
+
+		rapidjson::Document doc;
+		doc.Parse(readFileBytes(manifest).c_str());
+		if (doc.HasParseError() || !doc.IsObject())
+			return fail("manifest 解析失败");
+
+		if (!doc.HasMember("schema") || !doc["schema"].IsInt() || doc["schema"].GetInt() > kSupportedSchema)
+			return fail("manifest 格式版本高于本 ES 所能处理, 已跳过");
+		if (!doc.HasMember("version") || !doc["version"].IsString())
+			return fail("manifest 缺 version");
+		const std::string ver = Utils::String::trim(doc["version"].GetString());
+		if (!doc.HasMember("files") || !doc["files"].IsArray())
+			return fail("manifest 缺 files");
+
+		const std::string model = deviceModel();
+		const std::vector<std::string> devKeys = deviceKeys();
+		std::vector<PlannedFile> plan;
+
+		for (auto& f : doc["files"].GetArray())
+		{
+			if (!f.IsObject() || !f.HasMember("path") || !f["path"].IsString())
+				continue;
+			if (!f.HasMember("md5") || !f["md5"].IsString())
+				continue;
+
+			PlannedFile pf;
+			pf.repoPath = f["path"].GetString();
+			pf.md5 = Utils::String::toLower(Utils::String::trim(f["md5"].GetString()));
+			if (!resolveDest(pf.repoPath, model, devKeys, pf.rank, pf.dest, pf.rootToken))
+				continue;
+			pf.tmp = dir + "/" + pf.repoPath;   // 来源就是映像里那份, 不必下载
+			plan.push_back(pf);
+		}
+
+		if (plan.empty())
+		{
+			// 本机型没有专属配置也算处理过了 —— 记下版本, 免得每次开机重来一轮。
+			Utils::FileSystem::writeAllText(versionStampPath(), ver);
+			if (outMsg) *outMsg = _("NO UPDATE AVAILABLE");
+			return false;
+		}
+
+		std::stable_sort(plan.begin(), plan.end(),
+			[](const PlannedFile& a, const PlannedFile& b) { return a.rank < b.rank; });
+
+		// ★校验照做★: 来源是唯读映像, 照理不会坏 —— 但注入是构建期塞进去的,
+		//   塞错版本/塞到一半都可能发生, 而那种错在设备上会表现成「某些设定莫名其妙」。
+		//   宁可整批不套(照旧等联网同步), 也不要套一半。
+		for (const auto& pf : plan)
+		{
+			if (!Utils::FileSystem::exists(pf.tmp))
+				return fail("baseline 缺档(整批放弃): " + pf.repoPath);
+			if (Utils::String::toLower(md5(readFileBytes(pf.tmp))) != pf.md5)
+				return fail("baseline 校验失败(整批放弃): " + pf.repoPath);
+		}
+
+		int applied = 0;
+		for (const auto& pf : plan)
+		{
+			createDirectoryTree(Utils::FileSystem::getParent(pf.dest));
+			if (!Utils::FileSystem::copyFile(pf.tmp, pf.dest))
+				return fail("写入失败: " + pf.dest);
+			if (needsExecBit(pf.rootToken))
+				chmod(pf.dest.c_str(), 0755);
+			applied++;
+		}
+
+		Utils::FileSystem::writeAllText(versionStampPath(), ver);
+		LOG(LogInfo) << "Es4allProfiles(baseline): 已套用 " << applied << " 个档, 版本 " << ver;
+		if (outMsg) *outMsg = _("DEVICE PROFILES UPDATED");
+		return true;
+	}
+
+	void applyBaselineIfNeeded()
+	{
+		// 已经套用过任何一版就不碰 —— 联网同步过的机器绝不能被映像里那份旧的盖回去。
+		if (!installedVersion().empty())
+			return;
+
+		// 映像把 payload 放在唯读的 /usr/config(E/R 两边都会把它播种到 /storage/.config)。
+		// ARMBIAN 是可写 rootfs、由 es4all-1key 铺好, 不走这条路, 找不到就静静跳过。
+		static const char* kDirs[] = { "/usr/config/es4all-profiles", "/storage/.config/es4all-profiles" };
+		for (const char* d : kDirs)
+		{
+			if (!Utils::FileSystem::exists(std::string(d) + "/manifest.json"))
+				continue;
+			LOG(LogInfo) << "Es4allProfiles: 本机尚未套用过配置, 改用映像里的 baseline: " << d;
+			applyFromLocal(d);
+			return;
+		}
+	}
 }
 
 #else   // !ES4ALL_SELF_UPDATE
@@ -525,6 +634,8 @@ namespace Es4allProfiles
 	std::string scriptPath(const std::string&) { return ""; }
 	bool hasFile(const std::string&) { return false; }
 	bool sync(std::string*) { return false; }
+	bool applyFromLocal(const std::string&, std::string*) { return false; }
+	void applyBaselineIfNeeded() {}
 }
 
 #endif

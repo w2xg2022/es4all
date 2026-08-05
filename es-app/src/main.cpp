@@ -556,6 +556,12 @@ int err = snd_pcm_open(&pcm_handle, "default", SND_PCM_STREAM_PLAYBACK, 0);
 	// es4all: 种下「机型专属配置下载」的预设值(**预设开启**)。必须在建选单之前 ——
 	// GuiSettings::addSwitch 读 SystemConf::getBool(默认 false), 键不存在会显示成「关」。
 	Es4allProfiles::ensureDefaults();
+
+	// es4all(2026-08-05): 首刷时套用映像里烤好的 baseline。
+	//   ★必须在这里(建选单之前)★: 有些配置的存在与否就是【选单可见性】的依据
+	//   (例: 有 emmc-layout.conf 才显示「写入 eMMC」)。晚一步套, 第一次开机就看不到那些入口。
+	//   已套用过任何一版的机器会直接跳过, 不会被映像里那份旧的盖回去。
+	Es4allProfiles::applyBaselineIfNeeded();
 #endif
 
 #if defined(ES4ALL_TARGET_EMUELEC) || defined(ES4ALL_TARGET_ARMBIAN)
